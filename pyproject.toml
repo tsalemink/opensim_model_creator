@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[options]
+package_dir = {'' = 'src'}
+
+[project]
+name = "opensim_model_creator"
+description = "Python code for OpenSim model creation using an articulated statistical shape model."
+authors = [{name = "Josh Plummer", email = "jplu752@aucklanduni.ac.nz" },
+           {name = "Timothy Salemink", email = "tim.nicolas@outlook.com" }]
+version = "0.1.0"
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.urls]
+Repository = "https://github.com/Josh10203/opensim_model_creator"

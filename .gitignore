@@ -1,5 +1,16 @@
 # OpenSim Outputs
 opensim.log
 
-PyCharm Project Files
-.idea
+# Project Files
+.idea/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution
+build/
+dist/
+package/
+*.egg-info/
+*.egg

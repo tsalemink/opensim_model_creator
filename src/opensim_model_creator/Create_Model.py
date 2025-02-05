@@ -3297,7 +3297,7 @@ local_muscle_positions = extract_local_muscle_positions(empty_model)
 
 #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
 
-scaling_file = search_files_by_keywords(participant_inputs, "ScaleSettings")[0]
+scaling_file = search_files_by_keywords("High_Level_Inputs", "ScaleSettings")[0]
 scale_tool = osim.ScaleTool(scaling_file)
 scale_tool.setPathToSubject(participant_folder)
 

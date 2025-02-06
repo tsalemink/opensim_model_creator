@@ -12,166 +12,15 @@ import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
 from numpy.ma.core import argmax
 
+#%%Import funcitons form folders
+from  Functions.file_utils import *
+from Functions.bone_utils import *
+
+
 
 #%% Functions
-def print_bodies(model):
-    # List all bodies in the model
-    print("Bodies in the model:")
-    for i in range(model.getBodySet().getSize()):
-        body = model.getBodySet().get(i)
-        print(f"- {body.getName()}")
-
-def search_files_by_keywords(folder_path, keywords):
-    """
-    Searches for files in a given folder that contain all the specified keywords in their names.
-
-    Args:
-        folder_path (str): Path to the folder where the search is performed.
-        keywords (str): A space-separated string of keywords to match in filenames.
-
-    Returns:
-        list: A list of filenames that match all the keywords.
-    """
-    # Split the keywords into a list of words and convert to lowercase
-    keywords_list = keywords.lower().split()
-
-    # Get all files in the folder
-    try:
-        files = os.listdir(folder_path)
-    except FileNotFoundError:
-        print(f"Error: The folder '{folder_path}' does not exist.")
-        return []
-
-    # Find files that match all keywords
-    matching_files = [
-        file for file in files
-        if all(keyword in file.lower() for keyword in keywords_list)
-    ]
-    matching_files[0] = folder_path + "/" + matching_files[0]
-    return matching_files
-
-def save_model_to_folder(model, output_folder, filename="model_with_geometry.osim"):
-    """
-    Saves the model to a specified folder with the given filename.
-
-    Args:
-        model (opensim.Model): The OpenSim model to save.
-        output_folder (str): The folder where the model file will be saved.
-        filename (str): The name of the output model file. Defaults to "model_with_geometry.osim".
-    """
-    # Ensure the output folder exists
-    os.makedirs(output_folder, exist_ok=True)
-
-    # Combine the folder path and filename
-    output_path = os.path.join(output_folder, filename)
-
-    # Save the model to the specified location
-    model.printToXML(output_path)
-    print(f"Model saved to: {output_path}")
-
-def update_model_name(model, new_name):
-    """
-    Updates the name of the OpenSim model.
-
-    Args:
-        model (opensim.Model): The OpenSim model to update.
-        new_name (str): The new name for the model.
-    """
-    # Set the new name for the model
-    model.setName(new_name)
-    print(f"Model name updated to: {new_name}")
-
-def add_mesh_to_body(model, body_name, mesh_filename, offset_translation=(0, 0, 0), offset_orientation=(0, 0, 0)):
-    """
-    Adds a mesh geometry to a specified body in the OpenSim model.
-
-    Args:
-        model (opensim.Model): The OpenSim model.
-        body_name (str): The name of the body to attach the mesh to.
-        mesh_filename (str): The path to the mesh file.
-        offset_translation (tuple): (x, y, z) translation offset for the mesh relative to the body.
-        offset_orientation (tuple): (x, y, z) orientation offset for the mesh relative to the body.
-
-    Raises:
-        ValueError: If the specified body is not found in the model.
-    """
-    # Extract the file name without the directory path
-    geometry_name = os.path.basename(mesh_filename).split('.')[0]
-
-    # Get the body from the model
-    try:
-        body = model.getBodySet().get(body_name)
-    except Exception as e:
-        raise ValueError(f"Body '{body_name}' not found in the model.") from e
-
-    # Create a new Mesh geometry
-    mesh_geometry = osim.Mesh(mesh_filename)
-    mesh_geometry.setName(geometry_name)
-
-    # Set the offset frame for the mesh
-    offset_frame = osim.PhysicalOffsetFrame()
-    offset_frame.setName(f"{geometry_name}_offset")
-    offset_frame.setParentFrame(body)
-    offset_frame.set_translation(osim.Vec3(*offset_translation))
-    offset_frame.set_orientation(osim.Vec3(*offset_orientation))
-
-    # Add the offset frame to the body
-    body.addComponent(offset_frame)
-
-    # Attach the mesh to the offset frame
-    offset_frame.attachGeometry(mesh_geometry)
-
-    print(f"Added mesh '{geometry_name}' to body '{body_name}' with translation {offset_translation} and orientation {offset_orientation}.")
 
 
-def extract_mesh_info_trimesh(file_path):
-    """
-    Extracts size, position, and volume information from a mesh file (STL or VTP) using trimesh.
-    If the file is a VTP, it converts it to an STL beforehand.
-
-    Args:
-        file_path (str): Path to the mesh file (STL or VTP).
-
-    Returns:
-        dict: A dictionary containing the bounding box size, center, and volume.
-    """
-    # Check if the file is a VTP
-    if file_path.lower().endswith('.vtp'):
-        print(f"Converting VTP file to STL: {file_path}")
-        # Load the VTP file with pyvista
-        mesh = pv.read(file_path)
-
-        # Temporary STL filename
-        stl_temp_file = file_path.replace('.vtp', '.stl')
-
-        # Save the mesh as an STL file
-        mesh.save(stl_temp_file)
-        print(f"Converted to STL: {stl_temp_file}")
-
-        # Update the file path to point to the STL file
-        file_path = stl_temp_file
-
-    # Load the mesh with trimesh
-    mesh = trimesh.load(file_path)
-
-    # Get bounding box size
-    bounding_box_size = mesh.bounding_box.extents
-
-    # Get the center of the mesh
-    center = mesh.bounding_box.centroid
-
-    # Get the volume
-    volume = mesh.volume
-
-    # Optionally remove the temporary STL file
-    if file_path.endswith('.stl') and '_temp' in file_path:
-        os.remove(file_path)
-
-    return {
-        "bounding_box_size": bounding_box_size,
-        "center": center,
-        "volume": volume,
-    }
 
 def load_landmarks(file_path):
     """
@@ -1885,6 +1734,84 @@ def compute_and_adjust_markers(
     # Adjust model markers
     adjust_model_markers(model_path, output_model_path, average_marker_differences)
 
+
+def extract_local_muscle_positions(model_path):
+    """
+    Extracts the local positions of markers relative to their parent frames and includes the body they are attached to.
+
+    Args:
+        model_path (str): Path to the OpenSim model file containing the markers.
+
+    Returns:
+        dict: Dictionary with marker names as keys and a tuple (body_name, local_position) as values.
+    """
+    # Load the model
+    model = osim.Model(model_path)
+    state = model.initSystem()
+
+    # Dictionary to store local positions and attached body
+    local_positions = {}
+
+    # Iterate through the markers in the MarkerSet
+    markerset = model.getMarkerSet()
+    for i in range(markerset.getSize()):
+        marker = markerset.get(i)
+        marker_name = marker.getName()
+
+        # Check if the marker name starts with "ins_" or "ori_"
+        if marker_name.startswith("ins_") or marker_name.startswith("ori_"):
+            try:
+                # Get the marker's local position
+                local_vec = marker.get_location()
+
+                # Get the body the marker is attached to
+                body_name = marker.getParentFrame().getName()
+
+                # Store the local position and body name in the dictionary
+                local_positions[marker_name] = (
+                    body_name,
+                    (local_vec.get(0), local_vec.get(1), local_vec.get(2)),
+                )
+            except Exception as e:
+                print(f"Error processing marker '{marker_name}': {e}")
+
+    return local_positions
+
+
+
+def compute_marker_midpoint(model, marker1_name, marker2_name):
+    """
+    Computes the midpoint between two markers in an OpenSim model.
+
+    Parameters:
+        model (osim.Model): The OpenSim model containing the markers.
+        marker1_name (str): Name of the first marker.
+        marker2_name (str): Name of the second marker.
+
+    Returns:
+        np.array: The 3D midpoint of the two marker locations.
+    """
+    # Retrieve the marker set from the model
+    marker_set = model.getMarkerSet()
+
+    # Check if both markers exist in the model
+    if not marker_set.contains(marker1_name) or not marker_set.contains(marker2_name):
+        raise ValueError(f"Markers '{marker1_name}' or '{marker2_name}' not found in the model.")
+
+    # Retrieve the markers
+    marker1 = marker_set.get(marker1_name)
+    marker2 = marker_set.get(marker2_name)
+
+    # Get their local positions and convert to NumPy arrays
+    marker1_position = np.array([marker1.get_location().get(i) for i in range(3)])
+    marker2_position = np.array([marker2.get_location().get(i) for i in range(3)])
+
+    # Compute the midpoint using the existing function
+    midpoint = midpoint_3d(marker1_position, marker2_position)
+
+    return midpoint
+
+
 #Participant inputs folder location
 participant_inputs = participant_folder + "/Inputs"
 
@@ -2778,18 +2705,22 @@ empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,mus
 # Finalise the connections of the model
 empty_model.finalizeConnections()
 
-if participant_folder:
-    # Extract the directory name as the model name and replace spaces with underscores
-    model_name = os.path.basename(participant_folder).replace(" ", "_")
 
-    # Update the model name
-    update_model_name(empty_model, model_name)
+# Extract the directory name as the model name and replace spaces with underscores
+model_name = os.path.basename(participant_folder).replace(" ", "_")
 
-    # Save the model with the same name
-    save_model_to_folder(empty_model, output_folder, f"{model_name}.osim")
-else:
-    print("No directory selected.")
+# Update the model name
+empty_model.setName(model_name)
 
+# Ensure the output folder exists
+os.makedirs(output_folder, exist_ok=True)
+
+# Combine the folder path and filename
+output_path = os.path.join(output_folder, f"{model_name}.osim")
+
+# Save the model to the specified location
+empty_model.printToXML(output_path)
+print(f"Model saved to: {output_path}")
 
 
 
@@ -3248,47 +3179,6 @@ empty_model.printToXML(output_file)
 
 #Code here to extract the muscle positions in the local coordinate system
 
-def extract_local_muscle_positions(model_path):
-    """
-    Extracts the local positions of markers relative to their parent frames and includes the body they are attached to.
-
-    Args:
-        model_path (str): Path to the OpenSim model file containing the markers.
-
-    Returns:
-        dict: Dictionary with marker names as keys and a tuple (body_name, local_position) as values.
-    """
-    # Load the model
-    model = osim.Model(model_path)
-    state = model.initSystem()
-
-    # Dictionary to store local positions and attached body
-    local_positions = {}
-
-    # Iterate through the markers in the MarkerSet
-    markerset = model.getMarkerSet()
-    for i in range(markerset.getSize()):
-        marker = markerset.get(i)
-        marker_name = marker.getName()
-
-        # Check if the marker name starts with "ins_" or "ori_"
-        if marker_name.startswith("ins_") or marker_name.startswith("ori_"):
-            try:
-                # Get the marker's local position
-                local_vec = marker.get_location()
-
-                # Get the body the marker is attached to
-                body_name = marker.getParentFrame().getName()
-
-                # Store the local position and body name in the dictionary
-                local_positions[marker_name] = (
-                    body_name,
-                    (local_vec.get(0), local_vec.get(1), local_vec.get(2)),
-                )
-            except Exception as e:
-                print(f"Error processing marker '{marker_name}': {e}")
-
-    return local_positions
 
 local_muscle_positions = extract_local_muscle_positions(empty_model)
 
@@ -3297,7 +3187,7 @@ local_muscle_positions = extract_local_muscle_positions(empty_model)
 
 #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
 
-scaling_file = search_files_by_keywords(participant_inputs, "ScaleSettings")[0]
+scaling_file = search_files_by_keywords("High_Level_Inputs", "ScaleSettings")[0]
 scale_tool = osim.ScaleTool(scaling_file)
 scale_tool.setPathToSubject(participant_folder)
 
@@ -3305,7 +3195,7 @@ scale_tool.setPathToSubject(participant_folder)
 # Set the model file
 scale_tool.getGenericModelMaker().setModelFileName(output_file)  # Replace with your model file
 
-banter,(start_time, end_time),dontcare = read_trc_file_as_dict(mocap_trc_file,True)
+ignore,(start_time, end_time),dontcare = read_trc_file_as_dict(mocap_trc_file,True)
 # Create an OpenSim ArrayDouble and populate it with start_time and end_time
 time_range = osim.ArrayDouble()
 time_range.append(start_time)
@@ -3339,17 +3229,22 @@ scale_tool.run()
 
 
 #%% Create the JMP settings files and move trcs & model automatically
+source_file_path1 = os.path.join(participant_folder, "Models", "scaled_foot.osim")  # Source path
+knee_optimisation_trc_file = search_files_by_keywords(participant_inputs, "optimisation")[0]  # Find the TRC file containing marker data
+ignore,(start_time, end_time),knee_optimisation_marker_dictionary = read_trc_file_as_dict(knee_optimisation_trc_file,True)
+
+#This feature was removed due to no longer being necessary, however funcitonality will be left below incase desired at some future point in time
+""" 
 
 # Define file paths
 default_file_path = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\JMP_Default.xml"
 output_file_path = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\JMP_Actual.xml"
 
-knee_optimisation_trc_file = search_files_by_keywords(participant_inputs, "optimisation")[0]  # Find the TRC file containing marker data
-banter,(start_time, end_time),banter1 = read_trc_file_as_dict(knee_optimisation_trc_file,True)
+
 #copy the scaled_feet_variant.osim from the directory above to the JMP Code direcotry
 import shutil
 # Define source and destination file paths
-source_file_path1 = os.path.join(participant_folder, "Models", "scaled_foot.osim")  # Source path
+
 destination_file_path1 = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\scaled_foot.osim"  # Destination path
 destination_file_path2 = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\trcfile.trc"
 
@@ -3387,7 +3282,7 @@ except FileNotFoundError:
     print(f"File not found: {default_file_path}")
 except Exception as e:
     print(f"An error occurred: {e}")
-
+"""
 
 #%%Adjusting & Optimising the Knee Joint Orientations
 
@@ -3415,7 +3310,7 @@ run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start
 
 optimised_knee_moved_marker_model = output_folder+"/Optimised_Knee_Axes_Moved_Markers.osim"
 
-compute_and_adjust_markers(optimised_knee_model,"ik_output.mot","_ik_model_marker_locations.sto",banter1,optimised_knee_moved_marker_model)
+compute_and_adjust_markers(optimised_knee_model,"ik_output.mot","_ik_model_marker_locations.sto",knee_optimisation_marker_dictionary,optimised_knee_moved_marker_model)
 
 re_optimised_knee_moved_marker_model = output_folder+"/Re_Optimised_Knee_Axes_Moved_Markers.osim"
 
@@ -3454,37 +3349,6 @@ model.printToXML(muscle_model)
 
 
 
-def compute_marker_midpoint(model, marker1_name, marker2_name):
-    """
-    Computes the midpoint between two markers in an OpenSim model.
-
-    Parameters:
-        model (osim.Model): The OpenSim model containing the markers.
-        marker1_name (str): Name of the first marker.
-        marker2_name (str): Name of the second marker.
-
-    Returns:
-        np.array: The 3D midpoint of the two marker locations.
-    """
-    # Retrieve the marker set from the model
-    marker_set = model.getMarkerSet()
-
-    # Check if both markers exist in the model
-    if not marker_set.contains(marker1_name) or not marker_set.contains(marker2_name):
-        raise ValueError(f"Markers '{marker1_name}' or '{marker2_name}' not found in the model.")
-
-    # Retrieve the markers
-    marker1 = marker_set.get(marker1_name)
-    marker2 = marker_set.get(marker2_name)
-
-    # Get their local positions and convert to NumPy arrays
-    marker1_position = np.array([marker1.get_location().get(i) for i in range(3)])
-    marker2_position = np.array([marker2.get_location().get(i) for i in range(3)])
-
-    # Compute the midpoint using the existing function
-    midpoint = midpoint_3d(marker1_position, marker2_position)
-
-    return midpoint
 
 #begin attempt at adding wrapping objects to muscles
 

@@ -12,15 +12,12 @@ import pandas as pd
 from mpl_toolkits.mplot3d import Axes3D
 from numpy.ma.core import argmax
 
-#%%Import funcitons form folders
-from  Functions.file_utils import *
+#%%Import functions from folders
+from Functions.file_utils import *
 from Functions.bone_utils import *
 
 
-
 #%% Functions
-
-
 
 def load_landmarks(file_path):
     """

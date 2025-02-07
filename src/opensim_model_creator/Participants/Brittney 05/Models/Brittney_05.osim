@@ -283,7 +283,7 @@
 									<!--Path to a Component that satisfies the Socket 'frame' of type Frame.-->
 									<socket_frame>..</socket_frame>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/combined_pelvis_mesh.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/combined_pelvis_mesh.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -325,7 +325,7 @@
 									<!--Path to a Component that satisfies the Socket 'frame' of type Frame.-->
 									<socket_frame>..</socket_frame>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_femur.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_femur.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -367,7 +367,7 @@
 									<!--Path to a Component that satisfies the Socket 'frame' of type Frame.-->
 									<socket_frame>..</socket_frame>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_femur.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_femur.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -409,7 +409,7 @@
 									<!--Path to a Component that satisfies the Socket 'frame' of type Frame.-->
 									<socket_frame>..</socket_frame>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_tibfib.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_tibfib.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -451,7 +451,7 @@
 									<!--Path to a Component that satisfies the Socket 'frame' of type Frame.-->
 									<socket_frame>..</socket_frame>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_tibfib.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_tibfib.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -841,7 +841,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.016526436016623403 -0.036229783080182654 -0.070054155362095125</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 0.01635007408545874 0.00065247763082639432</orientation>
+							<orientation>-0.01851266061159541 0.016350074085458518 0.00065246674222749115</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="femur_l_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -856,7 +856,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.029590839936669444 0.20109141490642013 0.019387660029087761</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 -0.11731007591910925 0.1167347310169875</orientation>
+							<orientation>-0.018512660611595413 -0.11731007591910969 0.11673472012838859</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 					<!--Defines how the child body moves with respect to the parent as a function of the generalized coordinates.-->
@@ -948,7 +948,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.01897621769983926 -0.034963414872967613 0.076024611908502931</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 0.01635007408545874 -0.0013748857232277255</orientation>
+							<orientation>-0.01851266061159541 0.016350074085458518 -0.0013748742711082453</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="femur_r_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -963,7 +963,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.011171066569493626 0.20280511597267437 -0.022630189117483726</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 0.2050174452867328 0.0093331320319994283</orientation>
+							<orientation>-0.018512660611595413 0.20501744528673263 0.0093331434841189154</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 					<!--Defines how the child body moves with respect to the parent as a function of the generalized coordinates.-->
@@ -1047,7 +1047,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.016671519501601617 -0.19510704794230788 -0.0013535057471722647</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>0.077774649321578002 -0.11731007591910882 -0.01510230078578941</orientation>
+							<orientation>0.077774649321578002 -0.11731007591910882 -0.015102300785789401</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="tibfib_l_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1093,7 +1093,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.0068822196152589221 -0.19687118756829802 0.0032201838526514752</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.066034221789523034 0.20501744528673349 -0.026571526945260833</orientation>
+							<orientation>-0.066034221789523034 0.20501744528673349 -0.026571522109207064</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="tibfib_r_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1108,7 +1108,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.026758463082037109 0.2149121649259419 -0.020919985991379869</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.066034221789523034 0.20501744528673349 -0.14001454449869302</orientation>
+							<orientation>-0.066034221789523034 0.20501744528673352 -0.14001453966263933</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 				</PinJoint>
@@ -1139,7 +1139,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.043566393453401964 -0.16439891858338643 -0.014693182762154477</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>0.085129748582865997 0.36820244278590364 0.038976960485700339</orientation>
+							<orientation>0.085129748582865983 0.36820244278590342 0.038976960395784938</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="talus_l_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1154,7 +1154,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.001 0.017000000000000001 -0.0025000000000000001</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>0.085129748582865997 0.38542672157509417 0.21015537449155899</orientation>
+							<orientation>0.085129748582865983 0.38542672157509372 0.2101553744016435</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 				</PinJoint>
@@ -1185,7 +1185,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.032520581689195693 -0.16686278354042905 0.022246832590464824</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.10722337260897473 -0.37582444708166479 0.071137600398190032</orientation>
+							<orientation>-0.10722337260897473 -0.37582444708166479 0.071137611290879713</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="talus_r_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1200,7 +1200,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.001 0.017000000000000001 0.0025000000000000001</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.10722337260897473 -0.4006313884585167 0.16595306726744236</orientation>
+							<orientation>-0.10722337260897473 -0.4006313884585167 0.16595307816013211</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 				</PinJoint>

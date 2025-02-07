@@ -297,7 +297,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/combined_pelvis_mesh.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/combined_pelvis_mesh.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -322,7 +322,7 @@
 								<!--Body-fixed Euler angle sequence for the orientation of the WrapObject-->
 								<xyz_body_rotation>0.75 -0.39000000000000001 0</xyz_body_rotation>
 								<!--Translation of the WrapObject.-->
-								<translation>0.001326951976347286 -0.022767551514681683 -0.062865670932028453</translation>
+								<translation>0.0013269519763472826 -0.022767551514681683 -0.062865670932028453</translation>
 								<!--The name of quadrant over which the wrap object is active. For example, '+x' or '-y' to set the sidedness of the wrapping.-->
 								<quadrant>-x</quadrant>
 								<!--The radius of the cylinder.-->
@@ -334,7 +334,7 @@
 								<!--Body-fixed Euler angle sequence for the orientation of the WrapObject-->
 								<xyz_body_rotation>-0.75 0.39000000000000001 0</xyz_body_rotation>
 								<!--Translation of the WrapObject.-->
-								<translation>0.0026896060312716001 -0.022090358916450725 0.068883234376496669</translation>
+								<translation>0.002689606031271607 -0.022090358916450725 0.068883234376496669</translation>
 								<!--The name of quadrant over which the wrap object is active. For example, '+x' or '-y' to set the sidedness of the wrapping.-->
 								<quadrant>-x</quadrant>
 								<!--The radius of the cylinder.-->
@@ -371,7 +371,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_femur.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_femur.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -396,7 +396,7 @@
 								<!--Body-fixed Euler angle sequence for the orientation of the WrapObject-->
 								<xyz_body_rotation>-0.143263 -0.12371500000000001 0.42177599999999998</xyz_body_rotation>
 								<!--Translation of the WrapObject.-->
-								<translation>-0.051223968800072649 0.18147721852373799 0.0064457441926559361</translation>
+								<translation>-0.051223968800072656 0.18147721852373799 0.0064457441926559084</translation>
 								<!--The name of quadrant over which the wrap object is active. For example, '+x' or '-y' to set the sidedness of the wrapping.-->
 								<quadrant>-x</quadrant>
 								<!--The radius of the cylinder.-->
@@ -433,7 +433,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_femur.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_femur.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -477,7 +477,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_tibfib.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_left_tibfib.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -521,7 +521,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/joshp/Documents/Opensim Workflow Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_tibfib.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Brittney 05\Meshes/RCH05_predicted_mesh_right_tibfib.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -965,7 +965,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.016526436016623403 -0.036229783080182654 -0.070054155362095125</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 0.01635007408545874 0.00065247763082639432</orientation>
+							<orientation>-0.01851266061159541 0.016350074085458518 0.00065246674222749115</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="femur_l_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -980,7 +980,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.029590839936669444 0.20109141490642013 0.019387660029087761</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 -0.11731007591910925 0.1167347310169875</orientation>
+							<orientation>-0.018512660611595413 -0.11731007591910969 0.11673472012838859</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 					<!--Defines how the child body moves with respect to the parent as a function of the generalized coordinates.-->
@@ -1099,7 +1099,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.01897621769983926 -0.034963414872967613 0.076024611908502931</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 0.01635007408545874 -0.0013748857232277255</orientation>
+							<orientation>-0.01851266061159541 0.016350074085458518 -0.0013748742711082453</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="femur_r_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1114,7 +1114,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.011171066569493626 0.20280511597267437 -0.022630189117483726</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.018512660611595406 0.2050174452867328 0.0093331320319994283</orientation>
+							<orientation>-0.018512660611595413 0.20501744528673263 0.0093331434841189154</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 					<!--Defines how the child body moves with respect to the parent as a function of the generalized coordinates.-->
@@ -1225,7 +1225,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.016671519501601617 -0.19510704794230788 -0.0013535057471722647</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>0.077871455847206353 -0.11740688244473717 -0.01510230078578941</orientation>
+							<orientation>0.077813516723532192 -0.11727120851715463 -0.015102300785789401</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="tibfib_l_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1240,7 +1240,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.044164966566955011 0.21700930825171155 0.010547390459325873</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>0.077871455847206353 -0.11740688244473717 -0.31938912339981013</orientation>
+							<orientation>0.077813516723532192 -0.11727120851715463 -0.31938912339981013</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 				</PinJoint>
@@ -1271,7 +1271,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.0068822196152589221 -0.19687118756829802 0.0032201838526514752</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.065937415263894683 0.20512425181236185 -0.026571526945260833</orientation>
+							<orientation>-0.065995354387568844 0.20498857788477928 -0.026571522109207064</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="tibfib_r_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1286,7 +1286,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>0.026758463082037109 0.2149121649259419 -0.020919985991379869</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.065937415263894683 0.20512425181236185 -0.14001454449869302</orientation>
+							<orientation>-0.065995354387568844 0.20498857788477931 -0.14001453966263933</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 				</PinJoint>
@@ -1317,7 +1317,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.043566393453401964 -0.16439891858338643 -0.014693182762154477</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>0.085129748582865997 0.36820244278590364 0.038976960485700339</orientation>
+							<orientation>0.085129748582865983 0.36820244278590342 0.038976960395784938</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="talus_l_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1332,7 +1332,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.0010713812073944388 0.018213480525705462 -0.0026784530184860971</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>0.085129748582865997 0.38542672157509417 0.21015537449155899</orientation>
+							<orientation>0.085129748582865983 0.38542672157509372 0.2101553744016435</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 				</PinJoint>
@@ -1363,7 +1363,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.032520581689195693 -0.16686278354042905 0.022246832590464824</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.10722337260897473 -0.37582444708166479 0.071137600398190032</orientation>
+							<orientation>-0.10722337260897473 -0.37582444708166479 0.071137611290879713</orientation>
 						</PhysicalOffsetFrame>
 						<PhysicalOffsetFrame name="talus_r_b_offset">
 							<!--The geometry used to display the axes of this Frame.-->
@@ -1378,7 +1378,7 @@
 							<!--Translational offset (in meters) of this frame's origin from the parent frame's origin, expressed in the parent frame.-->
 							<translation>-0.0010713812073944388 0.018213480525705462 0.0026784530184860971</translation>
 							<!--Orientation offset (in radians) of this frame in its parent frame, expressed as a frame-fixed x-y-z rotation sequence.-->
-							<orientation>-0.10722337260897473 -0.4006313884585167 0.16595306726744236</orientation>
+							<orientation>-0.10722337260897473 -0.4006313884585167 0.16595307816013211</orientation>
 						</PhysicalOffsetFrame>
 					</frames>
 				</PinJoint>
@@ -3393,7 +3393,7 @@
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/calcn_r_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.093330967291753192 0.028033347731548065 -0.0060056005495025822</location>
+					<location>-0.093328080893582979 0.028041936005686954 -0.0060241621647819932</location>
 					<!--Flag (true or false) specifying whether the marker is fixed in its parent frame during the marker placement step of scaling.  If false, the marker is free to move within its parent Frame to match its experimental counterpart.-->
 					<fixed>false</fixed>
 				</Marker>
@@ -3401,103 +3401,103 @@
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/calcn_l_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.097456490214196001 0.028121981310549889 0.0096657397527846189</location>
+					<location>-0.097454187761132183 0.028111401498724521 0.0096663176282549002</location>
 				</Marker>
 				<Marker name="LTOE">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/toes_l_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.07232934383043696 0.048582313819792215 -0.0021414371287059031</location>
+					<location>-0.072329422199797516 0.048587421620457705 -0.0021439629451309311</location>
 				</Marker>
 				<Marker name="RTOE">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/toes_r_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.07089786749725252 0.050114191782020166 0.005639574923469115</location>
+					<location>-0.070895619296998225 0.050108526587190526 0.0056467893538317271</location>
 				</Marker>
 				<Marker name="RASI">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/pelvis_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.070302554510860718 0.045326798158947801 0.094853439532472633</location>
+					<location>0.070300964758909762 0.045327694784687567 0.09485204538568448</location>
 				</Marker>
 				<Marker name="LASI">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/pelvis_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.068452681718727398 0.034855860613212886 -0.099925725086570188</location>
+					<location>0.068451681324281755 0.034855770623972493 -0.099923650514454912</location>
 				</Marker>
 				<Marker name="RPSI">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/pelvis_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.080029214257487866 0.044970806087604065 0.04448102586691393</location>
+					<location>-0.08003024126009492 0.044974426494874931 0.044481353880952902</location>
 				</Marker>
 				<Marker name="LPSI">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/pelvis_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.077143133131282557 0.048652623008429763 -0.03920047673314174</location>
+					<location>-0.077143871059283914 0.04865567836184248 -0.039198682200544392</location>
 				</Marker>
 				<Marker name="LTHI">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/femur_l_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.016226851412272286 -0.025650186308644241 -0.10797606796577604</location>
+					<location>0.016220893516060847 -0.025647414777006161 -0.10797673364853985</location>
 				</Marker>
 				<Marker name="LPAT">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/femur_l_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.077071368597326106 -0.14072085863240691 0.02740307549593754</location>
+					<location>0.077070861265895352 -0.14071909794868143 0.027398755423664621</location>
 				</Marker>
 				<Marker name="LKNE">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/femur_l_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.020037389971009994 -0.19108211486967669 -0.050596147650883314</location>
+					<location>0.020034150317116958 -0.19107948936305891 -0.050598538272600774</location>
 				</Marker>
 				<Marker name="RTHI">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/femur_r_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.02734350115504941 -0.02192787053127343 0.10270006732164902</location>
+					<location>0.027343448106161031 -0.021925789371374682 0.10269826723953966</location>
 				</Marker>
 				<Marker name="RPAT">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/femur_r_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.083805179518987027 -0.13337888962875055 -0.03280700253685101</location>
+					<location>0.083830482709506438 -0.13336976995852223 -0.032801322178115162</location>
 				</Marker>
 				<Marker name="RKNE">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/femur_r_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.023688905057208373 -0.1968682929512402 0.043544965297643734</location>
+					<location>0.02370349980648926 -0.1968636765678618 0.043541129838273976</location>
 				</Marker>
 				<Marker name="LANK">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/tibfib_l_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.048732361486914892 -0.16069366985345757 -0.055798893556339435</location>
+					<location>-0.048731578150172553 -0.16069254599494837 -0.055798893951142695</location>
 				</Marker>
 				<Marker name="LTIB">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/tibfib_l_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.0055291166188504437 0.053818883243660465 -0.11495546896752371</location>
+					<location>-0.0055337263162130168 0.053820690049632858 -0.11495533164374576</location>
 				</Marker>
 				<Marker name="RANK">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/tibfib_r_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>-0.034526405287367154 -0.16068135936864403 0.06347024470056635</location>
+					<location>-0.034526898888284759 -0.16068032867912763 0.063463731768000756</location>
 				</Marker>
 				<Marker name="RTIB">
 					<!--Path to a Component that satisfies the Socket 'parent_frame' of type PhysicalFrame (description: The frame to which this station is fixed.).-->
 					<socket_parent_frame>/bodyset/tibfib_r_b</socket_parent_frame>
 					<!--The fixed location of the station expressed in its parent frame.-->
-					<location>0.010979585183797207 0.074825489754012625 0.11133074377175663</location>
+					<location>0.010984089967631006 0.074825125399543668 0.11132590655771725</location>
 				</Marker>
 			</objects>
 			<groups />

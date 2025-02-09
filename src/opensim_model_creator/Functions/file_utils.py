@@ -1,6 +1,7 @@
 # file_utils.py contains helper functions designed for the retrieval, manipulation or saving of files for the opensim_model_creator
 import os
-
+import tkinter as tk
+from tkinter import filedialog
 
 def search_files_by_keywords(folder_path, keywords):
     """
@@ -30,4 +31,15 @@ def search_files_by_keywords(folder_path, keywords):
     ]
     matching_files[0] = folder_path + "/" + matching_files[0]
     return matching_files
+
+def select_directory():
+    # Initialize Tkinter
+    root = tk.Tk()
+    root.withdraw()  # Hide the root window
+
+    # Open the directory selection dialog
+    selected_directory = filedialog.askdirectory(title="Select a Participent Directory to produce osim model")
+
+    # Return the selected directory
+    return selected_directory
 

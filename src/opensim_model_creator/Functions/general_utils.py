@@ -1,7 +1,5 @@
 #Import packages
 import numpy as np
-import tkinter as tk
-from tkinter import filedialog
 import re
 import pandas as pd
 
@@ -68,17 +66,6 @@ def vector_between_points(coord1, coord2, normalize=False):
         vector = vector / magnitude
 
     return vector
-
-def select_directory():
-    # Initialize Tkinter
-    root = tk.Tk()
-    root.withdraw()  # Hide the root window
-
-    # Open the directory selection dialog
-    selected_directory = filedialog.askdirectory(title="Select a Participent Directory to produce osim model")
-
-    # Return the selected directory
-    return selected_directory
 
 def read_trc_file_as_dict(file_path, include_times=False):
     """
@@ -176,3 +163,35 @@ def read_trc_file_as_dict(file_path, include_times=False):
     if include_times:
         return marker_static_avg, (start_time, end_time),markers_dict
     return marker_static_avg,markers_dict
+
+def compute_marker_midpoint(model, marker1_name, marker2_name):
+    """
+    Computes the midpoint between two markers in an OpenSim model.
+
+    Parameters:
+        model (osim.Model): The OpenSim model containing the markers.
+        marker1_name (str): Name of the first marker.
+        marker2_name (str): Name of the second marker.
+
+    Returns:
+        np.array: The 3D midpoint of the two marker locations.
+    """
+    # Retrieve the marker set from the model
+    marker_set = model.getMarkerSet()
+
+    # Check if both markers exist in the model
+    if not marker_set.contains(marker1_name) or not marker_set.contains(marker2_name):
+        raise ValueError(f"Markers '{marker1_name}' or '{marker2_name}' not found in the model.")
+
+    # Retrieve the markers
+    marker1 = marker_set.get(marker1_name)
+    marker2 = marker_set.get(marker2_name)
+
+    # Get their local positions and convert to NumPy arrays
+    marker1_position = np.array([marker1.get_location().get(i) for i in range(3)])
+    marker2_position = np.array([marker2.get_location().get(i) for i in range(3)])
+
+    # Compute the midpoint using the existing function
+    midpoint = midpoint_3d(marker1_position, marker2_position)
+
+    return midpoint

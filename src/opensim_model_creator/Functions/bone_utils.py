@@ -5,6 +5,8 @@ import trimesh
 import pyvista as pv
 import numpy as np
 import xml.etree.ElementTree as ET
+from scipy.spatial.transform import Rotation as R
+from scipy.optimize import minimize
 
 #Import required functions
 from Functions.general_utils import rotate_coordinate_x, vector_between_points
@@ -543,3 +545,580 @@ def add_markers_to_body(model, body_name, marker_names, mocap_file, center, cust
 
     except Exception as e:
         print(f"Error adding markers to body '{body_name}': {e}")
+
+def calculate_euler_to_align_axis_with_optimization(target_vector, secondary_vector, align_axis='z'):
+    """
+    Calculates Euler angles to align a single axis of a coordinate system to a target vector,
+    and optimizes to minimize the difference between the secondary vector and its rotated version.
+
+    Args:
+        target_vector (np.array): A 3D vector to align the specified axis to.
+        secondary_vector (np.array): A 3D vector to be optimized for alignment.
+        align_axis (str): The axis to align ('x', 'y', or 'z').
+
+    Returns:
+        tuple: (Optimized Euler angles, new secondary vector).
+    """
+    # Normalize the input vectors
+    target_vector = target_vector / np.linalg.norm(target_vector)
+    secondary_vector = secondary_vector / np.linalg.norm(secondary_vector)
+
+    # Define the original coordinate system axis to align
+    if align_axis == 'x':
+        original_axis = np.array([1, 0, 0])
+        euler_index = 0  # Roll
+    elif align_axis == 'y':
+        original_axis = np.array([0, 1, 0])
+        euler_index = 1  # Pitch
+    elif align_axis == 'z':
+        original_axis = np.array([0, 0, 1])
+        euler_index = 2  # Yaw
+    else:
+        raise ValueError("align_axis must be one of 'x', 'y', or 'z'.")
+
+    # Calculate the rotation axis and angle
+    rotation_axis = np.cross(original_axis, target_vector)
+    rotation_axis /= np.linalg.norm(rotation_axis)
+    rotation_angle = np.arccos(np.dot(original_axis, target_vector))
+
+    # Construct the rotation vector and initial Euler angles
+    rotation_vector = rotation_axis * rotation_angle
+    rotation = R.from_rotvec(rotation_vector)
+    initial_euler_angles = rotation.as_euler('xyz', degrees=False)
+
+    # Optimization: Adjust the Euler angle for the specified axis
+    def objective(euler_angle):
+        # Update the Euler angle for the specified axis
+        euler_angles = initial_euler_angles.copy()
+        euler_angles[euler_index] = euler_angle[0]
+
+        # Compute the new secondary vector after applying the rotation
+        rotation = R.from_euler('xyz', euler_angles, degrees=False)
+        new_secondary_vector = rotation.apply(secondary_vector)
+
+        # Calculate the error (minimize the angle between vectors)
+        dot_product = np.dot(new_secondary_vector, secondary_vector)
+        return 1 - dot_product  # Maximize alignment (dot product close to 1)
+
+    # Perform optimization
+    result = minimize(objective, [initial_euler_angles[euler_index]], bounds=[(-1.3*np.pi, 2*np.pi)],options={"disp": False, "maxiter": 10000, "gtol": 1e-15, "ftol": 1e-15})
+    optimized_angle = result.x[0]
+
+    # Update the Euler angles with the optimized value
+    optimized_euler_angles = initial_euler_angles.copy()
+    optimized_euler_angles[euler_index] = optimized_angle
+
+    # Compute the final rotated secondary vector
+    rotation = R.from_euler('xyz', optimized_euler_angles, degrees=False)
+    optimized_secondary_vector = rotation.apply(secondary_vector)
+
+    return optimized_euler_angles
+
+def align_y_axis_with_vector_and_z_axis_to_plane(vector, plane_points):
+    """
+    Calculates Euler angles to align the y-axis to the provided vector and the z-axis parallel to a plane.
+
+    Args:
+        vector (np.array): A 3D vector to align the y-axis to.
+        plane_points (list of np.array): Three points (3D) defining the plane.
+
+    Returns:
+        np.array: Euler angles (roll, pitch, yaw) in radians to achieve the alignment.
+    """
+    # Normalize the vector to align with y-axis
+    vector = vector / np.linalg.norm(vector)
+
+    # Calculate the normal vector of the plane
+    v1 = plane_points[1] - plane_points[0]
+    v2 = plane_points[2] - plane_points[0]
+    plane_normal = np.cross(v1, v2)
+    plane_normal /= np.linalg.norm(plane_normal)
+
+    # Ensure orthogonal alignment:
+    # 1. y-axis aligned to the provided vector
+    y_axis = vector
+
+    # 2. z-axis should be parallel to the plane (orthogonal to the plane normal)
+    #    Compute the projection of the original z-axis ([0, 0, 1]) onto the plane
+    original_z = np.array([0, 0, 1])
+    z_axis = original_z - np.dot(original_z, plane_normal) * plane_normal
+    z_axis /= np.linalg.norm(z_axis)
+
+    # 3. x-axis is computed as orthogonal to both y-axis and z-axis
+    x_axis = np.cross(y_axis, z_axis)
+    x_axis /= np.linalg.norm(x_axis)
+
+    # Construct the rotation matrix
+    rotation_matrix = np.array([x_axis, y_axis, z_axis]).T
+
+    # Convert the rotation matrix to Euler angles
+    rotation = R.from_matrix(rotation_matrix)
+    euler_angles = rotation.as_euler('xyz', degrees=False)
+
+    return euler_angles
+
+def compute_euler_angles_from_vectors(from_vector, to_vector, order='xyz'):
+    """
+    Computes the Euler angles required to rotate one vector to align with another.
+
+    Args:
+        from_vector (np.array): The initial vector.
+        to_vector (np.array): The target vector to align with.
+        order (str): The Euler angle order (default: 'xyz').
+
+    Returns:
+        np.array: Euler angles (in radians) for the specified rotation order.
+    """
+    # Normalize both vectors
+    from_vector = from_vector / np.linalg.norm(from_vector)
+    to_vector = to_vector / np.linalg.norm(to_vector)
+
+    # Calculate the rotation axis (cross product)
+    rotation_axis = np.cross(from_vector, to_vector)
+    axis_norm = np.linalg.norm(rotation_axis)
+
+    if axis_norm < 1e-6:  # If vectors are nearly aligned
+        if np.allclose(from_vector, to_vector):
+            return np.array([0.0, 0.0, 0.0])  # No rotation needed
+        else:
+            # Opposite vectors: Rotate by 180 degrees
+            orthogonal_axis = np.array([1.0, 0.0, 0.0]) if not np.allclose(from_vector, [1, 0, 0]) else np.array([0, 1, 0])
+            rotation_axis = np.cross(from_vector, orthogonal_axis)
+            rotation_axis /= np.linalg.norm(rotation_axis)
+            angle = np.pi
+    else:
+        # Calculate the angle between the vectors
+        angle = np.arccos(np.clip(np.dot(from_vector, to_vector), -2.0, 2.0))
+        rotation_axis /= axis_norm
+
+    # Create the rotation object using axis-angle
+    rotation_vector = rotation_axis * angle
+    rotation = R.from_rotvec(rotation_vector)
+
+    # Convert to Euler angles
+    euler_angles = rotation.as_euler(order, degrees=False)
+    return euler_angles
+
+def adjust_model_markers(model_path, output_model_path, marker_differences):
+    """
+    Adjust the model marker positions based on the given differences.
+
+    Args:
+        model_path (str): Path to the OpenSim model file.
+        output_model_path (str): Path to save the adjusted model.
+        marker_differences (dict): Dictionary containing the average differences for each marker
+                                   in the format {'marker_name': [dx, dy, dz]}.
+    """
+    # Load the OpenSim model
+    model = osim.Model(model_path)
+    model.finalizeConnections()
+    state = model.initSystem()
+    # Iterate over the marker differences
+    for marker_name, difference in marker_differences.items():
+        try:
+            # Get the marker
+            marker = model.getMarkerSet().get(marker_name)
+
+            # Get the parent body of the marker
+            parent_body = marker.getParentFrame()
+
+            # Get the current location offset (relative to the parent frame)
+            current_offset = marker.get_location()
+
+            #%% Trying to convert the average marker distnace to be representative to the parent frame
+
+            # Convert the global difference to an OpenSim Vec3
+            global_difference = osim.Vec3(*difference)
+
+            # Find the current marker position in the global frame
+            current_location_in_ground = parent_body.findStationLocationInGround(state, marker.get_location())
+
+            current_local_offset = parent_body.findStationLocationInAnotherFrame(state, current_location_in_ground, parent_body)
+
+
+            # Compute the new marker position in the global frame
+            new_location_in_ground = osim.Vec3(
+                current_location_in_ground.get(0) + global_difference.get(0),
+                current_location_in_ground.get(1) + global_difference.get(1),
+                current_location_in_ground.get(2) + global_difference.get(2)
+            )
+
+            # Transform the new global position back to the local frame of the parent body
+            new_local_offset = model.getGround().findStationLocationInAnotherFrame(state, new_location_in_ground, parent_body)
+
+            print(new_location_in_ground)
+            print(new_local_offset)
+            print(current_offset)
+            # Update the marker's local offset
+            marker.set_location(new_local_offset)
+
+            print(f"Adjusted marker '{marker_name}' to new local offset: {new_local_offset}")
+
+        except Exception as e:
+            print(f"Error adjusting marker '{marker_name}': {e}")
+
+    # Save the updated model
+    model.setName("Optimised_Knee_Moved_Markers")
+    model.printToXML(output_model_path)
+    print(f"Model updated and saved to: {output_model_path}")
+
+def parse_model_marker_locations(sto_file_path):
+    """
+    Parse the _ik_model_marker_locations.sto file to extract marker positions.
+
+    Args:
+        sto_file_path (str): Path to the .sto file.
+
+    Returns:
+        dict: Dictionary of model marker positions with marker names as keys.
+        list: List of time values.
+    """
+    with open(sto_file_path, 'r') as file:
+        lines = file.readlines()
+
+    # Identify the header line with column labels
+    header_index = None
+    for idx, line in enumerate(lines):
+        if line.startswith("time"):
+            header_index = idx
+            break
+
+    if header_index is None:
+        raise ValueError("Header line with column labels not found in the .sto file.")
+
+    # Extract marker names from the header
+    headers = lines[header_index].strip().split("\t")
+    marker_names = headers[1:]  # Skip "time" column
+
+    # Parse data rows
+    data = np.loadtxt(lines[header_index + 1:], dtype=float)
+
+    # Organize data into a dictionary
+    marker_positions = {name: [] for name in marker_names}
+
+
+    time_list = data[:, 0]
+    for i, marker_name in enumerate(marker_positions.keys()):
+        marker_positions[marker_name] = data[:, 1 + i]
+
+    # Initialize the combined marker positions dictionary
+    combined_marker_positions = {}
+
+    # Group marker components into XYZ coordinates
+    for marker_name in marker_positions.keys():
+        # Extract base name by removing '_tx', '_ty', '_tz'
+        base_name = marker_name.rsplit('_', 1)[0]
+
+        # Initialize an entry for the base name if it doesn't already exist
+        if base_name not in combined_marker_positions:
+            combined_marker_positions[base_name] = []
+
+    # Populate the combined dictionary with XYZ coordinates for each time step
+    for base_name in combined_marker_positions.keys():
+        x = marker_positions[f"{base_name}_tx"]
+        y = marker_positions[f"{base_name}_ty"]
+        z = marker_positions[f"{base_name}_tz"]
+
+        # Stack X, Y, Z into a single array for each time step
+        xyz_coordinates = np.column_stack((x, y, z))
+        combined_marker_positions[base_name] = xyz_coordinates
+
+    return combined_marker_positions, time_list
+
+def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weights, initial_params, temp_model_path_1, temp_model_path_2,final_output_model):
+    """
+    Optimize the knee joint orientation to minimize IK errors.
+
+    Args:
+        model_path (str): Path to the OpenSim model file.
+        trc_file (str): Path to the TRC file.
+        start_time (float): Start time for IK analysis.
+        end_time (float): End time for IK analysis.
+        marker_weights (dict): Marker weights for IK analysis.
+        initial_params (list): Initial joint orientations for optimization.
+        temp_model_path_1 (str): Path for temporary model file 1.
+        temp_model_path_2 (str): Path for temporary model file 2.
+        final_output_model (str): Path to save the final model.
+
+    Returns:
+        OptimizeResult: Results of the optimization process.
+    """
+    def objective(params):
+        left_knee_x, left_knee_y, right_knee_x, right_knee_y = params*1000
+
+        # Adjust left knee
+        adjust_joint_orientation(
+            model_path=model_path,
+            joint_name="tibfib_l_to_femur_l",
+            rotation_adjustment=osim.Vec3(left_knee_x, left_knee_y, 0.0),
+            output_model_path=temp_model_path_1
+        )
+
+        # Adjust right knee
+        adjust_joint_orientation(
+            model_path=temp_model_path_1,
+            joint_name="tibfib_r_to_femur_r",
+            rotation_adjustment=osim.Vec3(right_knee_x, right_knee_y, 0.0),
+            output_model_path=temp_model_path_2
+        )
+        print([left_knee_x, left_knee_y, right_knee_x, right_knee_y])
+        # Perform IK and compute error
+        errors = perform_IK(temp_model_path_2, trc_file, start_time, end_time, marker_weights)
+        print(errors["Average RMS Error"])
+        return errors["Average RMS Error"]*1e4 if errors else float("inf")
+
+    bounds = [(-0.001, 0.001)] * 4
+    result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": 1})
+    model = osim.Model(temp_model_path_2)
+    model_name_here = final_output_model.split("/")[-1].split(".")[0]
+    model.setName(model_name_here)
+    model.printToXML(final_output_model)
+    return result
+
+def perform_IK(model_file, trc_file, start_time, end_time, marker_weights, output_errors_file="_ik_marker_errors.sto"):
+    """
+    Perform Inverse Kinematics analysis using OpenSim.
+
+    Args:
+        model_file (str): Path to the OpenSim model file.
+        trc_file (str): Path to the TRC file.
+        start_time (float): Start time for IK.
+        end_time (float): End time for IK.
+        marker_weights (dict): Marker weights for IK analysis.
+        output_errors_file (str): Path to save marker errors.
+
+    Returns:
+        dict: Dictionary containing average RMS error and max error.
+    """
+    try:
+        model = osim.Model(model_file)
+        ik_tool = osim.InverseKinematicsTool()
+        ik_tool.setModel(model)
+        ik_tool.setMarkerDataFileName(trc_file)
+        ik_tool.setStartTime(start_time)
+        ik_tool.setEndTime(end_time)
+        ik_tool.setOutputMotionFileName("ik_output.mot")
+        ik_tool.set_report_marker_locations(True)
+
+        # Configure marker weights
+        ik_task_set = osim.IKTaskSet()
+        for marker_name, weight in marker_weights.items():
+            task = osim.IKMarkerTask()
+            task.setName(marker_name)
+            task.setWeight(weight)
+            task.setApply(True)
+            ik_task_set.adoptAndAppend(task)
+
+        ik_tool.set_IKTaskSet(ik_task_set)
+        ik_tool.run()
+
+        return extract_ik_errors(output_errors_file)
+
+    except Exception as e:
+        print(f"Error during IK: {e}")
+        return None
+
+def extract_ik_errors(error_file_path):
+    """
+    Extract RMS and maximum marker errors from an IK error file.
+
+    Args:
+        error_file_path (str): Path to the IK error file (.sto).
+
+    Returns:
+        dict: Dictionary with the average RMS error and maximum error.
+    """
+    try:
+        with open(error_file_path, 'r') as file:
+            lines = file.readlines()
+
+        # Find header and data rows
+        data_start_idx = None
+        headers = []
+        for idx, line in enumerate(lines):
+            if line.startswith("endheader"):
+                data_start_idx = idx + 2
+                headers = lines[idx + 1].strip().split()
+                break
+
+        data = np.loadtxt(lines[data_start_idx:], dtype=float)
+
+        # Extract errors
+        rms_idx = headers.index("marker_error_RMS")
+        max_idx = headers.index("marker_error_max")
+
+        rms_error = np.sqrt(np.mean(data[:, rms_idx] ** 2))
+        max_error = np.max(data[:, max_idx])
+
+        return {"Average RMS Error": rms_error, "Max Error": max_error}
+
+    except Exception as e:
+        print(f"Error reading IK error file: {e}")
+        return None
+
+def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output_model_path):
+    """
+    Adjust the orientation of a joint's child frame in an OpenSim model.
+
+    Args:
+        model_path (str): Path to the OpenSim model file (.osim).
+        joint_name (str): Name of the joint to adjust.
+        rotation_adjustment (osim.Vec3): Adjustments to the joint's orientation in radians.
+        output_model_path (str): Path to save the updated model.
+
+    Returns:
+        None: Saves the updated model with the joint orientation adjusted.
+    """
+    try:
+        # Load the model
+        model = osim.Model(model_path)
+        state = model.initSystem()
+
+        # Access the joint
+        joint = model.getJointSet().get(joint_name)
+
+        # Access the child frame
+        child_frame = joint.upd_frames(1)
+        current_orientation1 = np.array([child_frame.get_orientation().get(i) for i in range(3)])
+
+        # Apply rotation adjustments
+        new_orientation1 = current_orientation1 + np.array([rotation_adjustment.get(i) for i in range(3)])
+        child_frame.set_orientation(osim.Vec3(*new_orientation1))
+
+
+        # Access the parent frame
+        parent_frame = joint.upd_frames(0)
+        current_orientation2 = np.array([parent_frame.get_orientation().get(i) for i in range(3)])
+
+        # Apply rotation adjustments
+        new_orientation2 = current_orientation2 + np.array([rotation_adjustment.get(i) for i in range(3)])
+        parent_frame.set_orientation(osim.Vec3(*new_orientation2))
+
+
+
+
+        # Save the updated model
+        model.printToXML(output_model_path)
+        print(f"Joint '{joint_name}' updated and saved to: {output_model_path}")
+
+    except Exception as e:
+        print(f"Error updating joint '{joint_name}': {e}")
+
+def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2, marker_weights, final_output_model_path, initial_params=None):
+    """
+    Run knee joint optimization for an OpenSim model.
+
+    Args:
+        source_file_path1 (str): Path to the source OpenSim model file.
+        knee_optimisation_trc_file (str): Path to the TRC file for optimization.
+        start_time (float): Start time for IK analysis.
+        end_time (float): End time for IK analysis.
+        marker_weights (dict, optional): Marker weights for IK analysis.
+        initial_params (list, optional): Initial joint rotations for x and y.
+        temp_model_path_1 (str, optional): Temporary model file path 1.
+        temp_model_path_2 (str, optional): Temporary model file path 2.
+
+    Returns:
+        None
+    """
+    # Default initial parameters
+    if initial_params is None:
+        initial_params = [0, 0, 0, 0]
+
+
+
+    # Suppress OpenSim logging
+    osim.Logger.setLevelString("Off")
+
+    # Run optimization
+    result = optimize_knee_axis(
+        model_path=source_file_path1,
+        trc_file=knee_optimisation_trc_file,
+        start_time=start_time,
+        end_time=end_time,
+        marker_weights=marker_weights,
+        initial_params=initial_params,
+        temp_model_path_1=temp_model_path_1,
+        temp_model_path_2=temp_model_path_2,
+        final_output_model = final_output_model_path
+    )
+
+    print(f"Optimized Joint Orientations: {result.x}")
+
+def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_locations_path, actual_marker_positions_dict, output_model_path):
+    """
+    Compute marker differences and adjust markers in the model.
+
+    Args:
+        model_path (str): Path to the OpenSim model file.
+        ik_output_mot_path (str): Path to the IK motion file (.mot).
+        model_marker_locations_path (str): Path to the model marker locations file (.sto).
+        actual_marker_positions_dict (dict): Dictionary of actual marker positions.
+        output_model_path (str): Path to save the updated model.
+
+    Returns:
+        None
+    """
+    # Load the model
+    model = osim.Model(model_path)
+    state = model.initSystem()
+
+    # Initialize dictionaries
+    marker_differences = {}
+    model_marker_positions = {}
+    actual_marker_positions = {}
+
+    # Initialize the dictionary with empty lists for each marker
+    for marker in model.getMarkerSet():
+        marker_name = marker.getName()
+        marker_differences[marker_name] = []
+        actual_marker_positions[marker_name] = []
+
+    # Load the time list from the IK motion file
+    motion_storage = osim.Storage(ik_output_mot_path)
+    time_array = osim.ArrayDouble()
+    motion_storage.getTimeColumn(time_array)
+    time_list = [time_array.get(i) for i in range(time_array.size())]
+
+    # Load model marker positions from the .sto file
+    model_marker_positions, model_time_list = parse_model_marker_locations(model_marker_locations_path)
+
+    # Ensure the time lists match between IK output and model marker locations
+    if not np.allclose(time_list, model_time_list):
+        raise ValueError("Mismatch in time lists between IK output and model marker locations.")
+
+    # Loop through time steps and compute marker positions
+    for index, time in enumerate(time_list):
+        markers = model.getMarkerSet()
+        for marker in markers:
+            marker_name = marker.getName()
+
+            # Get the actual marker position
+            actual_x = actual_marker_positions_dict[marker_name]['X'][index] / 1000
+            actual_y = actual_marker_positions_dict[marker_name]['Y'][index] / 1000
+            actual_z = actual_marker_positions_dict[marker_name]['Z'][index] / 1000
+            actual_marker_position = np.array([actual_x, actual_y, actual_z])
+
+            # Store the positions and differences
+            actual_marker_positions[marker_name].append(actual_marker_position)
+
+            if marker_name == 'LPAT' or marker_name == 'RPAT':
+                continue
+
+            model_marker_position = model_marker_positions[marker_name][index]
+
+            # Compute marker difference
+            marker_difference = np.array(actual_marker_position - model_marker_position)
+            marker_differences[marker_name].append(marker_difference)
+
+    # Remove empty marker differences
+    marker_differences = {key: value for key, value in marker_differences.items() if value}
+
+    # Compute average marker differences
+    average_marker_differences = {
+        marker_name: np.mean(positions, axis=0)
+        for marker_name, positions in marker_differences.items()
+    }
+
+    # Adjust model markers
+    adjust_model_markers(model_path, output_model_path, average_marker_differences)

@@ -6,6 +6,170 @@ import numpy as np
 from Functions.file_utils import search_files_by_keywords
 from Functions.bone_utils import add_markers_to_body
 
+#Contains the muscle linkages definitions
+muscle_linkages = {
+    "Extobl": {
+        "ins": [["Pelvis", "58"]],
+    },
+    "Intobl": {
+        "ins": [["Pelvis", "59"]],
+    },
+    "Ercspn": {
+        "ins": [["Pelvis", "105c"]],
+    },
+    "Glut max": {
+        "ori": [["Pelvis", "106"]],
+        "ins": [["Femur", "106"]],
+    },
+    "Glut min": {
+        "ori": [["Pelvis", "108"]],
+        "ins": [["Femur", "108"]],
+    },
+    "Tfl": {
+        "ori": [["Pelvis", "109"]], #        "ins":[["Tibia", "109"]], - doesn't exist in the tibial node number file
+    },
+    "Obt int": {
+        "ori": [["Pelvis", "111"]],
+        "ins": [["Femur", "111_112_113"]],
+    },
+    "Obt ext": {
+        "ori": [["Pelvis", "123"]],
+        "ins": [["Femur", "123"]],
+    },
+    "Gem": {
+        "ori": [["Pelvis", "112"],["Pelvis","113"]],
+        "ins": [["Femur", "111_112_113"]],
+    },
+    "Quad fem": {
+        "ori": [["Pelvis", "114"]],
+        "ins": [["Femur", "114"]],
+    },
+    "Sar": {
+        "ori": [["Pelvis", "115"]],
+        "ins": [["Tibia", "115"]],
+    },
+    "Rect fem": {
+        "ori": [["Pelvis", "116a"],["Pelvis","116a_1"]],
+        "ins": [["Tibia", "116"]],
+    },
+    "Pect": {
+        "ori": [["Pelvis", "118"]],
+        "ins": [["Femur", "118"]],
+    },
+    "Add long": {
+        "ori": [["Pelvis", "119"]],
+        "ins": [["Femur", "119"]],
+    },
+    "Add brev": {
+        "ori": [["Pelvis", "120"]],
+        "ins": [["Femur", "120"]],
+    },
+    "Grac": {
+        "ori": [["Pelvis", "122"]],
+        "ins": [["Tibia", "122"]],
+    },
+    "Bifemlh": {
+        "ori": [["Pelvis", "124a"]],
+        "ins": [["Fibula", "124"]],
+    },
+    "Bifemsh": {
+        "ori": [["Femur", "124b"]],
+        "ins": [["Fibula", "124"]],
+    },
+    "Semimem": {
+        "ori": [["Pelvis", "126"]],
+        "ins": [["Tibia", "126"]],
+    },
+    "Iliacus": {
+        "ori": [["Pelvis", "105a"]],
+        "ins": [["Femur", "105"]], #just saying insertion is the same as psoas inseriton
+    },
+    "Glut med": {
+        "ori": [["Pelvis", "107"]],
+        "ins": [["Femur", "107"]],
+    },
+    "Add mag": {
+        "ori": [["Pelvis", "121"]],
+        "ins": [["Femur", "121"],["Femur","121_1"]],
+    },
+    "Semiten": {
+        "ori": [["Pelvis", "125"]],
+        "ins": [["Tibia", "125"]],
+    },
+    "Psoas": {
+
+        "ins": [["Femur", "105"]],
+    },
+    "Peri": {
+        "ins": [["Femur", "110"]], #        "ori": [["Sacrum", "110"]], - i dont know how to include this as theres no sacrum shapemodel component
+    },
+    "Vas lat": {
+        "ori": [["Femur", "116b"]],
+        "ins": [["Tibia", "116"]],
+    },
+    "Vas int/ articularis genus": {
+        "ori": [["Femur", "117"]], #i dont know where it inserts (probably same as vas med and rext fem)
+
+    },
+    "Vas int": {
+        "ori": [["Femur", "116c"]],#i dont know where it inserts (porbably saame as vas med and rect fem)
+
+    },
+    "Med gas": {
+        "ori": [["Femur", "132a"]],# inserts on the foot (there is a med gas in the tibia section, unsure as to why)
+
+    },
+    "Lat head of gastrocnemius": {
+        "ori": [["Femur", "133"]], #inseriton on the foot
+
+    },
+    "Popliteus m.": {
+        "ori": [["Femur", "134"]], #insertion on the foot
+
+    },
+    "Tib ant": {
+        "ori": [["Tibia", "127"]],#insertion on the foot
+
+    },
+    "Tib_post": {
+        "ori": [["Tibia", "135"],["Fibula","135"]], #i assume theres 2 origins from the tib and fib that go to the foot
+
+    },
+    "Soleus": {
+        "ori": [["Fibula", "132b"]], #inserts on the foot
+
+    },
+    "Obturator interus/gemellus": {
+
+        "ins": [["Femur", "123"]],#i dont know where the origin is
+    },
+    "Ext dig": {
+        "ori": [["Tibia", "128"],["Tibia","128_1"]], #inserts on foot, 2 origins?
+
+    },
+    "Flex dig": {
+        "ori": [["Tibia", "136"]], #inserts on foot
+
+    },
+    "Flex hal": {
+        "ori": [["Fibula", "137"]],#inserts on foot
+
+    },
+    "Per long": {
+        "ori": [["Fibula", "130"],["Fibula","130_1"]],#insrets on foot
+
+    },
+    "Per brev": {
+        "ori": [["Fibula", "131"]],#inserts on foot
+
+    },
+    "Ext hal": {
+        "ori": [["Fibula", "129"]], #inserts on foot
+
+    },
+}
+
+#Functions of use
 def parse_muscle_node_files_recursive(root_directory):
     """
     Recursively parses muscle node files in a root directory and constructs a nested dictionary.
@@ -413,3 +577,30 @@ def extract_local_muscle_positions(model_path):
                 print(f"Error processing marker '{marker_name}': {e}")
 
     return local_positions
+
+def muscle_initialisation(participant_inputs):
+    """
+    Initializes the muscle linkage structure by mapping muscle numbers to their corresponding
+    node coordinates and updating the muscle_linkages dictionary.
+
+    Parameters:
+        participant_inputs (str): Path to the participant's input directory.
+
+    Returns:
+        dict: Updated muscle_linkages dictionary with mapped coordinates.
+    """
+    # Correlation between muscle names and their respective origin/insertion bodies and muscle numbers
+    global muscle_linkages  # Ensure global access to muscle_linkages
+
+    # Relate muscle numbers to nodes that make up the insertion/origin
+    muscle_number_to_nodes_key = parse_muscle_node_files_recursive("High_Level_Inputs/final_node_numbers")
+
+    # Relate node numbers to their coordinates
+    node_to_coordinate = parse_ply_files_by_side_and_bone(participant_inputs, ["Femur", "Tibfib", "Pelvis"])
+
+    # Map muscle nodes to their corresponding coordinates
+    muscle_linkages = map_muscle_nodes_to_coordinates(
+        muscle_linkages, muscle_number_to_nodes_key, node_to_coordinate
+    )
+
+    return muscle_linkages

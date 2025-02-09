@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<OpenSimDocument Version="40600">
+<OpenSimDocument Version="40500">
 	<Model name="Muscle_Jinella_02_Optimised">
 		<!--The model's ground reference frame.-->
 		<Ground name="ground">

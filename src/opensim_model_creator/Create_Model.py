@@ -23,319 +23,36 @@ from Functions.bone_utils import *
 from Functions.muscle_utils import *
 
 
-#%% Functions
 
-# Ask user to select participant directory
-participant_folder = select_directory()
-if participant_folder:
-    print(f"Selected directory: {participant_folder}")
-else:
-    print("No directory selected.")
+#%% Setup of folders
 
+#get the directory of the participant of interest
+participant_folder, participant_inputs, output_folder, meshes = get_participant_directories()
 
-#Participant inputs folder location
-participant_inputs = participant_folder + "/Inputs"
-
-
-#Correlation betwen muscle names and the relevant origins/insertion bodies and muscle numbers on said body
-muscle_linkages = {
-    "Extobl": {
-        "ins": [["Pelvis", "58"]],
-    },
-    "Intobl": {
-        "ins": [["Pelvis", "59"]],
-    },
-    "Ercspn": {
-        "ins": [["Pelvis", "105c"]],
-    },
-    "Glut max": {
-        "ori": [["Pelvis", "106"]],
-        "ins": [["Femur", "106"]],
-    },
-    "Glut min": {
-        "ori": [["Pelvis", "108"]],
-        "ins": [["Femur", "108"]],
-    },
-    "Tfl": {
-        "ori": [["Pelvis", "109"]], #        "ins":[["Tibia", "109"]], - doesn't exist in the tibial node number file
-    },
-    "Obt int": {
-        "ori": [["Pelvis", "111"]],
-        "ins": [["Femur", "111_112_113"]],
-    },
-    "Obt ext": {
-        "ori": [["Pelvis", "123"]],
-        "ins": [["Femur", "123"]],
-    },
-    "Gem": {
-        "ori": [["Pelvis", "112"],["Pelvis","113"]],
-        "ins": [["Femur", "111_112_113"]],
-    },
-    "Quad fem": {
-        "ori": [["Pelvis", "114"]],
-        "ins": [["Femur", "114"]],
-    },
-    "Sar": {
-        "ori": [["Pelvis", "115"]],
-        "ins": [["Tibia", "115"]],
-    },
-    "Rect fem": {
-        "ori": [["Pelvis", "116a"],["Pelvis","116a_1"]],
-        "ins": [["Tibia", "116"]],
-    },
-    "Pect": {
-        "ori": [["Pelvis", "118"]],
-        "ins": [["Femur", "118"]],
-    },
-    "Add long": {
-        "ori": [["Pelvis", "119"]],
-        "ins": [["Femur", "119"]],
-    },
-    "Add brev": {
-        "ori": [["Pelvis", "120"]],
-        "ins": [["Femur", "120"]],
-    },
-    "Grac": {
-        "ori": [["Pelvis", "122"]],
-        "ins": [["Tibia", "122"]],
-    },
-    "Bifemlh": {
-        "ori": [["Pelvis", "124a"]],
-        "ins": [["Fibula", "124"]],
-    },
-    "Bifemsh": {
-        "ori": [["Femur", "124b"]],
-        "ins": [["Fibula", "124"]],
-    },
-    "Semimem": {
-        "ori": [["Pelvis", "126"]],
-        "ins": [["Tibia", "126"]],
-    },
-    "Iliacus": {
-        "ori": [["Pelvis", "105a"]],
-        "ins": [["Femur", "105"]], #just saying insertion is the same as psoas inseriton
-    },
-    "Glut med": {
-        "ori": [["Pelvis", "107"]],
-        "ins": [["Femur", "107"]],
-    },
-    "Add mag": {
-        "ori": [["Pelvis", "121"]],
-        "ins": [["Femur", "121"],["Femur","121_1"]],
-    },
-    "Semiten": {
-        "ori": [["Pelvis", "125"]],
-        "ins": [["Tibia", "125"]],
-    },
-    "Psoas": {
-
-        "ins": [["Femur", "105"]],
-    },
-    "Peri": {
-        "ins": [["Femur", "110"]], #        "ori": [["Sacrum", "110"]], - i dont know how to include this as theres no sacrum shapemodel component
-    },
-    "Vas lat": {
-        "ori": [["Femur", "116b"]],
-        "ins": [["Tibia", "116"]],
-    },
-    "Vas int/ articularis genus": {
-        "ori": [["Femur", "117"]], #i dont know where it inserts (probably same as vas med and rext fem)
-
-    },
-    "Vas int": {
-        "ori": [["Femur", "116c"]],#i dont know where it inserts (porbably saame as vas med and rect fem)
-
-    },
-    "Med gas": {
-        "ori": [["Femur", "132a"]],# inserts on the foot (there is a med gas in the tibia section, unsure as to why)
-
-    },
-    "Lat head of gastrocnemius": {
-        "ori": [["Femur", "133"]], #inseriton on the foot
-
-    },
-    "Popliteus m.": {
-        "ori": [["Femur", "134"]], #insertion on the foot
-
-    },
-    "Tib ant": {
-        "ori": [["Tibia", "127"]],#insertion on the foot
-
-    },
-    "Tib_post": {
-        "ori": [["Tibia", "135"],["Fibula","135"]], #i assume theres 2 origins from the tib and fib that go to the foot
-
-    },
-    "Soleus": {
-        "ori": [["Fibula", "132b"]], #inserts on the foot
-
-    },
-    "Obturator interus/gemellus": {
-
-        "ins": [["Femur", "123"]],#i dont know where the origin is
-    },
-    "Ext dig": {
-        "ori": [["Tibia", "128"],["Tibia","128_1"]], #inserts on foot, 2 origins?
-
-    },
-    "Flex dig": {
-        "ori": [["Tibia", "136"]], #inserts on foot
-
-    },
-    "Flex hal": {
-        "ori": [["Fibula", "137"]],#inserts on foot
-
-    },
-    "Per long": {
-        "ori": [["Fibula", "130"],["Fibula","130_1"]],#insrets on foot
-
-    },
-    "Per brev": {
-        "ori": [["Fibula", "131"]],#inserts on foot
-
-    },
-    "Ext hal": {
-        "ori": [["Fibula", "129"]], #inserts on foot
-
-    },
-}
-
-
-#Relates the muscle number to the nodes that make up the insertion/origin
-muscle_number_to_nodes_key = parse_muscle_node_files_recursive("High_Level_Inputs/final_node_numbers")
-
-
-#relates the node number to a set of coordinates
-node_to_coordinate = parse_ply_files_by_side_and_bone(participant_inputs, ["Femur","Tibfib","Pelvis"])
-
-
-# Call the function with your dictionaries
-muscle_linkages = map_muscle_nodes_to_coordinates(
-    muscle_linkages, muscle_number_to_nodes_key, node_to_coordinate
-)
-
-
-#Creating the average muscle positions for each muscle (might need to find a way to make a function to do this...)
-muscle_positions = {}
-muscle_bone_groups = {}
-
-#muscle_names = ["Glut med", "Glut max","Glut min","Pect","Quad fem","Add long","Add brev"] #Use only the names of the origins
-muscle_names = ["Add mag"]
-body_names = ["pelvis_b","femur_l_b","femur_r_b","tibfib_l_b","tibfib_r_b"]
-
-
+# Initialize muscles
+muscle_linkages = muscle_initialisation(participant_inputs)
 
 
 #%%Extraction of meshes from the ply files
-#Import necessary functions
-from Extract_Scale_Meshes import *
-
-
 #Runs the conversion process
 batch_convert_and_scale(input_dir = participant_inputs)
-
 
 # Combine the meshes
 combine_pelvis_meshes(input_dir = participant_inputs)
 
 # Cuts the stls to the meshes folder
-move_stl_meshes(input_dir = participant_inputs, output_dir = participant_folder + "/Meshes")
+move_stl_meshes(input_dir = participant_inputs, output_dir = meshes)
 
 
 # %% Initialisation of models and extraction of relevant landmarks/marker placements
-
-# Define folder paths
-output_folder = participant_folder + "\Models"  # Folder to save or load models
-meshes = participant_folder + "\Meshes"  # Folder containing mesh files and related data
-
-# Initialise the OpenSim model
-empty_model = osim.Model("High_Level_Inputs\Feet.osim")  # Load the base model file (Feet.osim)
-state = empty_model.initSystem()  # Initialise the system for the model (necessary for modifications)
-
-# Load and extract landmarks for left and right limbs
-left_landmarks_file = search_files_by_keywords(participant_inputs, "left lms predicted")[0]  # Find the left limb landmarks file
-right_landmarks_file = search_files_by_keywords(participant_inputs, "right lms predicted")[0]  # Find the right limb landmarks file
-left_landmarks = load_landmarks(left_landmarks_file)  # Load left limb landmarks as a dictionary
-right_landmarks = load_landmarks(right_landmarks_file)  # Load right limb landmarks as a dictionary
-
-# Load the TRC file and extract marker placements
-mocap_trc_file = search_files_by_keywords(participant_inputs, "static")[0]  # Find the TRC file containing marker data
-mocap_static_trc,dontcare = read_trc_file_as_dict(mocap_trc_file)  # Read the TRC file into a dictionary for marker placements
+empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(participant_inputs)
 
 
 # %% Creation of the pelvis body and pelvis joint (to ground)
 
-# Create the pelvis body
-# Define the pelvis body with a mass of 1.0 kg, a center of mass at the origin, and no moments of inertia
-pelvis = osim.Body("pelvis_b", 1.0, osim.Vec3(0, 0, 0), osim.Inertia(0, 0, 0))
-
-# Add the pelvis body to the model
-empty_model.addBody(pelvis)
-
-
-LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
-RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
-RANK = rotate_coordinate_x(right_landmarks["malleolus_med"], 90)
-pelvis_sideways_vector = vector_between_points(LASIS, RASIS)  # Flexion occurs about the alignment of the pelvis ASIS landmarks
-alignment_to_axis = (0,0,1)
-
-pelvis_realignment = compute_euler_angles_from_vectors(pelvis_sideways_vector, alignment_to_axis)
-pelvis_realignment[0] = 0
-#pelvis_realignment[1] = 0
-pelvis_realignment[2] = 0
-
-
-
-
-
-#Height ground offset (for visualisation purposes only when opened in Opensim)
-RASIS_to_RANK = np.linalg.norm(vector_between_points(RASIS, RANK))
-height_offset = RASIS_to_RANK + 0.035
-#height_offset = 0
-
-
-# Attach the pelvis body to the ground using a FreeJoint
-# A FreeJoint allows 6 degrees of freedom (translation and rotation) between the pelvis and the ground
-pelvis_joint = osim.FreeJoint(
-    "pelvis_to_ground",                # Name of the joint
-    empty_model.getGround(),           # Parent frame (ground)
-    osim.Vec3(0, height_offset, 0),                # Location of the joint in the parent frame
-    osim.Vec3(0,0,0),                # Orientation of the joint in the parent frame
-    pelvis,                            # Child body (pelvis)
-    osim.Vec3(0, 0, 0),                # Location of the joint in the child frame
-    osim.Vec3(pelvis_realignment)                 # Orientation of the joint in the child frame
+pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center = create_pelvis_body_and_joint(
+    empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True
 )
-
-# Add the pelvis joint to the model
-empty_model.addJoint(pelvis_joint)
-
-
-
-# %% Attaching mesh and markers to pelvis body
-
-# Attach the mesh for the pelvis to the pelvis body
-# Search the mesh files using the keyword "pelvis" and retrieve the first result
-mesh_filename = search_files_by_keywords(meshes, "pelvis")[0]
-
-# Extract the center of the pelvis mesh using trimesh and rotate it to match the coordinate system
-info = extract_mesh_info_trimesh(mesh_filename)
-pelvis_center = info['center']
-rotated_pelvis_center = rotate_coordinate_x(pelvis_center, 90)
-
-# Add the pelvis mesh to the body with an orientation offset to match OpenSim's axis alignment
-add_mesh_to_body(empty_model, "pelvis_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
-                 offset_translation=(rotated_pelvis_center[0], rotated_pelvis_center[1], rotated_pelvis_center[2]))
-
-# Add mocap markers to the pelvis body
-add_markers_to_body(empty_model, "pelvis_b", ["RASI", "LASI", "RPSI", "LPSI"], mocap_static_trc, pelvis_center)
-
-# Add anatomical landmarks to the pelvis body with custom marker names
-add_markers_to_body(empty_model, "pelvis_b", ["ASIS", "PSIS", "SAC"], left_landmarks, pelvis_center,
-                    ["lms_LASI", "lms_LPSI", "lms_SAC"])
-add_markers_to_body(empty_model, "pelvis_b", ["ASIS", "PSIS"], right_landmarks, pelvis_center,
-                    ["lms_RASI", "lms_RPSI"])
-
-
 
 
 # %% Creation of femur bodies and attachment of meshes, markers, and landmarks
@@ -943,115 +660,108 @@ empty_model.printToXML(output_path)
 print(f"Model saved to: {output_path}")
 
 
+output_file = output_folder +"/"f"{model_name}.osim"
 
+# Load the selected model
+model = empty_model
 
+# Print out all the body names in the model
+bodySet = model.getBodySet()
+#for i in range(bodySet.getSize()):
+    #print(bodySet.get(i).getName())
 
-perform_updates = True
+# Locate hip joints
+l_hip_joint = model.getJointSet().get('femur_l_to_pelvis')
+r_hip_joint = model.getJointSet().get('femur_r_to_pelvis')
 
-if perform_updates == True:
+# Locate knee joints
+l_knee_joint = model.getJointSet().get('tibfib_l_to_femur_l')
+r_knee_joint = model.getJointSet().get('tibfib_r_to_femur_r')
 
-    output_file = output_folder +"/"f"{model_name}.osim"
+# Locate Ankle joints
+l_ankle_joint = model.getJointSet().get('talus_l_to_tibfib_l')
+r_ankle_joint = model.getJointSet().get('talus_r_to_tibfib_r')
 
-    # Load the selected model
-    model = empty_model
+pelvis_joint = model.getJointSet().get('pelvis_to_ground')
 
-    # Print out all the body names in the model
-    bodySet = model.getBodySet()
-    #for i in range(bodySet.getSize()):
-        #print(bodySet.get(i).getName())
+pelvis_tilt = pelvis_joint.upd_coordinates(2)
+pelvis_obliquity = pelvis_joint.upd_coordinates(0)
+pelvis_rotation = pelvis_joint.upd_coordinates(1)
 
-    # Locate hip joints
-    l_hip_joint = model.getJointSet().get('femur_l_to_pelvis')
-    r_hip_joint = model.getJointSet().get('femur_r_to_pelvis')
+pelvis_tilt.setName("pelvis_tilt")
+pelvis_obliquity.setName("pelvis_list")
+pelvis_rotation.setName("pelvis_rotation")
 
-    # Locate knee joints
-    l_knee_joint = model.getJointSet().get('tibfib_l_to_femur_l')
-    r_knee_joint = model.getJointSet().get('tibfib_r_to_femur_r')
+# Access and rename the translational coordinates
+pelvis_translation_x = pelvis_joint.upd_coordinates(3)  # Translation along x-axis
+pelvis_translation_y = pelvis_joint.upd_coordinates(4)  # Translation along y-axis
+pelvis_translation_z = pelvis_joint.upd_coordinates(5)  # Translation along z-axis
 
-    # Locate Ankle joints
-    l_ankle_joint = model.getJointSet().get('talus_l_to_tibfib_l')
-    r_ankle_joint = model.getJointSet().get('talus_r_to_tibfib_r')
-
-    pelvis_joint = model.getJointSet().get('pelvis_to_ground')
-
-    pelvis_tilt = pelvis_joint.upd_coordinates(2)
-    pelvis_obliquity = pelvis_joint.upd_coordinates(0)
-    pelvis_rotation = pelvis_joint.upd_coordinates(1)
-
-    pelvis_tilt.setName("pelvis_tilt")
-    pelvis_obliquity.setName("pelvis_list")
-    pelvis_rotation.setName("pelvis_rotation")
-
-    # Access and rename the translational coordinates
-    pelvis_translation_x = pelvis_joint.upd_coordinates(3)  # Translation along x-axis
-    pelvis_translation_y = pelvis_joint.upd_coordinates(4)  # Translation along y-axis
-    pelvis_translation_z = pelvis_joint.upd_coordinates(5)  # Translation along z-axis
-
-    pelvis_translation_x.setName("pelvis_tx")
-    pelvis_translation_y.setName("pelvis_ty")
-    pelvis_translation_z.setName("pelvis_tz")
+pelvis_translation_x.setName("pelvis_tx")
+pelvis_translation_y.setName("pelvis_ty")
+pelvis_translation_z.setName("pelvis_tz")
 
 
 
 
-    # Set coordinates range for left hip joint
-    l_hip_flexion = l_hip_joint.upd_coordinates(0)
-    l_hip_abduction = l_hip_joint.upd_coordinates(1)
-    l_hip_rotation = l_hip_joint.upd_coordinates(2)
+# Set coordinates range for left hip joint
+l_hip_flexion = l_hip_joint.upd_coordinates(0)
+l_hip_abduction = l_hip_joint.upd_coordinates(1)
+l_hip_rotation = l_hip_joint.upd_coordinates(2)
 
-    l_hip_flexion.setRangeMin(-1.5)
-    l_hip_flexion.setRangeMax(1.8)
+l_hip_flexion.setRangeMin(-1.5)
+l_hip_flexion.setRangeMax(1.8)
 
-    l_hip_abduction.setRangeMin(-0.8)
-    l_hip_abduction.setRangeMax(1.2)
+l_hip_abduction.setRangeMin(-0.8)
+l_hip_abduction.setRangeMax(1.2)
 
-    l_hip_rotation.setRangeMin(-0.8)
-    l_hip_rotation.setRangeMax(0.8)
+l_hip_rotation.setRangeMin(-0.8)
+l_hip_rotation.setRangeMax(0.8)
 
 
-    # Set coordinates range for right hip joint
-    r_hip_flexion = r_hip_joint.upd_coordinates(0)
-    r_hip_abduction = r_hip_joint.upd_coordinates(1)
-    r_hip_rotation = r_hip_joint.upd_coordinates(2)
+# Set coordinates range for right hip joint
+r_hip_flexion = r_hip_joint.upd_coordinates(0)
+r_hip_abduction = r_hip_joint.upd_coordinates(1)
+r_hip_rotation = r_hip_joint.upd_coordinates(2)
 
-    r_hip_flexion.setRangeMin(-1.5)
-    r_hip_flexion.setRangeMax(1.8)
+r_hip_flexion.setRangeMin(-1.5)
+r_hip_flexion.setRangeMax(1.8)
 
-    r_hip_abduction.setRangeMin(-1.2)
-    r_hip_abduction.setRangeMax(0.8)
+r_hip_abduction.setRangeMin(-1.2)
+r_hip_abduction.setRangeMax(0.8)
 
-    r_hip_rotation.setRangeMin(-0.8)
-    r_hip_rotation.setRangeMax(0.8)
+r_hip_rotation.setRangeMin(-0.8)
+r_hip_rotation.setRangeMax(0.8)
 
-    # Set coordinates range and names for left knee joint
-    l_knee_flexion = l_knee_joint.upd_coordinates(0)
-    l_knee_flexion.setName("knee_flexion_l")
-    l_knee_flexion.setRangeMin(-2.2)
-    l_knee_flexion.setRangeMax(0.0)
+# Set coordinates range and names for left knee joint
+l_knee_flexion = l_knee_joint.upd_coordinates(0)
+l_knee_flexion.setName("knee_flexion_l")
+l_knee_flexion.setRangeMin(-2.2)
+l_knee_flexion.setRangeMax(0.0)
 
-    # Set coordinates range and names for right knee joint
-    r_knee_flexion = r_knee_joint.upd_coordinates(0)
-    r_knee_flexion.setName("knee_flexion_r")
-    r_knee_flexion.setRangeMin(-2.2)
-    r_knee_flexion.setRangeMax(0.0)
+# Set coordinates range and names for right knee joint
+r_knee_flexion = r_knee_joint.upd_coordinates(0)
+r_knee_flexion.setName("knee_flexion_r")
+r_knee_flexion.setRangeMin(-2.2)
+r_knee_flexion.setRangeMax(0.0)
 
-    # Set coordinates range and names for right ankle joint
-    r_ankle_flexion = r_ankle_joint.upd_coordinates(0)
-    r_ankle_flexion.setName("ankle_angle_r")
-    r_ankle_flexion.setRangeMin(-1)
-    r_ankle_flexion.setRangeMax(0.8)
-    # Set coordinates range and names for right ankle joint
-    l_ankle_flexion = l_ankle_joint.upd_coordinates(0)
-    l_ankle_flexion.setName("ankle_angle_l")
-    l_ankle_flexion.setRangeMin(-1)
-    l_ankle_flexion.setRangeMax(0.8)
+# Set coordinates range and names for right ankle joint
+r_ankle_flexion = r_ankle_joint.upd_coordinates(0)
+r_ankle_flexion.setName("ankle_angle_r")
+r_ankle_flexion.setRangeMin(-1)
+r_ankle_flexion.setRangeMax(0.8)
+# Set coordinates range and names for right ankle joint
+l_ankle_flexion = l_ankle_joint.upd_coordinates(0)
+l_ankle_flexion.setName("ankle_angle_l")
+l_ankle_flexion.setRangeMin(-1)
+l_ankle_flexion.setRangeMax(0.8)
 
-    # Locate body segments based on printed names
-    pelvis = model.getBodySet().get('pelvis_b')
-    femur_l = model.getBodySet().get('femur_l_b')
-    femur_r = model.getBodySet().get('femur_r_b')
-    tibfib_l = model.getBodySet().get('tibfib_l_b')
-    tibfib_r = model.getBodySet().get('tibfib_r_b')
+# Locate body segments based on printed names
+pelvis = model.getBodySet().get('pelvis_b')
+femur_l = model.getBodySet().get('femur_l_b')
+femur_r = model.getBodySet().get('femur_r_b')
+tibfib_l = model.getBodySet().get('tibfib_l_b')
+tibfib_r = model.getBodySet().get('tibfib_r_b')
 
 
 
@@ -1059,96 +769,96 @@ if perform_updates == True:
 
 
 
-    # Function to set mass, center of mass, and inertia
-    def set_mass_com_inertia(body, mass, com, inertia):
-        body.setMass(mass)
-        body.setMassCenter(osim.Vec3(*com))
-        body.setInertia(osim.Inertia(inertia[0], inertia[1], inertia[2], inertia[3], inertia[4], inertia[5]))
+# Function to set mass, center of mass, and inertia
+def set_mass_com_inertia(body, mass, com, inertia):
+    body.setMass(mass)
+    body.setMassCenter(osim.Vec3(*com))
+    body.setInertia(osim.Inertia(inertia[0], inertia[1], inertia[2], inertia[3], inertia[4], inertia[5]))
 
 
-    # Set mass for each body (kg)
-    masses = {
-        'pelvis_b': 6.5,
-        'femur_l_b': 6.0,
-        'femur_r_b': 6.0,
-        'tibfib_l_b': 2.5,
-        'tibfib_r_b': 2.5}
+# Set mass for each body (kg)
+masses = {
+    'pelvis_b': 6.5,
+    'femur_l_b': 6.0,
+    'femur_r_b': 6.0,
+    'tibfib_l_b': 2.5,
+    'tibfib_r_b': 2.5}
 
-    # Set centre of mass for each body
-    coms = {
-        'pelvis_b': [-0.01, 0.0, 0.0],
-        'femur_l_b': [0.0, -0.125, 0.0],
-        'femur_r_b': [0.0, -0.125, 0.0],
-        'tibfib_l_b': [0.0, -0.12, 0.0],
-        'tibfib_r_b': [0.0, -0.12, 0.0]}
+# Set centre of mass for each body
+coms = {
+    'pelvis_b': [-0.01, 0.0, 0.0],
+    'femur_l_b': [0.0, -0.125, 0.0],
+    'femur_r_b': [0.0, -0.125, 0.0],
+    'tibfib_l_b': [0.0, -0.12, 0.0],
+    'tibfib_r_b': [0.0, -0.12, 0.0]}
 
-    # Set inertia for each body
-    inertias = {
-        'pelvis_b': [0.1, 0.1, 0.1, 0.0, 0.0, 0.0],
-        'femur_l_b': [0.1, 0.025, 0.1, 0.0, 0.0, 0.0],
-        'femur_r_b': [0.1, 0.025, 0.1, 0.0, 0.0, 0.0],
-        'tibfib_l_b': [0.025, 0.0025, 0.025, 0.0, 0.0, 0.0],
-        'tibfib_r_b': [0.025, 0.0025, 0.025, 0.0, 0.0, 0.0]}
+# Set inertia for each body
+inertias = {
+    'pelvis_b': [0.1, 0.1, 0.1, 0.0, 0.0, 0.0],
+    'femur_l_b': [0.1, 0.025, 0.1, 0.0, 0.0, 0.0],
+    'femur_r_b': [0.1, 0.025, 0.1, 0.0, 0.0, 0.0],
+    'tibfib_l_b': [0.025, 0.0025, 0.025, 0.0, 0.0, 0.0],
+    'tibfib_r_b': [0.025, 0.0025, 0.025, 0.0, 0.0, 0.0]}
 
-    # Apply mass, center of mass, and inertia to each body segment
-    set_mass_com_inertia(pelvis, masses['pelvis_b'], coms['pelvis_b'], inertias['pelvis_b'])
-    set_mass_com_inertia(femur_l, masses['femur_l_b'], coms['femur_l_b'], inertias['femur_l_b'])
-    set_mass_com_inertia(femur_r, masses['femur_r_b'], coms['femur_r_b'], inertias['femur_r_b'])
-    set_mass_com_inertia(tibfib_l, masses['tibfib_l_b'], coms['tibfib_l_b'], inertias['tibfib_l_b'])
-    set_mass_com_inertia(tibfib_r, masses['tibfib_r_b'], coms['tibfib_r_b'], inertias['tibfib_r_b'])
+# Apply mass, center of mass, and inertia to each body segment
+set_mass_com_inertia(pelvis, masses['pelvis_b'], coms['pelvis_b'], inertias['pelvis_b'])
+set_mass_com_inertia(femur_l, masses['femur_l_b'], coms['femur_l_b'], inertias['femur_l_b'])
+set_mass_com_inertia(femur_r, masses['femur_r_b'], coms['femur_r_b'], inertias['femur_r_b'])
+set_mass_com_inertia(tibfib_l, masses['tibfib_l_b'], coms['tibfib_l_b'], inertias['tibfib_l_b'])
+set_mass_com_inertia(tibfib_r, masses['tibfib_r_b'], coms['tibfib_r_b'], inertias['tibfib_r_b'])
 
-    # Finalise the initial iteration of model
-    model.finalizeConnections()
-    model.printToXML(output_file)
+# Finalise the initial iteration of model
+model.finalizeConnections()
+model.printToXML(output_file)
 
-    input_file = output_file
+input_file = output_file
 
-    ##########################################################
-    # Joint names and new rotation axes
-    joints_to_update = ["calcn_l_to_talus_l"]
-    new_rotation_axes = [(-0.78718, -0.604747, -0.120949), (0, 1, 0),
-                         (-0.120949, 0, 0.78718)]  # Example: standard X, Y, Z axes
-    # Update rotation axes
-    update_rotation_axes(input_file, output_file, joints_to_update, new_rotation_axes)
+##########################################################
+# Joint names and new rotation axes
+joints_to_update = ["calcn_l_to_talus_l"]
+new_rotation_axes = [(-0.78718, -0.604747, -0.120949), (0, 1, 0),
+                     (-0.120949, 0, 0.78718)]  # Example: standard X, Y, Z axes
+# Update rotation axes
+update_rotation_axes(input_file, output_file, joints_to_update, new_rotation_axes)
 
-    # Joint names and new rotation axes
-    joints_to_update = ["calcn_r_to_talus_r"]
-    new_rotation_axes = [(0.78718, 0.604747, -0.120949), (0, 1, 0),
-                         (-0.120949, 0, -0.78718)]  # Example: standard X, Y, Z axes
-    # Update rotation axes
-    update_rotation_axes(input_file, output_file, joints_to_update, new_rotation_axes)
-    ################################################################
+# Joint names and new rotation axes
+joints_to_update = ["calcn_r_to_talus_r"]
+new_rotation_axes = [(0.78718, 0.604747, -0.120949), (0, 1, 0),
+                     (-0.120949, 0, -0.78718)]  # Example: standard X, Y, Z axes
+# Update rotation axes
+update_rotation_axes(input_file, output_file, joints_to_update, new_rotation_axes)
+################################################################
 
-    # utilise second function (move_rx...) to move the coordinate system
-    input_file = output_file  # Replace with your input .osim file
-    output_file = output_file  # Replace with your desired output file name
+# utilise second function (move_rx...) to move the coordinate system
+input_file = output_file  # Replace with your input .osim file
+output_file = output_file  # Replace with your desired output file name
 
-    # List of joints to modify
-    joints_to_modify = ["calcn_l_to_talus_l", "calcn_r_to_talus_r"]
-    # Call the function
-    move_rx_to_first_rotation(input_file, output_file, joints_to_modify)
+# List of joints to modify
+joints_to_modify = ["calcn_l_to_talus_l", "calcn_r_to_talus_r"]
+# Call the function
+move_rx_to_first_rotation(input_file, output_file, joints_to_modify)
 
-    # Use final function to update the subtalar joints
-    input_file = output_file  # Replace with the path to your current .osim file
-    output_file = output_file  # Replace with the desired output path
-    update_subtalar_joint(input_file, output_file, "calcn_l_to_talus_l")
-    update_subtalar_joint(input_file, output_file, "calcn_r_to_talus_r")
+# Use final function to update the subtalar joints
+input_file = output_file  # Replace with the path to your current .osim file
+output_file = output_file  # Replace with the desired output path
+update_subtalar_joint(input_file, output_file, "calcn_l_to_talus_l")
+update_subtalar_joint(input_file, output_file, "calcn_r_to_talus_r")
 
-    input_file = output_file  # Path to input .osim file
-    output_file = output_file  # Path to save the updated .osim file
+input_file = output_file  # Path to input .osim file
+output_file = output_file  # Path to save the updated .osim file
 
-    # List of joint updates (joint_name, new_coordinate_name)
-    updates = [
-        ("calcn_l_to_talus_l", "subtalar_angle_l"),
-        ("calcn_r_to_talus_r", "subtalar_angle_r"),
-    ]
+# List of joint updates (joint_name, new_coordinate_name)
+updates = [
+    ("calcn_l_to_talus_l", "subtalar_angle_l"),
+    ("calcn_r_to_talus_r", "subtalar_angle_r"),
+]
 
-    # Call the function
-    update_rx_coordinates(input_file, output_file, updates)
+# Call the function
+update_rx_coordinates(input_file, output_file, updates)
 
-    # Update the range for the left and right subtalar joints
-    update_subtalar_joint_range(input_file, output_file, "subtalar_angle_l", -1, 1)
-    update_subtalar_joint_range(input_file, output_file, "subtalar_angle_r", -1, 1)
+# Update the range for the left and right subtalar joints
+update_subtalar_joint_range(input_file, output_file, "subtalar_angle_l", -1, 1)
+update_subtalar_joint_range(input_file, output_file, "subtalar_angle_r", -1, 1)
 
 
 
@@ -1200,8 +910,6 @@ left_foot_vector_actual = vector_between_points(
     True
 )
 
-# Plot the two vectors for visualization
-#plot_3d_vectors(left_foot_vector_initial, left_foot_vector_actual)
 
 # Compute the Euler angles to align the initial vector with the actual vector
 l_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
@@ -1274,8 +982,6 @@ new_orientation_values = current_orientation_values - inverse_euler_angles_array
 
 # Update the child frame's orientation
 left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
-
-
 
 
 #%% === Adjust Orientation of the Right Foot ===
@@ -1397,9 +1103,10 @@ right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_value
 empty_model.finalizeConnections()
 empty_model.printToXML(output_file)
 
-#Code here to extract the muscle positions in the local coordinate system
 
 
+
+#Extract local muscle positions prior to scaling (unused markers, such as those of the muscles, are removed during the scaling process)
 local_muscle_positions = extract_local_muscle_positions(empty_model)
 
 

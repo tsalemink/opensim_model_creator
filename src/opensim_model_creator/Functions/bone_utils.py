@@ -9,7 +9,8 @@ from scipy.spatial.transform import Rotation as R
 from scipy.optimize import minimize
 
 #Import required functions
-from Functions.general_utils import rotate_coordinate_x, vector_between_points
+from Functions.general_utils import rotate_coordinate_x, vector_between_points, read_trc_file_as_dict
+from Functions.file_utils import search_files_by_keywords
 
 def add_mesh_to_body(model, body_name, mesh_filename, offset_translation=(0, 0, 0), offset_orientation=(0, 0, 0)):
     """
@@ -1122,3 +1123,107 @@ def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_loca
 
     # Adjust model markers
     adjust_model_markers(model_path, output_model_path, average_marker_differences)
+
+def initialize_model_and_extract_landmarks(participant_inputs):
+    """
+    Initializes the OpenSim model and extracts relevant landmarks and marker placements.
+
+    Parameters:
+        participant_inputs (str): Path to the participant's input directory.
+
+    Returns:
+        tuple: A tuple containing:
+            - empty_model (osim.Model): The initialized OpenSim model.
+            - state (osim.State): The system state of the model.
+            - left_landmarks (dict): Dictionary of extracted left limb landmarks.
+            - right_landmarks (dict): Dictionary of extracted right limb landmarks.
+            - mocap_static_trc (dict): Dictionary containing marker placements from TRC file.
+    """
+    # Initialise the OpenSim model
+    empty_model = osim.Model("High_Level_Inputs/Feet.osim")  # Load the base model file
+    state = empty_model.initSystem()  # Initialise the system
+
+    # Load and extract landmarks for left and right limbs
+    left_landmarks_file = search_files_by_keywords(participant_inputs, "left lms predicted")[0]
+    right_landmarks_file = search_files_by_keywords(participant_inputs, "right lms predicted")[0]
+    left_landmarks = load_landmarks(left_landmarks_file)
+    right_landmarks = load_landmarks(right_landmarks_file)
+
+    # Load the TRC file and extract marker placements
+    mocap_trc_file = search_files_by_keywords(participant_inputs, "static")[0]
+    mocap_static_trc, _ = read_trc_file_as_dict(mocap_trc_file)
+
+    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file
+
+def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True):
+    """
+    Creates the pelvis body, attaches it to the ground with a FreeJoint, and adds a mesh and markers.
+
+    Parameters:
+        model (osim.Model): The OpenSim model.
+        left_landmarks (dict): Dictionary of extracted left limb landmarks.
+        right_landmarks (dict): Dictionary of extracted right limb landmarks.
+        meshes (str): Path to the directory containing mesh files.
+        mocap_static_trc (dict): Dictionary containing marker placements from TRC file.
+        realign_pelvis (bool): Whether to apply pelvis realignment (default: True).
+
+    Returns:
+        tuple:
+            - pelvis (osim.Body): The created pelvis body.
+            - pelvis_joint (osim.FreeJoint): The created pelvis joint.
+            - rotated_pelvis_center (np.array): The rotated center of the pelvis mesh.
+    """
+    # Create the pelvis body
+    pelvis = osim.Body("pelvis_b", 1.0, osim.Vec3(0, 0, 0), osim.Inertia(0, 0, 0))
+    model.addBody(pelvis)
+
+    # Compute pelvis alignment
+    LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
+    RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
+    RANK = rotate_coordinate_x(right_landmarks["malleolus_med"], 90)
+
+    pelvis_sideways_vector = vector_between_points(LASIS, RASIS)
+    alignment_to_axis = (0, 0, 1)
+    pelvis_realignment = compute_euler_angles_from_vectors(pelvis_sideways_vector, alignment_to_axis)
+    pelvis_realignment[0] = 0
+    pelvis_realignment[2] = 0  # Keep necessary rotations
+
+    # Apply realignment conditionally
+    if not realign_pelvis:
+        pelvis_realignment[1] = 0  # Set to 0 if realign_pelvis is False
+
+    # Compute ground height offset (for visualization)
+    RASIS_to_RANK = np.linalg.norm(vector_between_points(RASIS, RANK))
+    height_offset = RASIS_to_RANK + 0.035
+
+    # Attach the pelvis body to the ground using a FreeJoint
+    pelvis_joint = osim.FreeJoint(
+        "pelvis_to_ground",
+        model.getGround(),
+        osim.Vec3(0, height_offset, 0),
+        osim.Vec3(0, 0, 0),
+        pelvis,
+        osim.Vec3(0, 0, 0),
+        osim.Vec3(pelvis_realignment)
+    )
+    model.addJoint(pelvis_joint)
+
+    # Attach the mesh for the pelvis
+    mesh_filename = search_files_by_keywords(meshes, "pelvis")[0]
+    info = extract_mesh_info_trimesh(mesh_filename)
+    pelvis_center = info['center']
+    rotated_pelvis_center = rotate_coordinate_x(pelvis_center, 90)
+
+    add_mesh_to_body(model, "pelvis_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
+                     offset_translation=(rotated_pelvis_center[0], rotated_pelvis_center[1], rotated_pelvis_center[2]))
+
+    # Add mocap markers
+    add_markers_to_body(model, "pelvis_b", ["RASI", "LASI", "RPSI", "LPSI"], mocap_static_trc, pelvis_center)
+
+    # Add anatomical landmarks
+    add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS", "SAC"], left_landmarks, pelvis_center,
+                        ["lms_LASI", "lms_LPSI", "lms_SAC"])
+    add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS"], right_landmarks, pelvis_center,
+                        ["lms_RASI", "lms_RPSI"])
+
+    return pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center

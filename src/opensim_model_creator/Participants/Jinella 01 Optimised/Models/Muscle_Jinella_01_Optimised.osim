@@ -297,7 +297,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/Python_Code_Location/Participants/Jinella 01 Optimised\Meshes/combined_pelvis_mesh.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Jinella 01 Optimised\Meshes/combined_pelvis_mesh.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -371,7 +371,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/Python_Code_Location/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_left_femur.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_left_femur.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -433,7 +433,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/Python_Code_Location/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_right_femur.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_right_femur.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -477,7 +477,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/Python_Code_Location/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_left_tibfib.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_left_tibfib.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->
@@ -521,7 +521,7 @@
 									<!--Scale factors in X, Y, Z directions respectively.-->
 									<scale_factors>1 1 1</scale_factors>
 									<!--Name of geometry file.-->
-									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/Python_Code_Location/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_right_tibfib.stl</mesh_file>
+									<mesh_file>C:/Users/jplu752/Documents/My Project Stuff/opensim_model_creator/src/opensim_model_creator/Participants/Jinella 01 Optimised\Meshes/RCH01_predicted_mesh_right_tibfib.stl</mesh_file>
 								</Mesh>
 							</attached_geometry>
 							<!--Path to a Component that satisfies the Socket 'parent' of type C (description: The parent frame to this frame.).-->

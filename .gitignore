@@ -3,7 +3,11 @@ opensim.log
 ik_output.mot
 _ik_marker_errors.sto
 _ik_model_marker_locations.sto
+
+Models/
 **/Models/
+*/Models/
+*/Models/*
 
 # Project Files
 .idea/

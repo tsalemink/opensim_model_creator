@@ -2,9 +2,11 @@
 import os
 import opensim as osim
 import numpy as np
+
 #Import required functions
-from Functions.file_utils import search_files_by_keywords
-from Functions.bone_utils import add_markers_to_body
+from opensim_model_creator.Functions.file_utils import search_files_by_keywords
+from opensim_model_creator.Functions.bone_utils import add_markers_to_body
+
 
 #Contains the muscle linkages definitions
 muscle_linkages = {

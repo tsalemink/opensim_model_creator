@@ -9,8 +9,9 @@ from scipy.spatial.transform import Rotation as R
 from scipy.optimize import minimize
 
 #Import required functions
-from Functions.general_utils import rotate_coordinate_x, vector_between_points, read_trc_file_as_dict, midpoint_3d
-from Functions.file_utils import search_files_by_keywords
+from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, vector_between_points, read_trc_file_as_dict, midpoint_3d
+from opensim_model_creator.Functions.file_utils import search_files_by_keywords
+
 
 def add_mesh_to_body(model, body_name, mesh_filename, offset_translation=(0, 0, 0), offset_orientation=(0, 0, 0)):
     """

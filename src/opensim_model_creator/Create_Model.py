@@ -3,12 +3,11 @@ import os
 import numpy as np
 import opensim as osim
 
-
 #%%Import functions from folders
-from Functions.file_utils import *
-from Functions.general_utils import *
-from Functions.bone_utils import *
-from Functions.muscle_utils import *
+from opensim_model_creator.Functions.file_utils import *
+from opensim_model_creator.Functions.general_utils import *
+from opensim_model_creator.Functions.bone_utils import *
+from opensim_model_creator.Functions.muscle_utils import *
 
 
 

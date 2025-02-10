@@ -130,17 +130,18 @@ def create_model(input_directory):
 
     # Set the output file for the MarkerPlacer and MarkerPlacer settings
     #Do u want to move markers to match the static file? - causes the feet to be poor currently
+    marker_file = os.path.join(os.sep, "Inputs", os.path.basename(mocap_trc_file))
+
     scale_tool.getMarkerPlacer().setApply(True)
     scale_tool.getMarkerPlacer().setOutputModelFileName("/Models/scaled_foot.osim")
-    scale_tool.getMarkerPlacer().setMarkerFileName("/Inputs/"+mocap_trc_file.split('/')[-1])
+    scale_tool.getMarkerPlacer().setMarkerFileName(marker_file)
     scale_tool.getMarkerPlacer().setTimeRange(time_range)
 
     scale_tool.getModelScaler().setOutputModelFileName("Models/scaled_foot.osim")
-    scale_tool.getModelScaler().setMarkerFileName("/Inputs/"+mocap_trc_file.split('/')[-1])
+    scale_tool.getModelScaler().setMarkerFileName(marker_file)
     scale_tool.getModelScaler().setTimeRange(time_range)
 
-
-    scaled_output_file = "Participants/" + participant_folder.split('/')[-1] + "/Models/scaling_tool_settings.xml"
+    scaled_output_file = os.path.join("Participants", os.path.basename(participant_folder), "Models", "scaling_tool_settings.xml")
 
     # Verify the loaded scaling settings (optional)
     scale_tool.printToXML(scaled_output_file)  # Outputs a copy of the loaded settings

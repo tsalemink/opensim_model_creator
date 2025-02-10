@@ -9,7 +9,7 @@ def test(input_directory):
 
 
     # For creation of muscles, include True statement, for testing purposes include a true statement (sets knee joint optimisation iteration_count to 1, to speed up development)
-    create_model(absolute_path)
+    create_model(absolute_path, testing = True)
 
 
 if __name__ == "__main__":

@@ -7,6 +7,7 @@ import opensim as osim
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
+from opensim_model_creator.Functions.file_utils import clear_folder
 
 
 def create_model(participant_folder, create_muscles = False, testing = False):
@@ -14,6 +15,10 @@ def create_model(participant_folder, create_muscles = False, testing = False):
     participant_inputs = os.path.join(participant_folder, "Inputs")
     output_folder = os.path.join(participant_folder, "Models")
     meshes = os.path.join(participant_folder, "Meshes")
+
+    # Clear the output_folder and meshes folder
+    clear_folder(output_folder)
+    clear_folder(meshes)
 
     # Initialize muscles
     muscle_linkages = muscle_initialisation(participant_inputs)

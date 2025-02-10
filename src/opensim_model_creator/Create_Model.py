@@ -1,19 +1,7 @@
-import opensim as osim
-import xml.etree.ElementTree as ET
-from idlelib.autocomplete import FORCE
-from tkinter import Tk
-from tkinter.filedialog import askopenfilename
-import os
-import trimesh
-import numpy as np
-#import matplotlib.pyplot as plt
-import pyvista as pv
-import pandas as pd
-from mpl_toolkits.mplot3d import Axes3D
-from numpy.ma.core import argmax
-from scipy.spatial.transform import Rotation as R
-from scipy.optimize import minimize
 
+import os
+import numpy as np
+import opensim as osim
 
 
 #%%Import functions from folders

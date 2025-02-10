@@ -1,10 +1,8 @@
 # file_utils.py contains helper functions designed for the retrieval, manipulation or saving of files for the opensim_model_creator
 import os
 import tkinter as tk
-from tkinter import Tk
 from tkinter import filedialog
-from tkinter.filedialog import askopenfilename
-import pandas as pd
+
 
 def search_files_by_keywords(folder_path, keywords):
     """

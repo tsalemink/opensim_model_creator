@@ -4,17 +4,17 @@ import numpy as np
 import opensim as osim
 
 #%%Import functions from folders
-from opensim_model_creator.Functions.file_utils import *
+from opensim_model_creator.Functions.file_utils import search_files_by_keywords
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
 
 
-def create_model(input_directory):
+def create_model(participant_folder):
     #%% Setup of folders
-
-    #get the directory of the participant of interest
-    participant_folder, participant_inputs, output_folder, meshes = get_participant_directories()
+    participant_inputs = os.path.join(participant_folder, "Inputs")
+    output_folder = os.path.join(participant_folder, "Models")
+    meshes = os.path.join(participant_folder, "Meshes")
 
     # Initialize muscles
     muscle_linkages = muscle_initialisation(participant_inputs)

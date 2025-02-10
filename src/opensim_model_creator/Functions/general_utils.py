@@ -239,14 +239,6 @@ def batch_convert_and_scale(scale_factor=1000, input_dir=None):
     Returns:
     - None
     """
-    if input_dir is None:
-        # Prompt the user to select the input directory
-        Tk().withdraw()  # Hide the root Tk window
-        input_dir = askdirectory(title="Select Directory Containing .ply Files")
-        if not input_dir:
-            print("No directory selected. Exiting.")
-            return
-
     # Check if the directory exists
     if not os.path.isdir(input_dir):
         print(f"The directory '{input_dir}' does not exist. Exiting.")
@@ -325,14 +317,15 @@ def combine_pelvis_meshes(input_dir, output_path=None):
         except Exception as e:
             print(f"Failed to delete {file_path}: {e}")
 
-def move_stl_meshes(input_dir, output_dir):
+def move_mesh_files(input_dir, output_dir, extensions=(".stl", ".vtp")):
     """
-    Moves all .stl files from the input directory to the output directory.
+    Moves all .stl and .vtp files from the input directory to the output directory.
     If a file with the same name already exists in the output directory, it is replaced.
 
     Parameters:
-    - input_dir (str): Directory to search for .stl files.
-    - output_dir (str): Directory to move the .stl files to.
+    - input_dir (str): Directory to search for .stl and .vtp files.
+    - output_dir (str): Directory to move the files to.
+    - extensions (tuple): File extensions to look for (default: (".stl", ".vtp")).
 
     Returns:
     - None
@@ -340,24 +333,24 @@ def move_stl_meshes(input_dir, output_dir):
     # Ensure the output directory exists
     os.makedirs(output_dir, exist_ok=True)
 
-    # Find all .stl files in the input directory
-    stl_files = [
+    # Find all matching files in the input directory
+    mesh_files = [
         os.path.join(input_dir, f)
         for f in os.listdir(input_dir)
-        if f.lower().endswith(".stl")
+        if f.lower().endswith(extensions)
     ]
 
-    # Move each .stl file to the output directory
-    for stl_file in stl_files:
-        dest_file = os.path.join(output_dir, os.path.basename(stl_file))
+    # Move each file to the output directory
+    for mesh_file in mesh_files:
+        dest_file = os.path.join(output_dir, os.path.basename(mesh_file))
         try:
             # Remove the existing file if it exists
             if os.path.exists(dest_file):
                 os.remove(dest_file)
 
             # Move the file to the output directory
-            shutil.move(stl_file, output_dir)
-            print(f"Moved: {stl_file} -> {output_dir}")
+            shutil.move(mesh_file, output_dir)
+            print(f"Moved: {mesh_file} -> {output_dir}")
         except Exception as e:
-            print(f"Failed to move {stl_file}: {e}")
+            print(f"Failed to move {mesh_file}: {e}")
 

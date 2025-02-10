@@ -4,13 +4,12 @@ import numpy as np
 import opensim as osim
 
 #%%Import functions from folders
-from opensim_model_creator.Functions.file_utils import search_files_by_keywords
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
 
 
-def create_model(participant_folder):
+def create_model(participant_folder, create_muscles = False):
     #%% Setup of folders
     participant_inputs = os.path.join(participant_folder, "Inputs")
     output_folder = os.path.join(participant_folder, "Models")
@@ -28,7 +27,7 @@ def create_model(participant_folder):
     combine_pelvis_meshes(input_dir = participant_inputs)
 
     # Cuts the stls to the meshes folder
-    move_stl_meshes(input_dir = participant_inputs, output_dir = meshes)
+    move_mesh_files(participant_inputs, meshes)
 
 
     # %% Initialisation of models and extraction of relevant landmarks/marker placements
@@ -61,13 +60,11 @@ def create_model(participant_folder):
     repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib)
 
     #Create the muscle linkages dictionary
-    center_info = {
+    empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
         "Pelvis": pelvis_center,
         "Femur": [femur_l_center,femur_r_center],
         "Tibfib": [tibfib_l_center,tibfib_r_center],
-    }
-
-    empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,center_info)
+    })
 
 
     #%% Save the model with all markers
@@ -111,47 +108,7 @@ def create_model(participant_folder):
 
 
     #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
-
-    scaling_file = search_files_by_keywords("High_Level_Inputs", "ScaleSettings")[0]
-    scale_tool = osim.ScaleTool(scaling_file)
-    scale_tool.setPathToSubject(participant_folder)
-
-
-    # Set the model file
-    scale_tool.getGenericModelMaker().setModelFileName(output_file)  # Replace with your model file
-
-    ignore,(start_time, end_time),dontcare = read_trc_file_as_dict(mocap_trc_file,True)
-    # Create an OpenSim ArrayDouble and populate it with start_time and end_time
-    time_range = osim.ArrayDouble()
-    time_range.append(start_time)
-    time_range.append(end_time)
-
-
-
-    # Set the output file for the MarkerPlacer and MarkerPlacer settings
-    #Do u want to move markers to match the static file? - causes the feet to be poor currently
-    marker_file = os.path.join(os.sep, "Inputs", os.path.basename(mocap_trc_file))
-
-    scale_tool.getMarkerPlacer().setApply(True)
-    scale_tool.getMarkerPlacer().setOutputModelFileName("/Models/scaled_foot.osim")
-    scale_tool.getMarkerPlacer().setMarkerFileName(marker_file)
-    scale_tool.getMarkerPlacer().setTimeRange(time_range)
-
-    scale_tool.getModelScaler().setOutputModelFileName("Models/scaled_foot.osim")
-    scale_tool.getModelScaler().setMarkerFileName(marker_file)
-    scale_tool.getModelScaler().setTimeRange(time_range)
-
-    scaled_output_file = os.path.join("Participants", os.path.basename(participant_folder), "Models", "scaling_tool_settings.xml")
-
-    # Verify the loaded scaling settings (optional)
-    scale_tool.printToXML(scaled_output_file)  # Outputs a copy of the loaded settings
-
-
-
-    # Run the scaling process
-    scale_tool.run()
-
-
+    perform_scaling(participant_folder, output_file, mocap_trc_file)
 
 
     #%% Create the JMP settings files and move trcs & model automatically
@@ -238,203 +195,236 @@ def create_model(participant_folder):
 
     compute_and_adjust_markers(optimised_knee_model,"ik_output.mot","_ik_model_marker_locations.sto",knee_optimisation_marker_dictionary,optimised_knee_moved_marker_model)
 
-    re_optimised_knee_moved_marker_model = output_folder+"/Re_Optimised_Knee_Axes_Moved_Markers.osim"
 
-    #This runs the knee joint optimisation for the second time
-    #run_knee_joint_optimisation(optimised_knee_moved_marker_model, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2,marker_weights,re_optimised_knee_moved_marker_model)
-
-
+    # Run the Inverse Kinematics (IK) analysis and store results
     print("\n")
-    print("Prior to Knee Alignment & Marker movement")
-    print(perform_IK(source_file_path1,knee_optimisation_trc_file,start_time, end_time, marker_weights))
-    print("\n")
-    print("Following Knee Alignment but Prior to Marker Adjustment")
-    print(perform_IK(optimised_knee_model,knee_optimisation_trc_file,start_time, end_time, marker_weights))
-    print("\n")
-    print("Following Both Knee Alignment & Marker Adjustment")
-    print(perform_IK(optimised_knee_moved_marker_model,knee_optimisation_trc_file,start_time, end_time, marker_weights))
+    print(f"Prior to Knee Alignment & Marker Movement - name of file: {os.path.basename(source_file_path1)}")
+    ik_result_1 = perform_IK(source_file_path1, knee_optimisation_trc_file, start_time, end_time, marker_weights)
+    print(ik_result_1)
     print("\n")
 
+    print(
+        f"Following Knee Alignment but Prior to Marker Adjustment - name of file: {os.path.basename(optimised_knee_model)}")
+    ik_result_2 = perform_IK(optimised_knee_model, knee_optimisation_trc_file, start_time, end_time, marker_weights)
+    print(ik_result_2)
+    print("\n")
 
+    print(
+        f"Following Both Knee Alignment & Marker Adjustment - name of file: {os.path.basename(optimised_knee_moved_marker_model)}")
+    ik_result_3 = perform_IK(optimised_knee_moved_marker_model, knee_optimisation_trc_file, start_time, end_time,
+                             marker_weights)
+    print(ik_result_3)
+    print("\n")
 
-
-
-
-    #print("Following Both Knee Alignment & Marker Adjustment (Then Re-Aligned Again)")
-    #print(perform_IK(re_optimised_knee_moved_marker_model,knee_optimisation_trc_file,start_time, end_time, marker_weights))
-
-    #Lets try to add some muscles to the model
-    #function to compute the position of a mesh node in the local coordinate system of a bone (can try it on the landmarks first), im assuming we can create a new model, add the body/ mesh, add a "marker" to represent this point, then use the marker.getlocation attribute thing to get the position of the marker in the local bone coordinate system (hopefully)
-
-    model = osim.Model(optimised_knee_moved_marker_model)
-
-    add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
-
-    muscle_model_name = os.path.basename(participant_folder).replace(" ", "_")
-
-    muscle_model = output_folder+"/Muscle_" +muscle_model_name+ ".osim"
-    model.setName("Muscle_"+muscle_model_name)
-    model.finalizeConnections()
-    model.printToXML(muscle_model)
-
-
-
-
-    #begin attempt at adding wrapping objects to muscles
-
-    #get the marker set of the model and find some markers
-    #compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
-
-
-
-
-    marker_model = osim.Model(empty_model)
-    state = marker_model.initSystem()
-    marker_set = marker_model.getMarkerSet()
-
-
-
-    #%% Setting translations for glute max 1 wrapping objects (and determining acceptable radii of cylinders)
-
-
-    #%% Pelvis Wrap Objects
-    # Get the reference frame (Pelvis)
-    pelvis_frame = empty_model.getBodySet().get("pelvis_b")
-    # Ratio = SIS_x_distance / radii
-    desired_glut_radii_ratio = 3.15
-
-    # Left side
-    l_obt_ext_marker = marker_set.get("ins_l_iliacus")
-    l_obt_ext_global = l_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
-
-    l_glut_wrap_position_pelvis = compute_marker_midpoint(marker_model, "ori_l_rect_fem_1", "ori_l_gem_1")
-    l_glut_wrap_global = pelvis_frame.findStationLocationInAnotherFrame(state, osim.Vec3(l_glut_wrap_position_pelvis), empty_model.getGround()) # Convert to OpenSim Vec3
-
-    # Set the desired global forward-backward (anterior-posterior) position
-    l_glut_wrap_global[0] = l_obt_ext_global.get(0)  # Modify the x position in the global frame
-
-    # Convert the updated position back to the pelvis's local frame
-    l_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, l_glut_wrap_global,pelvis_frame)
-
-    # Update the wrap object position
-    l_glut_wrap_position_pelvis = np.array([l_glut_wrap_local.get(i) for i in range(3)])
-
-
-    # Right side
-    r_obt_ext_marker = marker_set.get("ins_r_iliacus")
-    r_obt_ext_global = r_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
-
-    r_glut_wrap_position_pelvis = compute_marker_midpoint(marker_model, "ori_r_rect_fem_1", "ori_r_gem_1")
-    r_glut_wrap_global = pelvis_frame.findStationLocationInAnotherFrame(state, osim.Vec3(r_glut_wrap_position_pelvis), empty_model.getGround()) # Convert to OpenSim Vec3
-
-    # Set the desired global forward-backward (anterior-posterior) position
-    r_glut_wrap_global[0] = r_obt_ext_global.get(0)  # Modify the x position in the global frame
-
-    # Convert the modified position back to the pelvis's local frame
-    r_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, r_glut_wrap_global,pelvis_frame)
-
-    # Update the wrap object position
-    r_glut_wrap_position_pelvis = np.array([r_glut_wrap_local.get(i) for i in range(3)])
-
-
-    #radius
-    # Get global positions of the markers
-    l_asis_global = marker_set.get("lms_LASI").getLocationInGround(state)
-    l_psis_global = marker_set.get("lms_LPSI").getLocationInGround(state)
-
-    # Compute the global X-distance
-    SIS_x_dist = l_asis_global.get(0) - l_psis_global.get(0)
-
-    # Compute the radius
-    radius_1 = SIS_x_dist / desired_glut_radii_ratio
-
-
-
-
-    #%% Femur Wrap Objects
-
-    l_femur_frame = empty_model.getBodySet().get("femur_l_b")
-
-
-    # Left side
-    l_obt_ext_marker = marker_set.get("ins_l_iliacus")
-    l_obt_ext_global = l_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
-
-    l_glut_wrap_position_femur = compute_marker_midpoint(marker_model, "ins_l_glut_med", "ins_l_obt_ext")
-    l_glut_wrap_global = l_femur_frame.findStationLocationInAnotherFrame(state, osim.Vec3(l_glut_wrap_position_femur), empty_model.getGround()) # Convert to OpenSim Vec3
-
-    # Set the desired global forward-backward (anterior-posterior) position
-    l_glut_wrap_global[2] = l_obt_ext_global.get(2)  # Modify the x position in the global frame
-
-    # Convert the updated position back to the pelvis's local frame
-    l_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, l_glut_wrap_global,l_femur_frame)
-
-    # Update the wrap object position
-    l_glut_wrap_position_femur = np.array([l_glut_wrap_local.get(i) for i in range(3)])
-
-
-    r_femur_frame = empty_model.getBodySet().get("femur_r_b")
-
-    # Right side
-    r_obt_ext_marker = marker_set.get("ins_r_iliacus")
-    r_obt_ext_global = r_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
-
-    r_glut_wrap_position_femur = compute_marker_midpoint(marker_model, "ins_r_glut_med", "ins_r_obt_ext")
-    r_glut_wrap_global = r_femur_frame.findStationLocationInAnotherFrame(state, osim.Vec3(r_glut_wrap_position_femur), empty_model.getGround()) # Convert to OpenSim Vec3
-
-    # Set the desired global forward-backward (anterior-posterior) position
-    r_glut_wrap_global[2] = r_obt_ext_global.get(2)  # Modify the z position in the global frame
-
-    # Convert the modified position back to the pelvis's local frame
-    r_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, r_glut_wrap_global,r_femur_frame)
-
-    # Update the wrap object position
-    r_glut_wrap_position_femur = np.array([r_glut_wrap_local.get(i) for i in range(3)])
-
-
-
-
-
-    wrapping_objects = {
-        "l_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
-            {   # Wrapping object 1 (Pelvis)
-                "name": "l_glut_max_1_1_pelvis_wrap",  # Unique name
-                "body": "pelvis_b",
-                "type": "cylinder",
-                "translation": tuple(l_glut_wrap_position_pelvis),
-                "rotation": (0.75, -0.390000, 0),
-                "radius": radius_1,
-                "length": 0.1,
-                "quadrant": "-x"
-            },
-            {  # Wrapping object 2 (Femur)
-                "name": "l_glut_max_1_1_femur_wrap",  # Unique name
-                "body": "femur_l_b",
-                "type": "cylinder",
-                "translation": tuple(l_glut_wrap_position_femur),
-                "rotation": (-0.143263, -0.123715, 0.421776),
-                "radius": radius_1*0.45,
-                "length": 0.1,
-                "quadrant": "-x"
-            }
-
-        ],
-        "r_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
-            {  # Wrapping object 1 (Pelvis)
-                "name": "r_glut_max_1_1_pelvis_wrap",  # Unique name
-                "body": "pelvis_b",
-                "type": "cylinder",
-                "translation": tuple(r_glut_wrap_position_pelvis),
-                "rotation": (-0.750000, 0.390000, 0),
-                "radius": radius_1,
-                "length": 0.1,
-                "quadrant": "-x"
-            },
-        ]
+    # Extract Average RMS Errors from the results
+    models = {
+        source_file_path1: ik_result_1["Average RMS Error"],
+        optimised_knee_model: ik_result_2["Average RMS Error"],
+        optimised_knee_moved_marker_model: ik_result_3["Average RMS Error"]
     }
 
+    # Find the model with the lowest Average RMS Error
+    best_model_path = min(models, key=models.get)
+    best_model_error = models[best_model_path]
+
+    # Format the participant's name by replacing spaces with underscores
+    participant_name = os.path.basename(participant_folder).replace(" ", "_")
+
+    # Define the output file name
+    final_model_filename = f"Final_Bone_Model_{participant_name}.osim"
+    final_model_path = os.path.join(os.path.dirname(best_model_path), final_model_filename)
+
+    # Check if the final model file already exists, and remove it if it does
+    if os.path.exists(final_model_path):
+        os.remove(final_model_path)  # Delete the existing file
+
+    # Now rename (move) the best model to the final filename
+    os.rename(best_model_path, final_model_path)
+
+    print(f"Final model selected: {os.path.basename(best_model_path)} with an Average RMS Error of {best_model_error}")
+    print(f"This model was renamed to: {os.path.basename(final_model_path)}")
 
 
-    model = add_wrapping_objects_to_model(model, wrapping_objects)
-    model.finalizeConnections()
-    model.printToXML(muscle_model)
+
+
+    if create_muscles:
+
+
+        #print("Following Both Knee Alignment & Marker Adjustment (Then Re-Aligned Again)")
+        #print(perform_IK(re_optimised_knee_moved_marker_model,knee_optimisation_trc_file,start_time, end_time, marker_weights))
+
+        #Lets try to add some muscles to the model
+        #function to compute the position of a mesh node in the local coordinate system of a bone (can try it on the landmarks first), im assuming we can create a new model, add the body/ mesh, add a "marker" to represent this point, then use the marker.getlocation attribute thing to get the position of the marker in the local bone coordinate system (hopefully)
+
+        model = osim.Model(final_model_path)
+
+        add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
+
+        muscle_model_name = os.path.basename(participant_folder).replace(" ", "_")
+
+        muscle_model = output_folder+"/Muscle_" +muscle_model_name+ ".osim"
+        model.setName("Muscle_"+muscle_model_name)
+        model.finalizeConnections()
+        model.printToXML(muscle_model)
+
+
+
+
+        #begin attempt at adding wrapping objects to muscles
+
+        #get the marker set of the model and find some markers
+        #compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
+
+
+
+
+        marker_model = osim.Model(empty_model)
+        state = marker_model.initSystem()
+        marker_set = marker_model.getMarkerSet()
+
+
+
+        #%% Setting translations for glute max 1 wrapping objects (and determining acceptable radii of cylinders)
+
+
+        #%% Pelvis Wrap Objects
+        # Get the reference frame (Pelvis)
+        pelvis_frame = empty_model.getBodySet().get("pelvis_b")
+        # Ratio = SIS_x_distance / radii
+        desired_glut_radii_ratio = 3.15
+
+        # Left side
+        l_obt_ext_marker = marker_set.get("ins_l_iliacus")
+        l_obt_ext_global = l_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
+
+        l_glut_wrap_position_pelvis = compute_marker_midpoint(marker_model, "ori_l_rect_fem_1", "ori_l_gem_1")
+        l_glut_wrap_global = pelvis_frame.findStationLocationInAnotherFrame(state, osim.Vec3(l_glut_wrap_position_pelvis), empty_model.getGround()) # Convert to OpenSim Vec3
+
+        # Set the desired global forward-backward (anterior-posterior) position
+        l_glut_wrap_global[0] = l_obt_ext_global.get(0)  # Modify the x position in the global frame
+
+        # Convert the updated position back to the pelvis's local frame
+        l_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, l_glut_wrap_global,pelvis_frame)
+
+        # Update the wrap object position
+        l_glut_wrap_position_pelvis = np.array([l_glut_wrap_local.get(i) for i in range(3)])
+
+
+        # Right side
+        r_obt_ext_marker = marker_set.get("ins_r_iliacus")
+        r_obt_ext_global = r_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
+
+        r_glut_wrap_position_pelvis = compute_marker_midpoint(marker_model, "ori_r_rect_fem_1", "ori_r_gem_1")
+        r_glut_wrap_global = pelvis_frame.findStationLocationInAnotherFrame(state, osim.Vec3(r_glut_wrap_position_pelvis), empty_model.getGround()) # Convert to OpenSim Vec3
+
+        # Set the desired global forward-backward (anterior-posterior) position
+        r_glut_wrap_global[0] = r_obt_ext_global.get(0)  # Modify the x position in the global frame
+
+        # Convert the modified position back to the pelvis's local frame
+        r_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, r_glut_wrap_global,pelvis_frame)
+
+        # Update the wrap object position
+        r_glut_wrap_position_pelvis = np.array([r_glut_wrap_local.get(i) for i in range(3)])
+
+
+        #radius
+        # Get global positions of the markers
+        l_asis_global = marker_set.get("lms_LASI").getLocationInGround(state)
+        l_psis_global = marker_set.get("lms_LPSI").getLocationInGround(state)
+
+        # Compute the global X-distance
+        SIS_x_dist = l_asis_global.get(0) - l_psis_global.get(0)
+
+        # Compute the radius
+        radius_1 = SIS_x_dist / desired_glut_radii_ratio
+
+
+
+
+        #%% Femur Wrap Objects
+
+        l_femur_frame = empty_model.getBodySet().get("femur_l_b")
+
+
+        # Left side
+        l_obt_ext_marker = marker_set.get("ins_l_iliacus")
+        l_obt_ext_global = l_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
+
+        l_glut_wrap_position_femur = compute_marker_midpoint(marker_model, "ins_l_glut_med", "ins_l_obt_ext")
+        l_glut_wrap_global = l_femur_frame.findStationLocationInAnotherFrame(state, osim.Vec3(l_glut_wrap_position_femur), empty_model.getGround()) # Convert to OpenSim Vec3
+
+        # Set the desired global forward-backward (anterior-posterior) position
+        l_glut_wrap_global[2] = l_obt_ext_global.get(2)  # Modify the x position in the global frame
+
+        # Convert the updated position back to the pelvis's local frame
+        l_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, l_glut_wrap_global,l_femur_frame)
+
+        # Update the wrap object position
+        l_glut_wrap_position_femur = np.array([l_glut_wrap_local.get(i) for i in range(3)])
+
+
+        r_femur_frame = empty_model.getBodySet().get("femur_r_b")
+
+        # Right side
+        r_obt_ext_marker = marker_set.get("ins_r_iliacus")
+        r_obt_ext_global = r_obt_ext_marker.getLocationInGround(state)  # Get the marker's position in global coordinates
+
+        r_glut_wrap_position_femur = compute_marker_midpoint(marker_model, "ins_r_glut_med", "ins_r_obt_ext")
+        r_glut_wrap_global = r_femur_frame.findStationLocationInAnotherFrame(state, osim.Vec3(r_glut_wrap_position_femur), empty_model.getGround()) # Convert to OpenSim Vec3
+
+        # Set the desired global forward-backward (anterior-posterior) position
+        r_glut_wrap_global[2] = r_obt_ext_global.get(2)  # Modify the z position in the global frame
+
+        # Convert the modified position back to the pelvis's local frame
+        r_glut_wrap_local = empty_model.getGround().findStationLocationInAnotherFrame(state, r_glut_wrap_global,r_femur_frame)
+
+        # Update the wrap object position
+        r_glut_wrap_position_femur = np.array([r_glut_wrap_local.get(i) for i in range(3)])
+
+
+
+
+
+        wrapping_objects = {
+            "l_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
+                {   # Wrapping object 1 (Pelvis)
+                    "name": "l_glut_max_1_1_pelvis_wrap",  # Unique name
+                    "body": "pelvis_b",
+                    "type": "cylinder",
+                    "translation": tuple(l_glut_wrap_position_pelvis),
+                    "rotation": (0.75, -0.390000, 0),
+                    "radius": radius_1,
+                    "length": 0.1,
+                    "quadrant": "-x"
+                },
+                {  # Wrapping object 2 (Femur)
+                    "name": "l_glut_max_1_1_femur_wrap",  # Unique name
+                    "body": "femur_l_b",
+                    "type": "cylinder",
+                    "translation": tuple(l_glut_wrap_position_femur),
+                    "rotation": (-0.143263, -0.123715, 0.421776),
+                    "radius": radius_1*0.45,
+                    "length": 0.1,
+                    "quadrant": "-x"
+                }
+
+            ],
+            "r_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
+                {  # Wrapping object 1 (Pelvis)
+                    "name": "r_glut_max_1_1_pelvis_wrap",  # Unique name
+                    "body": "pelvis_b",
+                    "type": "cylinder",
+                    "translation": tuple(r_glut_wrap_position_pelvis),
+                    "rotation": (-0.750000, 0.390000, 0),
+                    "radius": radius_1,
+                    "length": 0.1,
+                    "quadrant": "-x"
+                },
+            ]
+        }
+
+
+
+        model = add_wrapping_objects_to_model(model, wrapping_objects)
+        model.finalizeConnections()
+        model.printToXML(muscle_model)

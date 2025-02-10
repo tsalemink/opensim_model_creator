@@ -813,7 +813,7 @@ def parse_model_marker_locations(sto_file_path):
 
     return combined_marker_positions, time_list
 
-def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weights, initial_params, temp_model_path_1, temp_model_path_2,final_output_model):
+def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weights, initial_params, temp_model_path_1, temp_model_path_2,final_output_model, iteration_count):
     """
     Optimize the knee joint orientation to minimize IK errors.
 
@@ -856,7 +856,7 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
         return errors["Average RMS Error"]*1e4 if errors else float("inf")
 
     bounds = [(-0.001, 0.001)] * 4
-    result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": 1})
+    result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": iteration_count})
     model = osim.Model(temp_model_path_2)
     model_name_here = final_output_model.split("/")[-1].split(".")[0]
     model.setName(model_name_here)
@@ -992,7 +992,7 @@ def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output
     except Exception as e:
         print(f"Error updating joint '{joint_name}': {e}")
 
-def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2, marker_weights, final_output_model_path, initial_params=None):
+def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2, marker_weights, final_output_model_path, initial_params=None, iteration_count = 5):
     """
     Run knee joint optimization for an OpenSim model.
 
@@ -1028,7 +1028,8 @@ def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, s
         initial_params=initial_params,
         temp_model_path_1=temp_model_path_1,
         temp_model_path_2=temp_model_path_2,
-        final_output_model = final_output_model_path
+        final_output_model = final_output_model_path,
+        iteration_count= iteration_count
     )
 
     print(f"Optimized Joint Orientations: {result.x}")

@@ -9,7 +9,7 @@ from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
 
 
-def create_model(participant_folder, create_muscles = False):
+def create_model(participant_folder, create_muscles = False, testing = False):
     #%% Setup of folders
     participant_inputs = os.path.join(participant_folder, "Inputs")
     output_folder = os.path.join(participant_folder, "Models")
@@ -182,8 +182,14 @@ def create_model(participant_folder, create_muscles = False):
                 "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5
             }
 
+    if testing:
+        iteration_count = 1
+    else:
+        iteration_count = 5
+
+
     #This runs the knee joint optimisation
-    run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2,marker_weights,optimised_knee_model)
+    run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2,marker_weights,optimised_knee_model, iteration_count= iteration_count)
 
 
 

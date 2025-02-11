@@ -32,20 +32,13 @@ def search_files_by_keywords(folder_path, keywords):
     return matching_files
 
 
-def clear_folder(folder_path):
+def reset_folder(folder_path):
     """
-    Deletes all files and subdirectories inside a folder but keeps the folder itself.
+    Deletes the folder if it exists and recreates it as an empty directory.
 
     Parameters:
-    - folder_path (str): Path to the folder to be cleared.
+    - folder_path (str): Path to the folder to reset.
     """
-    if os.path.exists(folder_path):  # Ensure the folder exists
-        for filename in os.listdir(folder_path):  # Loop through all files & subdirectories
-            file_path = os.path.join(folder_path, filename)
-            try:
-                if os.path.isfile(file_path) or os.path.islink(file_path):
-                    os.remove(file_path)  # Delete files and symlinks
-                elif os.path.isdir(file_path):
-                    shutil.rmtree(file_path)  # Delete directories
-            except Exception as e:
-                print(f"Failed to delete {file_path}: {e}")
+    if os.path.exists(folder_path):  # Check if folder exists
+        shutil.rmtree(folder_path)  # Delete the entire folder
+    os.makedirs(folder_path, exist_ok=True)  # Recreate the empty folder

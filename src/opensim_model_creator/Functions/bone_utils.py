@@ -183,20 +183,6 @@ def update_subtalar_joint_range(input_file, output_file, joint_name, range_min, 
         print(f"Coordinate '{joint_name}' not found in the .osim file.")
         return
 
-    # Update <SpatialTransform> if necessary
-    custom_joint = root.find(f".//CustomJoint[@name='{joint_name}']")
-    if custom_joint is not None:
-        spatial_transform = custom_joint.find("SpatialTransform")
-        if spatial_transform is not None:
-            for transform_axis in spatial_transform.findall("TransformAxis"):
-                coordinates = transform_axis.find("coordinates")
-                if coordinates is not None and joint_name in coordinates.text:
-                    print(f"Verified <SpatialTransform> alignment for {joint_name}.")
-        else:
-            print(f"No <SpatialTransform> found for joint '{joint_name}'.")
-    else:
-        print(f"No <CustomJoint> found for joint '{joint_name}'.")
-
     # Save the updated .osim file
     tree.write(output_file)
     print(f"Updated .osim file saved to: {output_file}")
@@ -827,7 +813,7 @@ def parse_model_marker_locations(sto_file_path):
 
     return combined_marker_positions, time_list
 
-def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weights, initial_params, temp_model_path_1, temp_model_path_2,final_output_model):
+def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weights, initial_params, temp_model_path_1, temp_model_path_2,final_output_model, iteration_count):
     """
     Optimize the knee joint orientation to minimize IK errors.
 
@@ -870,7 +856,7 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
         return errors["Average RMS Error"]*1e4 if errors else float("inf")
 
     bounds = [(-0.001, 0.001)] * 4
-    result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": 1})
+    result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": iteration_count})
     model = osim.Model(temp_model_path_2)
     model_name_here = final_output_model.split("/")[-1].split(".")[0]
     model.setName(model_name_here)
@@ -1006,7 +992,7 @@ def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output
     except Exception as e:
         print(f"Error updating joint '{joint_name}': {e}")
 
-def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2, marker_weights, final_output_model_path, initial_params=None):
+def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2, marker_weights, final_output_model_path, initial_params=None, iteration_count = 5):
     """
     Run knee joint optimization for an OpenSim model.
 
@@ -1042,7 +1028,8 @@ def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, s
         initial_params=initial_params,
         temp_model_path_1=temp_model_path_1,
         temp_model_path_2=temp_model_path_2,
-        final_output_model = final_output_model_path
+        final_output_model = final_output_model_path,
+        iteration_count= iteration_count
     )
 
     print(f"Optimized Joint Orientations: {result.x}")
@@ -1787,6 +1774,59 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_l
     # Add the right ankle joint to the OpenSim model
     empty_model.addJoint(right_ankle_joint)
 
+
+def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files, high_level_inputs_folder="High_Level_Inputs"):
+    """
+    Updates the paths of <mesh_file> elements in an OpenSim .osim file to absolute paths
+    based on the script's execution directory.
+
+    Parameters:
+    - input_osim (str): Path to the input .osim file.
+    - output_osim (str): Path to save the updated .osim file.
+    - foot_mesh_files (list of str): List of mesh filenames (e.g., ["l_talus.vtp", "r_talus.vtp"]).
+    - high_level_inputs_folder (str): Name of the folder containing the mesh files (default: "High_Level_Inputs").
+
+    Returns:
+    - None
+    """
+
+    # Get the directory where the script is running
+    script_dir = os.getcwd()
+
+    # Construct the full path to the High_Level_Inputs directory
+    mesh_dir = os.path.join(script_dir, high_level_inputs_folder)
+
+    # Parse the .osim file
+    tree = ET.parse(input_osim)
+    root = tree.getroot()
+
+    # Track updated files
+    updated_count = 0
+
+    # Find and update <mesh_file> elements
+    for mesh_file_element in root.findall(".//mesh_file"):
+        current_file = mesh_file_element.text.strip()
+
+        # Check if the current mesh file matches one in the provided list
+        for foot_mesh in foot_mesh_files:
+            if current_file.endswith(foot_mesh):  # Ensure we match the filename regardless of the path
+                # Construct the new absolute path dynamically
+                new_path = os.path.join(mesh_dir, foot_mesh)
+                new_path = os.path.abspath(new_path).replace("\\", "/")  # Normalize for OpenSim compatibility
+
+                # Update the XML with the new absolute path
+                mesh_file_element.text = new_path
+                updated_count += 1
+                break  # Stop checking once a match is found
+
+    # Save the updated .osim file
+    if updated_count > 0:
+        tree.write(output_osim)
+        print(f"Updated {updated_count} mesh file references.")
+    else:
+        print("No matching <mesh_file> elements found to update.")
+
+
 def perform_updates(empty_model, output_folder, model_name):
     output_file = output_folder +"/"f"{model_name}.osim"
 
@@ -1891,12 +1931,6 @@ def perform_updates(empty_model, output_folder, model_name):
     tibfib_l = model.getBodySet().get('tibfib_l_b')
     tibfib_r = model.getBodySet().get('tibfib_r_b')
 
-
-
-
-
-
-
     # Function to set mass, center of mass, and inertia
     def set_mass_com_inertia(body, mass, com, inertia):
         body.setMass(mass)
@@ -1988,6 +2022,9 @@ def perform_updates(empty_model, output_folder, model_name):
     update_subtalar_joint_range(input_file, output_file, "subtalar_angle_l", -1, 1)
     update_subtalar_joint_range(input_file, output_file, "subtalar_angle_r", -1, 1)
 
+
+    #updates the path to feet mesh files
+    update_mesh_file_paths(input_file, output_file,["l_bofoot.vtp","r_bofoot.vtp","l_foot.vtp","r_foot.vtp","l_talus.vtp","r_talus.vtp"])
 
     return output_file
 
@@ -2233,6 +2270,44 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
 
     # Update the child frame's orientation
     right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
+
+
+def perform_scaling(participant_folder, output_file, mocap_trc_file):
+    scaling_file = search_files_by_keywords("High_Level_Inputs", "ScaleSettings")[0]
+    scale_tool = osim.ScaleTool(scaling_file)
+    scale_tool.setPathToSubject(participant_folder)
+
+    # Set the model file
+    scale_tool.getGenericModelMaker().setModelFileName(output_file)  # Replace with your model file
+
+    ignore, (start_time, end_time), dontcare = read_trc_file_as_dict(mocap_trc_file, True)
+    # Create an OpenSim ArrayDouble and populate it with start_time and end_time
+    time_range = osim.ArrayDouble()
+    time_range.append(start_time)
+    time_range.append(end_time)
+
+    # Set the output file for the MarkerPlacer and MarkerPlacer settings
+    # Do u want to move markers to match the static file? - causes the feet to be poor currently
+    marker_file = os.path.join(os.sep, "Inputs", os.path.basename(mocap_trc_file))
+
+    scale_tool.getMarkerPlacer().setApply(True)
+    scale_tool.getMarkerPlacer().setOutputModelFileName("/Models/scaled_foot.osim")
+    scale_tool.getMarkerPlacer().setMarkerFileName(marker_file)
+    scale_tool.getMarkerPlacer().setTimeRange(time_range)
+
+    scale_tool.getModelScaler().setOutputModelFileName("Models/scaled_foot.osim")
+    scale_tool.getModelScaler().setMarkerFileName(marker_file)
+    scale_tool.getModelScaler().setTimeRange(time_range)
+
+    scaled_output_file = os.path.join("Participants", os.path.basename(participant_folder), "Models",
+                                      "scaling_tool_settings.xml")
+
+    # Verify the loaded scaling settings (optional)
+    scale_tool.printToXML(scaled_output_file)  # Outputs a copy of the loaded settings
+
+    # Run the scaling process
+    scale_tool.run()
+
 
 
 

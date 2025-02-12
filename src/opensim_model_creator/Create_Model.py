@@ -10,7 +10,7 @@ from opensim_model_creator.Functions.muscle_utils import *
 from opensim_model_creator.Functions.file_utils import reset_folder
 
 
-def create_model(participant_folder, create_muscles = False, testing = False):
+def create_model(participant_folder, create_muscles = False, testing = False, scale_factor = 1000):
     #%% Setup of folders
     participant_inputs = os.path.join(participant_folder, "Inputs")
 
@@ -31,11 +31,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
 
     #%%Extraction of meshes from stl files
 
-    process_participant_meshes(participant_inputs, meshes, scale_factor=1) #Now setup to handle stls placed directly within the input folder
-
-    #Have adjusted the combined pelvis mesh importation.
-    # TODO: setup the muscle linkages file above to be created from stls instead of plys
-
+    process_participant_meshes(participant_inputs, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
 
 
 

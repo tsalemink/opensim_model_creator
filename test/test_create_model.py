@@ -9,7 +9,8 @@ def test(input_directory):
 
 
     # For creation of muscles, include True statement, for testing purposes include a true statement (sets knee joint optimisation iteration_count to 1, to speed up development)
-    create_model(absolute_path, create_muscles= True, testing = True)
+    #included a scale_factor for the stl meshes that are brought from lauras code as currently usure if she is scaling or not
+    create_model(absolute_path, create_muscles= True, testing = True, scale_factor=1)
 
 
 if __name__ == "__main__":

@@ -7,24 +7,40 @@ import opensim as osim
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
-from opensim_model_creator.Functions.file_utils import clear_folder
+from opensim_model_creator.Functions.file_utils import reset_folder
 
 
 def create_model(participant_folder, create_muscles = False, testing = False):
     #%% Setup of folders
     participant_inputs = os.path.join(participant_folder, "Inputs")
+
+    #Needs to create this folder (delete it if it exists already and then make it again)
     output_folder = os.path.join(participant_folder, "Models")
-    meshes = os.path.join(participant_folder, "Meshes")
+
+    #Needs to create this folder (delete it if it exists already and then make it again)
+    meshes = os.path.join(participant_inputs, "Meshes")
+
 
     # Clear the output_folder and meshes folder
-    clear_folder(output_folder)
-    clear_folder(meshes)
+    reset_folder(output_folder)
+    reset_folder(meshes)
 
     # Initialize muscles
     muscle_linkages = muscle_initialisation(participant_inputs)
 
 
     #%%Extraction of meshes from the ply files
+
+    #This section needs to be converted to not convert from ply to stls,
+    # it just needs to read in stls ALREADY (from lauras code placing them here) present within the participant_inputs folder, it then needs to scale them down by a factor of 1000,
+    # and move them to the meshes folder, then it can combine the left and right pelvis stls,
+    # may need to adjust the search by keywords sections when importing meshes to make sure when importing the pelvis mesh we import just the combined pelvis mesh (for creating the pelvis)
+    # and likewise when tyring to do muscle attatchment sites we import the left or right pelvis and not the combined pelvis mesh as it will all be stored wihtn the same direcotry now
+    # so need to be more specific about which pelvis file we are pulling out.
+
+
+
+
     #Runs the conversion process
     batch_convert_and_scale(input_dir = participant_inputs)
 
@@ -33,6 +49,19 @@ def create_model(participant_folder, create_muscles = False, testing = False):
 
     # Cuts the stls to the meshes folder
     move_mesh_files(participant_inputs, meshes)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     # %% Initialisation of models and extraction of relevant landmarks/marker placements

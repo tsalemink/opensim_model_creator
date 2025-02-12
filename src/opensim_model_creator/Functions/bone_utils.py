@@ -1197,7 +1197,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     model.addJoint(pelvis_joint)
 
     # Attach the mesh for the pelvis
-    mesh_filename = search_files_by_keywords(meshes, "pelvis")[0]
+    mesh_filename = search_files_by_keywords(meshes, "combined pelvis")[0]
     info = extract_mesh_info_trimesh(mesh_filename)
     pelvis_center = info['center']
     rotated_pelvis_center = rotate_coordinate_x(pelvis_center, 90)

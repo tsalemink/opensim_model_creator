@@ -2,6 +2,7 @@
 import os
 import opensim as osim
 import numpy as np
+import trimesh
 
 #Import required functions
 from opensim_model_creator.Functions.file_utils import search_files_by_keywords
@@ -212,63 +213,52 @@ def parse_muscle_node_files_recursive(root_directory):
     muscle_nodes = {k: v for k, v in muscle_nodes.items() if v}
     return muscle_nodes
 
-def parse_ply_files_by_side_and_bone(directory, bones):
+def parse_stl_files_by_side_and_bone(directory, bones):
     """
-    Parses .ply files by side ('left', 'right') and bone names to extract node coordinates.
+    Parses .stl files by side ('Left', 'Right') and bone names to extract vertex coordinates.
 
     Args:
-        directory (str): The directory containing the .ply files.
+        directory (str): The directory containing the .stl files.
         bones (list of str): List of bone names to process (e.g., ['tibfib', 'pelvis', 'femur']).
 
     Returns:
-        dict: A nested dictionary with structure {side: {bone: {node_number: [x, y, z], ...}, ...}, ...}.
+        dict: A nested dictionary with structure {side: {bone: {vertex_index: [x, y, z], ...}, ...}, ...}.
     """
     sides = ['Left', 'Right']
     parsed_data = {side: {} for side in sides}
 
     for side in sides:
         for bone in bones:
-            # Search for the specific file using the provided function
-            ply_files = search_files_by_keywords(directory, side+" "+bone)
+            # Search for the specific file
+            stl_files = search_files_by_keywords(directory, side + " " + bone)
 
-            if len(ply_files) == 0:
-                print(f"No .ply file found for {side} {bone}. Skipping.")
+            if len(stl_files) == 0:
+                print(f"No .stl file found for {side} {bone}. Skipping.")
                 continue
-            if len(ply_files) > 1:
-                print(f"Multiple .ply files found for {side} {bone}: {ply_files}. Using the first one.")
+            if len(stl_files) > 1:
+                print(f"Multiple .stl files found for {side} {bone}: {stl_files}. Using the first one.")
 
-            ply_path = ply_files[0]  # Use the first match
+            stl_path = stl_files[0]  # Use the first match
 
-            # Process the .ply file to extract node coordinates
-            node_dict = {}
-            with open(ply_path, "r") as file:
-                lines = file.readlines()
+            # Load the STL file using trimesh
+            mesh = trimesh.load(stl_path)
 
-            # Locate the "end_header" and extract vertex data
-            vertex_count = 0
-            header_end = 0
-            for i, line in enumerate(lines):
-                if line.startswith("element vertex"):
-                    vertex_count = int(line.split()[-1])
-                if line.strip() == "end_header":
-                    header_end = i
-                    break
+            if not isinstance(mesh, trimesh.Trimesh):
+                print(f"Invalid mesh file: {stl_path}. Skipping.")
+                continue
 
-            vertex_data = lines[header_end + 1: header_end + 1 + vertex_count]
+            # Extract unique vertex coordinates
+            unique_vertices = mesh.vertices
 
-            # Parse vertex data
-            for i, line in enumerate(vertex_data):
-                if line.strip():  # Avoid empty lines
-                    coords = list(map(float, line.split()))
-                    node_dict[i] = coords  # Node numbers start from 0
+            # Store the parsed vertices in the dictionary
+            vertex_dict = {i: list(unique_vertices[i]) for i in range(len(unique_vertices))}
+            parsed_data[side][bone] = vertex_dict
 
-            # Store the parsed nodes in the dictionary
-            parsed_data[side][bone] = node_dict
-            print(f"Processed {side} {bone}: {len(node_dict)} nodes.")
+            print(f"Processed {side} {bone}: {len(vertex_dict)} unique vertices.")
 
     return parsed_data
 
-def map_muscle_nodes_to_coordinates(    muscle_linkages, muscle_number_to_nodes_key, node_to_coordinate):
+def map_muscle_nodes_to_coordinates(muscle_linkages, muscle_number_to_nodes_key, node_to_coordinate):
     """
     Maps muscle numbers to their corresponding mean node coordinates and updates muscle_linkages.
 
@@ -296,9 +286,9 @@ def map_muscle_nodes_to_coordinates(    muscle_linkages, muscle_number_to_nodes_
                     current_coordinates = []
                     for node in nodes:
                         try:
-                            # Append scaled coordinates
+                            # Append coordinates (no longer scaled due to the stls already being scaled before extracting their coordinate positions)
                             current_coordinates.append(
-                                [coord / 1000 for coord in node_to_coordinate[side][body_part][node]]
+                                [coord for coord in node_to_coordinate[side][body_part][node]]
                             )
                         except KeyError:
                             print(f"Node {node} not found in {side}/{body_part}. Skipping.")
@@ -602,7 +592,7 @@ def muscle_initialisation(participant_inputs):
     muscle_number_to_nodes_key = parse_muscle_node_files_recursive("High_Level_Inputs/final_node_numbers")
 
     # Relate node numbers to their coordinates
-    node_to_coordinate = parse_ply_files_by_side_and_bone(participant_inputs, ["Femur", "Tibfib", "Pelvis"])
+    node_to_coordinate = parse_stl_files_by_side_and_bone(participant_inputs, ["Femur", "Tibfib", "Pelvis"])
 
     # Map muscle nodes to their corresponding coordinates
     muscle_linkages = map_muscle_nodes_to_coordinates(

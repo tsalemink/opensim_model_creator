@@ -21,7 +21,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
     meshes = os.path.join(participant_inputs, "Meshes")
 
 
-    # Clear the output_folder and meshes folder
+    # Clear the output_folder and meshes folder - this essentially recreates these folders upon each operation of the code, ensures that no remnants are left over from the previous running of the code.
     reset_folder(output_folder)
     reset_folder(meshes)
 
@@ -29,37 +29,12 @@ def create_model(participant_folder, create_muscles = False, testing = False):
     muscle_linkages = muscle_initialisation(participant_inputs)
 
 
-    #%%Extraction of meshes from the ply files
+    #%%Extraction of meshes from stl files
 
-    #This section needs to be converted to not convert from ply to stls,
-    # it just needs to read in stls ALREADY (from lauras code placing them here) present within the participant_inputs folder, it then needs to scale them down by a factor of 1000,
-    # and move them to the meshes folder, then it can combine the left and right pelvis stls,
-    # may need to adjust the search by keywords sections when importing meshes to make sure when importing the pelvis mesh we import just the combined pelvis mesh (for creating the pelvis)
-    # and likewise when tyring to do muscle attatchment sites we import the left or right pelvis and not the combined pelvis mesh as it will all be stored wihtn the same direcotry now
-    # so need to be more specific about which pelvis file we are pulling out.
+    process_participant_meshes(participant_inputs, meshes, scale_factor=1) #Now setup to handle stls placed directly within the input folder
 
-
-
-
-    #Runs the conversion process
-    batch_convert_and_scale(input_dir = participant_inputs)
-
-    # Combine the meshes
-    combine_pelvis_meshes(input_dir = participant_inputs)
-
-    # Cuts the stls to the meshes folder
-    move_mesh_files(participant_inputs, meshes)
-
-
-
-
-
-
-
-
-
-
-
+    #Have adjusted the combined pelvis mesh importation.
+    # TODO: setup the muscle linkages file above to be created from stls instead of plys
 
 
 
@@ -93,7 +68,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
     #%% Create feet bodies
     repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib)
 
-    #Create the muscle linkages dictionary
+    #Further augment the muscle linkages dictionary
     empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
         "Pelvis": pelvis_center,
         "Femur": [femur_l_center,femur_r_center],

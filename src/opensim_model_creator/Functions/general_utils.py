@@ -201,121 +201,112 @@ def compute_marker_midpoint(model, marker1_name, marker2_name):
 
     return midpoint
 
-def convert_and_scale_mesh(input_ply, output_stl, scale_factor=1000):
+
+def scale_stl_mesh(input_stl, output_stl, scale_factor=1000):
     """
-    Converts a .ply mesh to .stl format and scales it down by a given factor.
+    Scales an STL mesh by a given factor and saves it.
 
     Parameters:
-    - input_ply (str): Path to the input .ply file.
-    - output_stl (str): Path to save the output .stl file.
-    - scale_factor (float): The factor by which to scale the mesh (default: 1000).
+    - input_stl (str): Path to the input STL file.
+    - output_stl (str): Path to save the scaled STL file.
+    - scale_factor (float): Scaling factor (default: 1000).
 
     Returns:
     - None
     """
-    # Load the .ply file
-    mesh = trimesh.load(input_ply)
+    # Load the STL file
+    mesh = trimesh.load(input_stl)
 
     if not isinstance(mesh, trimesh.Trimesh):
-        raise ValueError("The loaded file is not a valid mesh.")
+        raise ValueError(f"File '{input_stl}' is not a valid mesh.")
 
     # Scale the mesh
     mesh.apply_scale(1 / scale_factor)
 
-    # Export the scaled mesh to .stl format
+    # Export the scaled STL
     mesh.export(output_stl, file_type="stl")
-    print(f"Converted and scaled mesh saved to: {output_stl}")
+    print(f"Scaled and saved: {output_stl}")
 
-def batch_convert_and_scale(scale_factor=1000, input_dir=None):
+
+def process_participant_meshes(participant_inputs, meshes_folder, scale_factor=1000):
     """
-    Converts all .ply files in the specified or selected directory to .stl format while scaling them.
-    Deletes any existing .stl files in the input directory before processing.
+    Reads STL files from participant_inputs, scales them, saves to meshes_folder,
+    and combines left and right pelvis meshes into a single file.
 
     Parameters:
-    - scale_factor (float): The factor by which to scale the meshes (default: 1000).
-    - input_dir (str): Optional path to the input directory containing .ply files.
-                       If not provided, a file dialog will prompt the user to select a directory.
+    - participant_inputs (str): Directory containing the participant's STL files.
+    - meshes_folder (str): Directory to save processed STL files.
+    - scale_factor (float): Scaling factor for the meshes (default: 1000).
 
     Returns:
     - None
     """
-    # Check if the directory exists
-    if not os.path.isdir(input_dir):
-        print(f"The directory '{input_dir}' does not exist. Exiting.")
+    # Ensure output directory exists
+    os.makedirs(meshes_folder, exist_ok=True)
+
+    # Find all STL files in the participant inputs folder
+    stl_files = [
+        f for f in os.listdir(participant_inputs)
+        if f.lower().endswith(".stl")
+    ]
+
+    if not stl_files:
+        print("No STL files found in the participant inputs folder.")
         return
 
-    # Delete all existing .stl files in the directory
-    stl_files = [f for f in os.listdir(input_dir) if f.lower().endswith(".stl")]
-    for stl_file in stl_files:
+    # Process each STL file: Scale and move to the meshes folder
+    for file_name in stl_files:
+        input_stl = os.path.join(participant_inputs, file_name)
+        output_stl = os.path.join(meshes_folder, file_name)
+
         try:
-            os.remove(os.path.join(input_dir, stl_file))
-            print(f"Deleted existing .stl file: {stl_file}")
+            scale_stl_mesh(input_stl, output_stl, scale_factor)
         except Exception as e:
-            print(f"Failed to delete {stl_file}: {e}")
+            print(f"Error processing {file_name}: {e}")
 
-    # Process each .ply file in the directory
-    for file_name in os.listdir(input_dir):
-        if file_name.endswith(".ply"):
-            input_ply = os.path.join(input_dir, file_name)
-            output_stl = os.path.join(input_dir, file_name.replace(".ply", ".stl"))
-            try:
-                convert_and_scale_mesh(input_ply, output_stl, scale_factor)
-                print(f"Converted and scaled {file_name} to {output_stl}")
-            except Exception as e:
-                print(f"Failed to process {file_name}: {e}")
+    # Combine pelvis STL files
+    combine_pelvis_meshes(meshes_folder)
 
-def combine_pelvis_meshes(input_dir, output_path=None):
+
+def combine_pelvis_meshes(meshes_folder):
     """
-    Searches an input directory for two STL files containing the word 'pelvis',
-    combines them into a single mesh, saves the combined mesh to the specified output file,
-    and deletes the original STL files.
+    Combines the left and right pelvis STL files in the specified directory into one.
 
     Parameters:
-    - input_dir (str): Directory to search for the STL files.
-    - output_path (str, optional): Path to save the combined mesh. Defaults to 'combined_pelvis_mesh.stl' in the input directory.
+    - meshes_folder (str): Directory where the pelvis STL files are stored.
 
     Returns:
     - None
     """
-    # Find all STL files containing "pelvis" in their names
+    # Find pelvis STL files
     pelvis_files = [
-        os.path.join(input_dir, f)
-        for f in os.listdir(input_dir)
+        os.path.join(meshes_folder, f)
+        for f in os.listdir(meshes_folder)
         if f.lower().endswith(".stl") and "pelvis" in f.lower()
     ]
 
-    # Check if exactly two files are found
+    # Ensure exactly two pelvis files are found
     if len(pelvis_files) != 2:
-        raise FileNotFoundError(
-            f"Expected exactly 2 STL files containing 'pelvis' in their names, but found {len(pelvis_files)}."
-        )
+        print(f"Expected 2 pelvis STL files, but found {len(pelvis_files)}.")
+        return
 
-    # Load the meshes
-    mesh1 = trimesh.load(pelvis_files[0])
-    mesh2 = trimesh.load(pelvis_files[1])
+    try:
+        # Load the meshes
+        mesh1 = trimesh.load(pelvis_files[0])
+        mesh2 = trimesh.load(pelvis_files[1])
 
-    # Ensure both are valid meshes
-    if not isinstance(mesh1, trimesh.Trimesh) or not isinstance(mesh2, trimesh.Trimesh):
-        raise ValueError("One or both of the loaded files are not valid meshes.")
+        # Combine meshes
+        combined_mesh = trimesh.util.concatenate([mesh1, mesh2])
 
-    # Combine the meshes
-    combined_mesh = trimesh.util.concatenate([mesh1, mesh2])
+        # Save combined pelvis mesh
+        output_path = os.path.join(meshes_folder, "combined_pelvis_mesh.stl")
+        combined_mesh.export(output_path, file_type="stl")
 
-    # Set default output path if not provided
-    if output_path is None:
-        output_path = os.path.join(input_dir, "combined_pelvis_mesh.stl")
+        print(f"Combined pelvis mesh saved to: {output_path}")
 
-    # Save the combined mesh
-    combined_mesh.export(output_path, file_type="stl")
-    print(f"Combined pelvis mesh saved to: {output_path}")
+    except Exception as e:
+        print(f"Failed to combine pelvis meshes: {e}")
 
-    # Delete the original files
-    for file_path in pelvis_files:
-        try:
-            os.remove(file_path)
-            print(f"Deleted: {file_path}")
-        except Exception as e:
-            print(f"Failed to delete {file_path}: {e}")
 
 def move_mesh_files(input_dir, output_dir, extensions=(".stl", ".vtp")):
     """

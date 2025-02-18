@@ -7,6 +7,7 @@ import numpy as np
 import xml.etree.ElementTree as ET
 from scipy.spatial.transform import Rotation as R
 from scipy.optimize import minimize
+import pandas as pd
 
 #Import required functions
 from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, vector_between_points, read_trc_file_as_dict, midpoint_3d
@@ -858,7 +859,7 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
     bounds = [(-0.001, 0.001)] * 4
     result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": iteration_count})
     model = osim.Model(temp_model_path_2)
-    model_name_here = final_output_model.split("/")[-1].split(".")[0]
+    model_name_here = os.path.basename(final_output_model)
     model.setName(model_name_here)
     model.printToXML(final_output_model)
     return result
@@ -1197,7 +1198,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     model.addJoint(pelvis_joint)
 
     # Attach the mesh for the pelvis
-    mesh_filename = search_files_by_keywords(meshes, "pelvis")[0]
+    mesh_filename = search_files_by_keywords(meshes, "combined pelvis")[0]
     info = extract_mesh_info_trimesh(mesh_filename)
     pelvis_center = info['center']
     rotated_pelvis_center = rotate_coordinate_x(pelvis_center, 90)
@@ -1827,7 +1828,84 @@ def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files, high_level_
         print("No matching <mesh_file> elements found to update.")
 
 
-def perform_updates(empty_model, output_folder, model_name):
+def estimate_body_segment_parameters(height, weight):
+    """
+    Estimates the segment masses and inertial properties of the body based on height and weight.
+
+    Args:
+        height (float): Height of the participant in meters.
+        weight (float): Weight of the participant in kg.
+
+    Returns:
+        dict: A dictionary containing segment masses and inertial properties.
+    """
+    # Segment mass as percentage of body mass (Winter, 2009 Biomechanics & ASCM)
+    segment_mass_percentages = {
+        "pelvis": 0.111,  # 11.1% of body mass
+        "femur": 0.146,  # 14.6% of body mass (each)
+        "tibfib": 0.0465,  # 4.65% of body mass (each)
+    }
+
+    # Estimated segment lengths as a percentage of body height (Winter, 2009)
+    segment_length_percentages = {
+        "pelvis": 0.24,  # 24% of height
+        "femur": 0.245,  # 24.5% of height
+        "tibfib": 0.246,  # 24.6% of height
+    }
+
+    # Approximate segment radii (based on height & segment length)
+    segment_radii_percentages = {
+        "pelvis": 0.14,  # Pelvis is wider
+        "femur": 0.12,  # Femur is narrower
+        "tibfib": 0.09,  # Tibia/Fibula is thinnest
+    }
+
+    # Compute segment masses
+    masses = {key: weight * value for key, value in segment_mass_percentages.items()}
+
+    # Estimate segment lengths
+    segment_lengths = {key: height * value for key, value in segment_length_percentages.items()}
+
+    # Estimate segment radii
+    segment_radii = {key: segment_lengths[key] * segment_radii_percentages[key] for key in segment_radii_percentages}
+
+    # Compute inertia using appropriate models
+    inertias = {}
+
+    for segment in segment_mass_percentages.keys():
+        mass = masses[segment]
+
+        if segment == "pelvis":
+            # Pelvis modeled as an ellipsoid
+            a = 0.20 * height / 2  # Half of pelvic width
+            b = 0.14 * height / 2  # Half of pelvic depth
+            c = 0.24 * height / 2  # Half of pelvic height
+
+            I_x = (1 / 5) * mass * (b ** 2 + c ** 2)  # Rotation around X (Forward-Backward)
+            I_y = (1 / 5) * mass * (a ** 2 + c ** 2)  # Rotation around Y (Vertical)
+            I_z = (1 / 5) * mass * (a ** 2 + b ** 2)  # Rotation around Z (Left-Right)
+
+            inertias[segment] = [I_x, I_y, I_z, 0, 0, 0]  # OpenSim inertia format
+
+        else:
+            # Long bones modeled as cylinders
+            length = segment_lengths[segment]
+            radius = segment_radii[segment]
+
+            I1 = (1/12) * mass * (3 * radius**2 + length**2)  # Transverse moment (X)
+            I2 = (1/12) * mass * (3 * radius**2 + length**2)  # Transverse moment (Z)
+            I3 = (1/2) * mass * radius**2  # Longitudinal moment (Y)
+
+            # Assign inertia with correct OpenSim axes
+            inertias[segment] = [I1, I3, I2, 0, 0, 0]  # Y-axis gets I3 (smallest)
+
+    return {
+        "masses": masses,
+        "inertias": inertias
+    }
+
+
+def perform_updates(empty_model, output_folder, model_name, weight, height):
     output_file = output_folder +"/"f"{model_name}.osim"
 
     # Load the selected model
@@ -1931,43 +2009,35 @@ def perform_updates(empty_model, output_folder, model_name):
     tibfib_l = model.getBodySet().get('tibfib_l_b')
     tibfib_r = model.getBodySet().get('tibfib_r_b')
 
-    # Function to set mass, center of mass, and inertia
     def set_mass_com_inertia(body, mass, com, inertia):
+        """
+        Sets mass, center of mass, and inertia for an OpenSim body.
+
+        Args:
+            body (osim.Body): OpenSim body segment.
+            mass (float): Mass in kg.
+            com (list): Center of mass [x, y, z] in meters.
+            inertia (list): Inertia tensor [Ixx, Iyy, Izz, Ixy, Ixz, Iyz].
+        """
         body.setMass(mass)
         body.setMassCenter(osim.Vec3(*com))
-        body.setInertia(osim.Inertia(inertia[0], inertia[1], inertia[2], inertia[3], inertia[4], inertia[5]))
+        body.setInertia(osim.Inertia(*inertia))
 
 
-    # Set mass for each body (kg)
-    masses = {
-        'pelvis_b': 6.5,
-        'femur_l_b': 6.0,
-        'femur_r_b': 6.0,
-        'tibfib_l_b': 2.5,
-        'tibfib_r_b': 2.5}
+    # Compute body segment parameters
+    params = estimate_body_segment_parameters(height, weight)
+    masses = params["masses"]
+    inertias = params["inertias"]
 
-    # Set centre of mass for each body
-    coms = {
-        'pelvis_b': [-0.01, 0.0, 0.0],
-        'femur_l_b': [0.0, -0.125, 0.0],
-        'femur_r_b': [0.0, -0.125, 0.0],
-        'tibfib_l_b': [0.0, -0.12, 0.0],
-        'tibfib_r_b': [0.0, -0.12, 0.0]}
+    # Set all COMs at [0,0,0] (assuming mesh centroids)
+    coms = {key: [0, 0, 0] for key in masses.keys()}
 
-    # Set inertia for each body
-    inertias = {
-        'pelvis_b': [0.1, 0.1, 0.1, 0.0, 0.0, 0.0],
-        'femur_l_b': [0.1, 0.025, 0.1, 0.0, 0.0, 0.0],
-        'femur_r_b': [0.1, 0.025, 0.1, 0.0, 0.0, 0.0],
-        'tibfib_l_b': [0.025, 0.0025, 0.025, 0.0, 0.0, 0.0],
-        'tibfib_r_b': [0.025, 0.0025, 0.025, 0.0, 0.0, 0.0]}
-
-    # Apply mass, center of mass, and inertia to each body segment
-    set_mass_com_inertia(pelvis, masses['pelvis_b'], coms['pelvis_b'], inertias['pelvis_b'])
-    set_mass_com_inertia(femur_l, masses['femur_l_b'], coms['femur_l_b'], inertias['femur_l_b'])
-    set_mass_com_inertia(femur_r, masses['femur_r_b'], coms['femur_r_b'], inertias['femur_r_b'])
-    set_mass_com_inertia(tibfib_l, masses['tibfib_l_b'], coms['tibfib_l_b'], inertias['tibfib_l_b'])
-    set_mass_com_inertia(tibfib_r, masses['tibfib_r_b'], coms['tibfib_r_b'], inertias['tibfib_r_b'])
+    # Apply mass, center of mass, and inertia
+    set_mass_com_inertia(pelvis, masses["pelvis"], coms["pelvis"], inertias["pelvis"])
+    set_mass_com_inertia(femur_l, masses["femur"], coms["femur"], inertias["femur"])
+    set_mass_com_inertia(femur_r, masses["femur"], coms["femur"], inertias["femur"])
+    set_mass_com_inertia(tibfib_l, masses["tibfib"], coms["tibfib"], inertias["tibfib"])
+    set_mass_com_inertia(tibfib_r, masses["tibfib"], coms["tibfib"], inertias["tibfib"])
 
     # Finalise the initial iteration of model
     model.finalizeConnections()

@@ -2,6 +2,9 @@
 import os
 import opensim as osim
 import numpy as np
+import trimesh
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 
 #Import required functions
 from opensim_model_creator.Functions.file_utils import search_files_by_keywords
@@ -40,7 +43,7 @@ muscle_linkages = {
     },
     "Gem": {
         "ori": [["Pelvis", "112"],["Pelvis","113"]],
-        "ins": [["Femur", "111_112_113"]],
+        "ins": [["Femur", "111_112_113"],["Femur", "111_112_113"]],
     },
     "Quad fem": {
         "ori": [["Pelvis", "114"]],
@@ -52,7 +55,7 @@ muscle_linkages = {
     },
     "Rect fem": {
         "ori": [["Pelvis", "116a"],["Pelvis","116a_1"]],
-        "ins": [["Tibia", "116"]],
+        "ins": [["Tibia", "116"],["Tibia", "116"]],
     },
     "Pect": {
         "ori": [["Pelvis", "118"]],
@@ -91,8 +94,8 @@ muscle_linkages = {
         "ins": [["Femur", "107"]],
     },
     "Add mag": {
-        "ori": [["Pelvis", "121"]],
-        "ins": [["Femur", "121"],["Femur","121_1"]],
+        "ori": [["Pelvis", "121"],["Pelvis", "121"]],
+        "ins": [["Femur","121_1"],["Femur", "121"]],
     },
     "Semiten": {
         "ori": [["Pelvis", "125"]],
@@ -212,63 +215,52 @@ def parse_muscle_node_files_recursive(root_directory):
     muscle_nodes = {k: v for k, v in muscle_nodes.items() if v}
     return muscle_nodes
 
-def parse_ply_files_by_side_and_bone(directory, bones):
+def parse_stl_files_by_side_and_bone(directory, bones):
     """
-    Parses .ply files by side ('left', 'right') and bone names to extract node coordinates.
+    Parses .stl files by side ('Left', 'Right') and bone names to extract vertex coordinates.
 
     Args:
-        directory (str): The directory containing the .ply files.
+        directory (str): The directory containing the .stl files.
         bones (list of str): List of bone names to process (e.g., ['tibfib', 'pelvis', 'femur']).
 
     Returns:
-        dict: A nested dictionary with structure {side: {bone: {node_number: [x, y, z], ...}, ...}, ...}.
+        dict: A nested dictionary with structure {side: {bone: {vertex_index: [x, y, z], ...}, ...}, ...}.
     """
     sides = ['Left', 'Right']
     parsed_data = {side: {} for side in sides}
 
     for side in sides:
         for bone in bones:
-            # Search for the specific file using the provided function
-            ply_files = search_files_by_keywords(directory, side+" "+bone)
+            # Search for the specific file
+            stl_files = search_files_by_keywords(directory, side + " " + bone)
 
-            if len(ply_files) == 0:
-                print(f"No .ply file found for {side} {bone}. Skipping.")
+            if len(stl_files) == 0:
+                print(f"No .stl file found for {side} {bone}. Skipping.")
                 continue
-            if len(ply_files) > 1:
-                print(f"Multiple .ply files found for {side} {bone}: {ply_files}. Using the first one.")
+            if len(stl_files) > 1:
+                print(f"Multiple .stl files found for {side} {bone}: {stl_files}. Using the first one.")
 
-            ply_path = ply_files[0]  # Use the first match
+            stl_path = stl_files[0]  # Use the first match
 
-            # Process the .ply file to extract node coordinates
-            node_dict = {}
-            with open(ply_path, "r") as file:
-                lines = file.readlines()
+            # Load the STL file using trimesh
+            mesh = trimesh.load(stl_path)
 
-            # Locate the "end_header" and extract vertex data
-            vertex_count = 0
-            header_end = 0
-            for i, line in enumerate(lines):
-                if line.startswith("element vertex"):
-                    vertex_count = int(line.split()[-1])
-                if line.strip() == "end_header":
-                    header_end = i
-                    break
+            if not isinstance(mesh, trimesh.Trimesh):
+                print(f"Invalid mesh file: {stl_path}. Skipping.")
+                continue
 
-            vertex_data = lines[header_end + 1: header_end + 1 + vertex_count]
+            # Extract unique vertex coordinates
+            unique_vertices = mesh.vertices
 
-            # Parse vertex data
-            for i, line in enumerate(vertex_data):
-                if line.strip():  # Avoid empty lines
-                    coords = list(map(float, line.split()))
-                    node_dict[i] = coords  # Node numbers start from 0
+            # Store the parsed vertices in the dictionary
+            vertex_dict = {i: list(unique_vertices[i]) for i in range(len(unique_vertices))}
+            parsed_data[side][bone] = vertex_dict
 
-            # Store the parsed nodes in the dictionary
-            parsed_data[side][bone] = node_dict
-            print(f"Processed {side} {bone}: {len(node_dict)} nodes.")
+            print(f"Processed {side} {bone}: {len(vertex_dict)} unique vertices.")
 
     return parsed_data
 
-def map_muscle_nodes_to_coordinates(    muscle_linkages, muscle_number_to_nodes_key, node_to_coordinate):
+def map_muscle_nodes_to_coordinates(muscle_linkages, muscle_number_to_nodes_key, node_to_coordinate):
     """
     Maps muscle numbers to their corresponding mean node coordinates and updates muscle_linkages.
 
@@ -296,9 +288,9 @@ def map_muscle_nodes_to_coordinates(    muscle_linkages, muscle_number_to_nodes_
                     current_coordinates = []
                     for node in nodes:
                         try:
-                            # Append scaled coordinates
+                            # Append coordinates (no longer scaled due to the stls already being scaled before extracting their coordinate positions)
                             current_coordinates.append(
-                                [coord / 1000 for coord in node_to_coordinate[side][body_part][node]]
+                                [coord for coord in node_to_coordinate[side][body_part][node]]
                             )
                         except KeyError:
                             print(f"Node {node} not found in {side}/{body_part}. Skipping.")
@@ -312,7 +304,11 @@ def map_muscle_nodes_to_coordinates(    muscle_linkages, muscle_number_to_nodes_
                         mean_coordinates = np.mean(coordinates_array, axis=0)
 
                         # Append mean_coordinates to the attachment list
-                        attachment.append(mean_coordinates)
+                        #attachment.append(mean_coordinates)
+
+                        # Append coordinates_array to the attachment list (for purposes of multiple attatchment sites)
+                        attachment.append(coordinates_array)
+
 
     return muscle_linkages
 
@@ -347,10 +343,10 @@ def add_all_muscle_attachment_markers(model, muscle_linkages, centers):
                         muscle_name = attachment_type + side + "_" + muscle.lower().replace(" ", "_")
                     muscle_name = [muscle_name]
                     if side == "_l":
-                        location = {muscle_name[0]:attachment[2]}
+                        location = {muscle_name[0]:np.mean(attachment[2], axis=0)}
                         muscle_name_storage[0] = muscle_name[0]
                     elif side == "_r":
-                        location = {muscle_name[0]:attachment[3]}
+                        location = {muscle_name[0]:np.mean(attachment[3], axis=0)}
                         muscle_name_storage[1] = muscle_name[0]
                     add_markers_to_body(model, body_name, muscle_name,location, center)
                 attachment.append(muscle_name_storage[0])
@@ -362,11 +358,13 @@ def add_all_muscles_to_model_with_simple_names(model, local_muscle_positions, mu
     """
     Adds all muscles to the model based on muscle_linkages and local_muscle_positions.
     Names muscles using a simple convention like 'l_gem_1' or 'r_gem_2'.
+    If the number of origins equals the number of insertions, it maps them directly (1-to-1).
+    Otherwise, it creates pairwise combinations.
 
     Args:
         model (osim.Model): OpenSim model to which the muscles will be added.
-        muscle_linkages (dict): Dictionary defining muscle linkages with body parts and muscle numbers.
         local_muscle_positions (dict): Dictionary mapping muscle marker names to positions and parent bodies.
+        muscle_linkages (dict): Dictionary defining muscle linkages with body parts and muscle numbers.
     """
     for muscle_name, attachments in muscle_linkages.items():
         # Ensure both origin ('ori') and insertion ('ins') exist for the muscle
@@ -374,25 +372,30 @@ def add_all_muscles_to_model_with_simple_names(model, local_muscle_positions, mu
             print(f"Skipping {muscle_name}: Missing origin or insertion data.")
             continue
 
-
-
         origins = attachments['ori']
         insertions = attachments['ins']
 
-
-        if origins[0][0] == "Tibia" or origins[0][0] == "Fibula" or insertions[0][0] == "Fibula" or insertions[0][0] == "Tibia":
+        # Skip tibia/fibula-based muscles (as per previous filtering)
+        if any(b in ["Tibia", "Fibula"] for b, *_ in origins + insertions):
             continue
-        # Iterate through all combinations of origins and insertions
-        for origin_index, origin in enumerate(origins):
-            for insertion_index, insertion in enumerate(insertions):
-                # Generate left muscle name
-                origin_marker_name_l = origin[4]  # Example: 'ori_l_gem_1'
-                insertion_marker_name_l = insertion[4]  # Example: 'ins_l_gem'
+
+        num_origins = len(origins)
+        num_insertions = len(insertions)
+
+        # **Direct Mapping Mode** (1st origin → 1st insertion, 2nd origin → 2nd insertion)
+        if num_origins == num_insertions:
+            for i in range(num_origins):
+                origin = origins[i]
+                insertion = insertions[i]
+
+                # Left muscle
+                origin_marker_name_l = origin[4]
+                insertion_marker_name_l = insertion[4]
                 origin_position_l = local_muscle_positions.get(origin_marker_name_l)
                 insertion_position_l = local_muscle_positions.get(insertion_marker_name_l)
 
                 if origin_position_l and insertion_position_l:
-                    simple_name_l = f"l_{muscle_name.lower().replace(' ', '_')}_{origin_index + 1}_{insertion_index + 1}"
+                    simple_name_l = f"l_{muscle_name.lower().replace(' ', '_')}_{i + 1}"
                     add_muscle_to_model(
                         model=model,
                         muscle_name=simple_name_l,
@@ -400,20 +403,21 @@ def add_all_muscles_to_model_with_simple_names(model, local_muscle_positions, mu
                         insertion_point=insertion_position_l,
                     )
 
-                # Generate right muscle name
-                origin_marker_name_r = origin[5]  # Example: 'ori_r_gem_1'
-                insertion_marker_name_r = insertion[5]  # Example: 'ins_r_gem'
+                # Right muscle
+                origin_marker_name_r = origin[5]
+                insertion_marker_name_r = insertion[5]
                 origin_position_r = local_muscle_positions.get(origin_marker_name_r)
                 insertion_position_r = local_muscle_positions.get(insertion_marker_name_r)
 
                 if origin_position_r and insertion_position_r:
-                    simple_name_r = f"r_{muscle_name.lower().replace(' ', '_')}_{origin_index + 1}_{insertion_index + 1}"
+                    simple_name_r = f"r_{muscle_name.lower().replace(' ', '_')}_{i + 1}"
                     add_muscle_to_model(
                         model=model,
                         muscle_name=simple_name_r,
                         origin_point=origin_position_r,
                         insertion_point=insertion_position_r,
                     )
+
 
 def add_wrapping_objects_to_model(model, wrapping_objects):
     """
@@ -602,7 +606,7 @@ def muscle_initialisation(participant_inputs):
     muscle_number_to_nodes_key = parse_muscle_node_files_recursive("High_Level_Inputs/final_node_numbers")
 
     # Relate node numbers to their coordinates
-    node_to_coordinate = parse_ply_files_by_side_and_bone(participant_inputs, ["Femur", "Tibfib", "Pelvis"])
+    node_to_coordinate = parse_stl_files_by_side_and_bone(participant_inputs, ["Femur", "Tibfib", "Pelvis"])
 
     # Map muscle nodes to their corresponding coordinates
     muscle_linkages = map_muscle_nodes_to_coordinates(
@@ -610,3 +614,162 @@ def muscle_initialisation(participant_inputs):
     )
 
     return muscle_linkages
+
+def segment_coordinates_pca(coordinates, num_sections):
+    """
+    Segments a list of 3D coordinates into a specified number of sections using PCA.
+
+    Args:
+        coordinates (list of list/tuple): A list of [x, y, z] coordinates.
+        num_sections (int): Number of sections to divide the data into.
+
+    Returns:
+        dict: A dictionary where keys are section indices and values are lists of 3D points in that section.
+    """
+    # Convert to NumPy array
+    coords_array = np.array(coordinates)
+
+    # Apply PCA to find the principal axis
+    pca = PCA(n_components=3)
+    pca.fit(coords_array)
+    principal_axis = pca.components_[0]  # First principal component
+
+    # Project points onto the principal axis
+    projected_values = coords_array @ principal_axis  # Dot product to project onto axis
+
+    # Apply K-Means clustering to divide into sections
+    kmeans = KMeans(n_clusters=num_sections, random_state=42, n_init=10)
+    cluster_labels = kmeans.fit_predict(projected_values.reshape(-1, 1))
+
+    # Store results in a dictionary
+    segmented_groups = {i: [] for i in range(num_sections)}
+    for idx, label in enumerate(cluster_labels):
+        segmented_groups[label].append(tuple(coords_array[idx]))
+
+    return segmented_groups, coords_array, cluster_labels, principal_axis
+
+def segment_coordinates_pca_sorted(coords, num_segments):
+    """
+    Segments a set of 3D coordinates into a given number of regions using PCA,
+    and sorts them along the first principal axis to minimize crossing.
+
+    Args:
+        coords (numpy.ndarray): Nx3 array of 3D points representing muscle attachment.
+        num_segments (int): Number of segments to divide the data into.
+
+    Returns:
+        list: A list containing `num_segments` sublists of segmented and ordered coordinates.
+    """
+    coords = np.array(coords)  # Ensure it's an array
+    if coords.shape[0] < num_segments:
+        raise ValueError("Not enough points to segment into the requested number of sections.")
+
+    # Apply PCA to find the main orientation of the points
+    pca = PCA(n_components=3)
+    pca.fit(coords)
+
+    # Project the points onto the first principal component
+    projected = coords @ pca.components_[0]
+
+    # Sort indices based on PCA projection (this orders them along PC1)
+    sorted_indices = np.argsort(projected)
+
+    # Reorder coordinates based on PCA sorting
+    sorted_coords = coords[sorted_indices]
+
+    # Split into segments
+    segmented_coords = np.array_split(sorted_coords, num_segments)
+
+    return segmented_coords
+
+def segment_muscle_origins_insertions(muscle_linkages, muscle_name, pair_to_segment=0, num_segments=3):
+    """
+    Segments only a specific origin-insertion pair of a given muscle into `num_segments` sections using PCA.
+
+    Args:
+        muscle_linkages (dict): Dictionary containing muscle attachment data.
+        muscle_name (str): The name of the muscle to process.
+        pair_to_segment (int): The index (0-based) of the origin-insertion pair to segment.
+        num_segments (int): The number of segments to split that specific pair into.
+
+    Returns:
+        None (modifies muscle_linkages in-place)
+    """
+
+    # Ensure muscle exists
+    if muscle_name not in muscle_linkages:
+        print(f"Muscle '{muscle_name}' not found in muscle_linkages.")
+        return
+
+    # Ensure selected pair exists
+    if pair_to_segment >= len(muscle_linkages[muscle_name]["ori"]):
+        print(f"Invalid pair index {pair_to_segment} for muscle '{muscle_name}'. Skipping segmentation.")
+        return
+
+    # Extract coordinates for segmentation
+    origin_l_coords = muscle_linkages[muscle_name]["ori"][pair_to_segment][2]
+    origin_r_coords = muscle_linkages[muscle_name]["ori"][pair_to_segment][3]
+    insertion_l_coords = muscle_linkages[muscle_name]["ins"][pair_to_segment][2]
+    insertion_r_coords = muscle_linkages[muscle_name]["ins"][pair_to_segment][3]
+
+    # Apply PCA-based segmentation with ordering
+    segmented_ori_l = segment_coordinates_pca_sorted(origin_l_coords, num_segments)
+    segmented_ori_r = segment_coordinates_pca_sorted(origin_r_coords, num_segments)
+    segmented_ins_l = segment_coordinates_pca_sorted(insertion_l_coords, num_segments)
+    segmented_ins_r = segment_coordinates_pca_sorted(insertion_r_coords, num_segments)
+
+    # Store the original pair before modifying
+    original_ori = muscle_linkages[muscle_name]["ori"][pair_to_segment]
+    original_ins = muscle_linkages[muscle_name]["ins"][pair_to_segment]
+
+    # Replace the original entry instead of deleting
+    for i in range(num_segments):
+        new_ori = original_ori.copy()
+        new_ins = original_ins.copy()
+
+        new_ori[2] = np.array(segmented_ori_l[i])
+        new_ori[3] = np.array(segmented_ori_r[i])
+        new_ins[2] = np.array(segmented_ins_l[i])
+        new_ins[3] = np.array(segmented_ins_r[i])
+
+        # Replace the original entry (first one), then append new ones
+        if i == 0:
+            muscle_linkages[muscle_name]["ori"][pair_to_segment] = new_ori
+            muscle_linkages[muscle_name]["ins"][pair_to_segment] = new_ins
+        else:
+            muscle_linkages[muscle_name]["ori"].insert(pair_to_segment + i, new_ori)
+            muscle_linkages[muscle_name]["ins"].insert(pair_to_segment + i, new_ins)
+
+    print(f"Segmented {muscle_name} pair {pair_to_segment} into {num_segments} sections.")
+
+def swap_muscle_attachments(muscle_linkages, muscle_name, index1, index2, attachment_type="ori"):
+    """
+    Swaps the origins or insertions of two segments in a muscle's linkage dictionary.
+
+    Args:
+        muscle_linkages (dict): The dictionary containing muscle attachments.
+        muscle_name (str): The muscle to modify.
+        index1 (int): First index to swap.
+        index2 (int): Second index to swap.
+        attachment_type (str): Type of attachment to swap, either "ori" (origin) or "ins" (insertion).
+
+    Returns:
+        None (modifies muscle_linkages in-place)
+    """
+    if muscle_name not in muscle_linkages:
+        print(f"Muscle '{muscle_name}' not found.")
+        return
+
+    if attachment_type not in ["ori", "ins"]:
+        print(f"Invalid attachment type '{attachment_type}'. Use 'ori' for origins or 'ins' for insertions.")
+        return
+
+    if index1 >= len(muscle_linkages[muscle_name][attachment_type]) or index2 >= len(muscle_linkages[muscle_name][attachment_type]):
+        print(f"Invalid indices for swapping in '{muscle_name}'.")
+        return
+
+    # Swap the specified attachment (origin or insertion) at the specified indices
+    muscle_linkages[muscle_name][attachment_type][index1], muscle_linkages[muscle_name][attachment_type][index2] = \
+        muscle_linkages[muscle_name][attachment_type][index2], muscle_linkages[muscle_name][attachment_type][index1]
+
+    print(f"Swapped {attachment_type} at indices {index1} and {index2} for '{muscle_name}'.")

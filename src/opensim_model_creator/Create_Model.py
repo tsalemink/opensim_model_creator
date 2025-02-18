@@ -10,7 +10,25 @@ from opensim_model_creator.Functions.muscle_utils import *
 from opensim_model_creator.Functions.file_utils import reset_folder
 
 
-def create_model(participant_folder, create_muscles = False, testing = False):
+# TODO: Automatically define inertial properties from participant specific inputs such as height and weight and then use cadaveric data to infer these properties for each limb segment
+
+
+def create_model(participant_folder, weight, height, create_muscles=False, testing=False, scale_factor=1000):
+    """
+    Creates an OpenSim model for a given participant, optionally adding muscles.
+
+    Args:
+        participant_folder (str): Path to the participant's folder.
+        create_muscles (bool): Whether to add muscles to the model.
+        testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
+        scale_factor (int): Scaling factor for mesh conversion.
+        weight (float, optional): Participant's weight in kg.
+        height (float, optional): Participant's height in meters.
+
+    Returns:
+        None
+    """
+
     #%% Setup of folders
     participant_inputs = os.path.join(participant_folder, "Inputs")
 
@@ -21,47 +39,25 @@ def create_model(participant_folder, create_muscles = False, testing = False):
     meshes = os.path.join(participant_inputs, "Meshes")
 
 
-    # Clear the output_folder and meshes folder
+    # Clear the output_folder and meshes folder - this essentially recreates these folders upon each operation of the code, ensures that no remnants are left over from the previous running of the code.
     reset_folder(output_folder)
     reset_folder(meshes)
 
+
+
+    #%%Extraction of meshes from stl files
+
+    process_participant_meshes(participant_inputs, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
+
     # Initialize muscles
-    muscle_linkages = muscle_initialisation(participant_inputs)
+    muscle_linkages = muscle_initialisation(meshes)
 
+    segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
+    segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
+    segment_muscle_origins_insertions(muscle_linkages, "Add mag", pair_to_segment=0, num_segments=2)
 
-    #%%Extraction of meshes from the ply files
-
-    #This section needs to be converted to not convert from ply to stls,
-    # it just needs to read in stls ALREADY (from lauras code placing them here) present within the participant_inputs folder, it then needs to scale them down by a factor of 1000,
-    # and move them to the meshes folder, then it can combine the left and right pelvis stls,
-    # may need to adjust the search by keywords sections when importing meshes to make sure when importing the pelvis mesh we import just the combined pelvis mesh (for creating the pelvis)
-    # and likewise when tyring to do muscle attatchment sites we import the left or right pelvis and not the combined pelvis mesh as it will all be stored wihtn the same direcotry now
-    # so need to be more specific about which pelvis file we are pulling out.
-
-
-
-
-    #Runs the conversion process
-    batch_convert_and_scale(input_dir = participant_inputs)
-
-    # Combine the meshes
-    combine_pelvis_meshes(input_dir = participant_inputs)
-
-    # Cuts the stls to the meshes folder
-    move_mesh_files(participant_inputs, meshes)
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # Apply a swap for Adductor Magnus origins
+    swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
 
 
     # %% Initialisation of models and extraction of relevant landmarks/marker placements
@@ -93,7 +89,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
     #%% Create feet bodies
     repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib)
 
-    #Create the muscle linkages dictionary
+    #Further augment the muscle linkages dictionary
     empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
         "Pelvis": pelvis_center,
         "Femur": [femur_l_center,femur_r_center],
@@ -123,7 +119,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
     print(f"Model saved to: {output_path}")
 
     #%% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, output_folder, model_name)
+    output_file = perform_updates(empty_model, output_folder, model_name,  weight, height)
 
     # Reload the model
     empty_model = osim.Model(output_file)
@@ -316,7 +312,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
         #compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
 
 
-
+'''
 
         marker_model = osim.Model(empty_model)
         state = marker_model.initSystem()
@@ -426,7 +422,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
 
 
         wrapping_objects = {
-            "l_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
+            "l_glut_max_1": [  # Muscle name (key), list of wrapping objects (values)
                 {   # Wrapping object 1 (Pelvis)
                     "name": "l_glut_max_1_1_pelvis_wrap",  # Unique name
                     "body": "pelvis_b",
@@ -449,7 +445,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
                 }
 
             ],
-            "r_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
+            "r_glut_max_1": [  # Muscle name (key), list of wrapping objects (values)
                 {  # Wrapping object 1 (Pelvis)
                     "name": "r_glut_max_1_1_pelvis_wrap",  # Unique name
                     "body": "pelvis_b",
@@ -465,6 +461,7 @@ def create_model(participant_folder, create_muscles = False, testing = False):
 
 
 
-        model = add_wrapping_objects_to_model(model, wrapping_objects)
-        model.finalizeConnections()
-        model.printToXML(muscle_model)
+        #model = add_wrapping_objects_to_model(model, wrapping_objects)
+        #model.finalizeConnections()
+        #model.printToXML(muscle_model)
+'''

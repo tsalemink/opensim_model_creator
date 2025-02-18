@@ -43,13 +43,14 @@ def create_model(participant_folder, weight, height, create_muscles=False, testi
     reset_folder(output_folder)
     reset_folder(meshes)
 
+
+
+    #%%Extraction of meshes from stl files
+
+    process_participant_meshes(participant_inputs, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
+
     # Initialize muscles
-    muscle_linkages = muscle_initialisation(participant_inputs)
-
-    #Add the ability to split a muscle into multiple segments (essenitally just add duplicates to the origin/insertion section of the muscle linkages dicitonary above, with adjusted coordinate values)
-
-
-
+    muscle_linkages = muscle_initialisation(meshes)
 
     segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
     segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
@@ -57,11 +58,6 @@ def create_model(participant_folder, weight, height, create_muscles=False, testi
 
     # Apply a swap for Adductor Magnus origins
     swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
-
-    #%%Extraction of meshes from stl files
-
-    process_participant_meshes(participant_inputs, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
-
 
 
     # %% Initialisation of models and extraction of relevant landmarks/marker placements

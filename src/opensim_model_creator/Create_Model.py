@@ -10,7 +10,25 @@ from opensim_model_creator.Functions.muscle_utils import *
 from opensim_model_creator.Functions.file_utils import reset_folder
 
 
-def create_model(participant_folder, create_muscles = False, testing = False, scale_factor = 1000):
+# TODO: Automatically define inertial properties from participant specific inputs such as height and weight and then use cadaveric data to infer these properties for each limb segment
+
+
+def create_model(participant_folder, weight, height, create_muscles=False, testing=False, scale_factor=1000):
+    """
+    Creates an OpenSim model for a given participant, optionally adding muscles.
+
+    Args:
+        participant_folder (str): Path to the participant's folder.
+        create_muscles (bool): Whether to add muscles to the model.
+        testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
+        scale_factor (int): Scaling factor for mesh conversion.
+        weight (float, optional): Participant's weight in kg.
+        height (float, optional): Participant's height in meters.
+
+    Returns:
+        None
+    """
+
     #%% Setup of folders
     participant_inputs = os.path.join(participant_folder, "Inputs")
 
@@ -28,6 +46,17 @@ def create_model(participant_folder, create_muscles = False, testing = False, sc
     # Initialize muscles
     muscle_linkages = muscle_initialisation(participant_inputs)
 
+    #Add the ability to split a muscle into multiple segments (essenitally just add duplicates to the origin/insertion section of the muscle linkages dicitonary above, with adjusted coordinate values)
+
+
+
+
+    segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
+    segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
+    segment_muscle_origins_insertions(muscle_linkages, "Add mag", pair_to_segment=0, num_segments=2)
+
+    # Apply a swap for Adductor Magnus origins
+    swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
 
     #%%Extraction of meshes from stl files
 
@@ -94,7 +123,7 @@ def create_model(participant_folder, create_muscles = False, testing = False, sc
     print(f"Model saved to: {output_path}")
 
     #%% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, output_folder, model_name)
+    output_file = perform_updates(empty_model, output_folder, model_name,  weight, height)
 
     # Reload the model
     empty_model = osim.Model(output_file)
@@ -287,7 +316,7 @@ def create_model(participant_folder, create_muscles = False, testing = False, sc
         #compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
 
 
-
+'''
 
         marker_model = osim.Model(empty_model)
         state = marker_model.initSystem()
@@ -397,7 +426,7 @@ def create_model(participant_folder, create_muscles = False, testing = False, sc
 
 
         wrapping_objects = {
-            "l_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
+            "l_glut_max_1": [  # Muscle name (key), list of wrapping objects (values)
                 {   # Wrapping object 1 (Pelvis)
                     "name": "l_glut_max_1_1_pelvis_wrap",  # Unique name
                     "body": "pelvis_b",
@@ -420,7 +449,7 @@ def create_model(participant_folder, create_muscles = False, testing = False, sc
                 }
 
             ],
-            "r_glut_max_1_1": [  # Muscle name (key), list of wrapping objects (values)
+            "r_glut_max_1": [  # Muscle name (key), list of wrapping objects (values)
                 {  # Wrapping object 1 (Pelvis)
                     "name": "r_glut_max_1_1_pelvis_wrap",  # Unique name
                     "body": "pelvis_b",
@@ -436,6 +465,7 @@ def create_model(participant_folder, create_muscles = False, testing = False, sc
 
 
 
-        model = add_wrapping_objects_to_model(model, wrapping_objects)
-        model.finalizeConnections()
-        model.printToXML(muscle_model)
+        #model = add_wrapping_objects_to_model(model, wrapping_objects)
+        #model.finalizeConnections()
+        #model.printToXML(muscle_model)
+'''

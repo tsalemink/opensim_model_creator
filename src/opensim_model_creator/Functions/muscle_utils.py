@@ -321,13 +321,16 @@ def add_all_muscle_attachment_markers(model, muscle_linkages, centers):
             # Iterate through each attachment for the current muscle and attachment type
             i = 1
             for attachment in muscle_linkages[muscle][attachment_type]:
-                if attachment[0] == "Tibia" or attachment[0] == "Fibula":
-                    continue
+                #if attachment[0] == "Tibia" or attachment[0] == "Fibula":
+                    #continue
                 muscle_name_storage = [0,0]
                 for side in sides:
                     # Extract the body name from the attachment and convert to lowercase
                     body_name = attachment[0].lower()
                     if body_name != "pelvis":
+                        if body_name == "tibia" or body_name == "fibula":
+                            body_name = "tibfib"
+                            attachment[0] = "Tibfib"
                         body_name = body_name + side
                         if side == "_l":
                             center = centers[attachment[0]][0]
@@ -375,9 +378,11 @@ def add_all_muscles_to_model_with_simple_names(model, local_muscle_positions, mu
         origins = attachments['ori']
         insertions = attachments['ins']
 
+        '''
         # Skip tibia/fibula-based muscles (as per previous filtering)
         if any(b in ["Tibia", "Fibula"] for b, *_ in origins + insertions):
             continue
+        '''
 
         num_origins = len(origins)
         num_insertions = len(insertions)
@@ -606,7 +611,7 @@ def muscle_initialisation(participant_inputs):
     muscle_number_to_nodes_key = parse_muscle_node_files_recursive("High_Level_Inputs/final_node_numbers")
 
     # Relate node numbers to their coordinates
-    node_to_coordinate = parse_stl_files_by_side_and_bone(participant_inputs, ["Femur", "Tibfib", "Pelvis"])
+    node_to_coordinate = parse_stl_files_by_side_and_bone(participant_inputs, ["Femur", "Tibia", "Pelvis", "Fibula"])
 
     # Map muscle nodes to their corresponding coordinates
     muscle_linkages = map_muscle_nodes_to_coordinates(

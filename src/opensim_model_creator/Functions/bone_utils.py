@@ -1104,7 +1104,6 @@ def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_loca
     # Remove empty marker differences
     marker_differences = {key: value for key, value in marker_differences.items() if value}
 
-    # Compute average marker differences
     average_marker_differences = {
         marker_name: np.mean(positions, axis=0)
         for marker_name, positions in marker_differences.items()
@@ -1167,8 +1166,12 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     model.addBody(pelvis)
 
     # Compute pelvis alignment
-    LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
-    RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
+    LASIS_unrot = left_landmarks["ASIS"]
+    RASIS_unrot = right_landmarks["ASIS"]
+
+    LASIS = rotate_coordinate_x(LASIS_unrot, 90)
+    RASIS = rotate_coordinate_x(RASIS_unrot, 90)
+
     RANK = rotate_coordinate_x(right_landmarks["malleolus_med"], 90)
 
     pelvis_sideways_vector = vector_between_points(LASIS, RASIS)
@@ -1199,9 +1202,9 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
 
     # Attach the mesh for the pelvis
     mesh_filename = search_files_by_keywords(meshes, "combined pelvis")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)
-    pelvis_center = info['center']
-    rotated_pelvis_center = rotate_coordinate_x(pelvis_center, 90)
+
+    pelvis_center = midpoint_3d(RASIS_unrot, LASIS_unrot)
+    rotated_pelvis_center = midpoint_3d(RASIS,LASIS)
 
     add_mesh_to_body(model, "pelvis_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_pelvis_center[0], rotated_pelvis_center[1], rotated_pelvis_center[2]))
@@ -1232,21 +1235,33 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     empty_model.addBody(left_femur)
     empty_model.addBody(right_femur)
 
+    # Extract landmarks required to position the joint coordinate systems of the left hip joint
+
+    r_HJC_unrot = right_landmarks["hjc"]
+    l_HJC_unrot = left_landmarks["hjc"]
+
+
+
+
     # Attach the mesh for the right femur
     mesh_filename = search_files_by_keywords(meshes, "right femur")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)
-    femur_r_center = info['center']  # Extract center of the right femur
-    rotated_r_femur_center = rotate_coordinate_x(femur_r_center, 90)  # Rotate to match coordinate system
+    femur_r_center = r_HJC_unrot  # Extract center of the right femur
+    rotated_r_femur_center = rotate_coordinate_x(r_HJC_unrot, 90)  # Rotate to match coordinate system
     add_mesh_to_body(empty_model, "femur_r_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_r_femur_center[0], rotated_r_femur_center[1], rotated_r_femur_center[2]))
 
+
+
     # Attach the mesh for the left femur
     mesh_filename = search_files_by_keywords(meshes, "left femur")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)
-    femur_l_center = info['center']  # Extract center of the left femur
-    rotated_l_femur_center = rotate_coordinate_x(femur_l_center, 90)  # Rotate to match coordinate system
+    femur_l_center = l_HJC_unrot  # Extract center of the right femur
+    rotated_l_femur_center = rotate_coordinate_x(l_HJC_unrot, 90)  # Rotate to match coordinate system
     add_mesh_to_body(empty_model, "femur_l_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_l_femur_center[0], rotated_l_femur_center[1], rotated_l_femur_center[2]))
+
+
+
+
 
     # Add mocap markers to the femur bodies
     add_markers_to_body(empty_model, "femur_l_b", ["LTHI", "LPAT", "LKNE"], mocap_static_trc, femur_l_center)
@@ -1259,13 +1274,15 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
     # Creation of the left hip joint coordinate system
 
-    # Extract landmarks required to position the joint coordinate systems of the left hip joint
     LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
     RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
     l_LEC = rotate_coordinate_x(left_landmarks["LEC"], 90)
     l_MEC = rotate_coordinate_x(left_landmarks["MEC"], 90)
     l_HJC = rotate_coordinate_x(left_landmarks["hjc"], 90)
     l_EC_midpoint = midpoint_3d(l_LEC, l_MEC)
+
+
+
 
     # Compute the vectors for flexion and rotation of the left hip joint
     flexion_vector = vector_between_points(RASIS, LASIS)  # Flexion occurs about the alignment of the pelvis ASIS landmarks
@@ -1285,7 +1302,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     LHIP_vertical_vector = vector_between_points(l_EC_midpoint, l_HJC)
     alignment_to_axis = (0,-1,0)
     LHIP_vert_alignment_angles = compute_euler_angles_from_vectors(LHIP_vertical_vector, alignment_to_axis)
-    LHIP_vert_alignment_angles[0] = 0
+    #LHIP_vert_alignment_angles[0] = 0
     LHIP_vert_alignment_angles[1] = 0
 
     if not realign_femurs:
@@ -1375,7 +1392,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     RHIP_vertical_vector = vector_between_points(r_EC_midpoint, r_HJC)
     alignment_to_axis = (0,-1,0)
     RHIP_vert_alignment_angles = compute_euler_angles_from_vectors(RHIP_vertical_vector, alignment_to_axis)
-    RHIP_vert_alignment_angles[0] = 0
+    #RHIP_vert_alignment_angles[0] = 0
     RHIP_vert_alignment_angles[1] = 0
 
     if not realign_femurs:

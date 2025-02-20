@@ -1104,7 +1104,6 @@ def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_loca
     # Remove empty marker differences
     marker_differences = {key: value for key, value in marker_differences.items() if value}
 
-    # Compute average marker differences
     average_marker_differences = {
         marker_name: np.mean(positions, axis=0)
         for marker_name, positions in marker_differences.items()
@@ -1167,8 +1166,12 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     model.addBody(pelvis)
 
     # Compute pelvis alignment
-    LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
-    RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
+    LASIS_unrot = left_landmarks["ASIS"]
+    RASIS_unrot = right_landmarks["ASIS"]
+
+    LASIS = rotate_coordinate_x(LASIS_unrot, 90)
+    RASIS = rotate_coordinate_x(RASIS_unrot, 90)
+
     RANK = rotate_coordinate_x(right_landmarks["malleolus_med"], 90)
 
     pelvis_sideways_vector = vector_between_points(LASIS, RASIS)
@@ -1199,9 +1202,9 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
 
     # Attach the mesh for the pelvis
     mesh_filename = search_files_by_keywords(meshes, "combined pelvis")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)
-    pelvis_center = info['center']
-    rotated_pelvis_center = rotate_coordinate_x(pelvis_center, 90)
+
+    pelvis_center = midpoint_3d(RASIS_unrot, LASIS_unrot)
+    rotated_pelvis_center = midpoint_3d(RASIS,LASIS)
 
     add_mesh_to_body(model, "pelvis_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_pelvis_center[0], rotated_pelvis_center[1], rotated_pelvis_center[2]))
@@ -1232,21 +1235,33 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     empty_model.addBody(left_femur)
     empty_model.addBody(right_femur)
 
+    # Extract landmarks required to position the joint coordinate systems of the left hip joint
+
+    r_HJC_unrot = right_landmarks["hjc"]
+    l_HJC_unrot = left_landmarks["hjc"]
+
+
+
+
     # Attach the mesh for the right femur
     mesh_filename = search_files_by_keywords(meshes, "right femur")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)
-    femur_r_center = info['center']  # Extract center of the right femur
-    rotated_r_femur_center = rotate_coordinate_x(femur_r_center, 90)  # Rotate to match coordinate system
+    femur_r_center = r_HJC_unrot  # Extract center of the right femur
+    rotated_r_femur_center = rotate_coordinate_x(r_HJC_unrot, 90)  # Rotate to match coordinate system
     add_mesh_to_body(empty_model, "femur_r_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_r_femur_center[0], rotated_r_femur_center[1], rotated_r_femur_center[2]))
 
+
+
     # Attach the mesh for the left femur
     mesh_filename = search_files_by_keywords(meshes, "left femur")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)
-    femur_l_center = info['center']  # Extract center of the left femur
-    rotated_l_femur_center = rotate_coordinate_x(femur_l_center, 90)  # Rotate to match coordinate system
+    femur_l_center = l_HJC_unrot  # Extract center of the right femur
+    rotated_l_femur_center = rotate_coordinate_x(l_HJC_unrot, 90)  # Rotate to match coordinate system
     add_mesh_to_body(empty_model, "femur_l_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_l_femur_center[0], rotated_l_femur_center[1], rotated_l_femur_center[2]))
+
+
+
+
 
     # Add mocap markers to the femur bodies
     add_markers_to_body(empty_model, "femur_l_b", ["LTHI", "LPAT", "LKNE"], mocap_static_trc, femur_l_center)
@@ -1259,13 +1274,15 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
     # Creation of the left hip joint coordinate system
 
-    # Extract landmarks required to position the joint coordinate systems of the left hip joint
     LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
     RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
     l_LEC = rotate_coordinate_x(left_landmarks["LEC"], 90)
     l_MEC = rotate_coordinate_x(left_landmarks["MEC"], 90)
     l_HJC = rotate_coordinate_x(left_landmarks["hjc"], 90)
     l_EC_midpoint = midpoint_3d(l_LEC, l_MEC)
+
+
+
 
     # Compute the vectors for flexion and rotation of the left hip joint
     flexion_vector = vector_between_points(RASIS, LASIS)  # Flexion occurs about the alignment of the pelvis ASIS landmarks
@@ -1285,7 +1302,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     LHIP_vertical_vector = vector_between_points(l_EC_midpoint, l_HJC)
     alignment_to_axis = (0,-1,0)
     LHIP_vert_alignment_angles = compute_euler_angles_from_vectors(LHIP_vertical_vector, alignment_to_axis)
-    LHIP_vert_alignment_angles[0] = 0
+    #LHIP_vert_alignment_angles[0] = 0
     LHIP_vert_alignment_angles[1] = 0
 
     if not realign_femurs:
@@ -1375,7 +1392,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     RHIP_vertical_vector = vector_between_points(r_EC_midpoint, r_HJC)
     alignment_to_axis = (0,-1,0)
     RHIP_vert_alignment_angles = compute_euler_angles_from_vectors(RHIP_vertical_vector, alignment_to_axis)
-    RHIP_vert_alignment_angles[0] = 0
+    #RHIP_vert_alignment_angles[0] = 0
     RHIP_vert_alignment_angles[1] = 0
 
     if not realign_femurs:
@@ -1467,44 +1484,68 @@ def create_tibfib_bodies_and_knee_joints(
     empty_model.addBody(right_tibfib)  # Add the right tibfib body to the model
 
 
-    # Attach the mesh for the right tibfib body
+    # Attach the mesh for the right tibia body
     # Search for the mesh file corresponding to the right tibfib
-    mesh_filename = search_files_by_keywords(meshes, "right tibfib")[0]
+    mesh_filename = search_files_by_keywords(meshes, "right tibia")[0]
     info = extract_mesh_info_trimesh(mesh_filename)  # Extract mesh information using trimesh
-    tibfib_r_center = info['center']  # Get the center of the mesh
-    rotated_r_tibfib_center = rotate_coordinate_x(tibfib_r_center, 90)  # Rotate the center to align with OpenSim's coordinate system
+    tibia_r_center = info['center']  # Get the center of the mesh
+    rotated_r_tibia_center = rotate_coordinate_x(tibia_r_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_r_b", mesh_filename,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(rotated_r_tibfib_center[0], rotated_r_tibfib_center[1], rotated_r_tibfib_center[2]))
+                     offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
 
 
-    # Attach the mesh for the left tibfib body
+    # Attach the mesh for the right fibula body
+    # Search for the mesh file corresponding to the right fibula
+    mesh_filename = search_files_by_keywords(meshes, "right fibula")[0]
+
+    # Add the mesh to the right tibfib body with an orientation offset to align axes
+    add_mesh_to_body(empty_model, "tibfib_r_b", mesh_filename,
+                     offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
+                     offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
+
+
+
+
+    # Attach the mesh for the left tibia body
     # Search for the mesh file corresponding to the left tibfib
-    mesh_filename = search_files_by_keywords(meshes, "left tibfib")[0]
+    mesh_filename = search_files_by_keywords(meshes, "left tibia")[0]
     info = extract_mesh_info_trimesh(mesh_filename)  # Extract mesh information using trimesh
-    tibfib_l_center = info['center']  # Get the center of the mesh
-    rotated_l_tibfib_center = rotate_coordinate_x(tibfib_l_center, 90)  # Rotate the center to align with OpenSim's coordinate system
+    tibia_l_center = info['center']  # Get the center of the mesh
+    rotated_l_tibia_center = rotate_coordinate_x(tibia_l_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l_b", mesh_filename,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(rotated_l_tibfib_center[0], rotated_l_tibfib_center[1], rotated_l_tibfib_center[2]))
+                     offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
+
+
+    # Attach the mesh for the left fibula body
+    # Search for the mesh file corresponding to the left tibfib
+    mesh_filename = search_files_by_keywords(meshes, "left fibula")[0]
+
+    # Add the mesh to the left tibfib body with an orientation offset to align axes
+    add_mesh_to_body(empty_model, "tibfib_l_b", mesh_filename,
+                     offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
+                     offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
+
+
 
 
     # Add mocap markers to the tibfib bodies
     # Add mocap markers for the left tibfib body
-    add_markers_to_body(empty_model, "tibfib_l_b", ["LANK", "LTIB","LTOE","LHEE"], mocap_static_trc, tibfib_l_center)
+    add_markers_to_body(empty_model, "tibfib_l_b", ["LANK", "LTIB","LTOE","LHEE"], mocap_static_trc, tibia_l_center)
 
     #Add landmark markers for the left tibfib body
-    add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibfib_l_center,["lms_LMMAL","lms_LLMAL"])
+    add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,["lms_LMMAL","lms_LLMAL"])
 
     # Add mocap markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibfib_r_b", ["RANK", "RTIB","RTOE","RHEE"], mocap_static_trc, tibfib_r_center)
+    add_markers_to_body(empty_model, "tibia_r_b", ["RANK", "RTIB","RTOE","RHEE"], mocap_static_trc, tibia_r_center)
 
     #Add landmark markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibfib_r_center,["lms_RMMAL","lms_RLMAL"])
+    add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,["lms_RMMAL","lms_RLMAL"])
 
 
     # %% Creation of the left knee joint coordinate system
@@ -1527,7 +1568,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Compute the total transformation required to align the tibfib with the femur
     # This determines the relative movement required to transition from the femur's frame to the tibfib's frame
     l_knee_position_total = determine_transform_child_to_parent(
-        rotated_l_femur_center, rotated_l_tibfib_center, left_landmarks["LEC"], left_landmarks["malleolus_lat"]
+        rotated_l_femur_center, rotated_l_tibia_center, left_landmarks["LEC"], left_landmarks["malleolus_lat"]
     )
 
     # Extract the medial and lateral epicondyle landmarks
@@ -1539,7 +1580,7 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Compute the child position (location of the joint in the tibfib frame)
     # This is the vector between the midpoint of the epicondyles and the center of the tibfib body
-    l_knee_child_position = rotate_coordinate_x(vector_between_points(EC_midpoint, tibfib_l_center), 90)
+    l_knee_child_position = rotate_coordinate_x(vector_between_points(EC_midpoint, tibia_l_center), 90)
 
     # Compute the parent position (location of the joint in the femur frame)
     # This is the total transformation combined with the child position
@@ -1581,7 +1622,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Compute the total transformation required to align the tibfib with the femur
     # This determines the relative movement required to transition from the femur's frame to the tibfib's frame
     r_knee_position_total = determine_transform_child_to_parent(
-        rotated_r_femur_center, rotated_r_tibfib_center, right_landmarks["LEC"], right_landmarks["malleolus_lat"]
+        rotated_r_femur_center, rotated_r_tibia_center, right_landmarks["LEC"], right_landmarks["malleolus_lat"]
     )
 
     # Extract the medial and lateral epicondyle landmarks
@@ -1593,7 +1634,7 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Compute the child position (location of the joint in the tibfib frame)
     # This is the vector between the midpoint of the epicondyles and the center of the tibfib body
-    r_knee_child_position = rotate_coordinate_x(vector_between_points(EC_midpoint, tibfib_r_center), 90)
+    r_knee_child_position = rotate_coordinate_x(vector_between_points(EC_midpoint, tibia_r_center), 90)
 
     # Compute the parent position (location of the joint in the femur frame)
     # This is the total transformation combined with the child position
@@ -1652,7 +1693,7 @@ def create_tibfib_bodies_and_knee_joints(
     empty_model.addJoint(right_knee_joint)
 
 
-    return rotated_l_tibfib_center, rotated_r_tibfib_center, tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib
+    return rotated_l_tibia_center, rotated_r_tibia_center, tibia_l_center, tibia_r_center, left_tibfib, right_tibfib
 
 def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib):
 

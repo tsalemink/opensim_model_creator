@@ -15,6 +15,6 @@ def test(input_directory):
 
 if __name__ == "__main__":
     # TODO: Move test data into test directory.
-    #test("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 01")
+    test("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 01")
     #test("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 02")
-    test("..\\..\\src\\opensim_model_creator\\Participants\\Brittney 05")
+    #test("..\\..\\src\\opensim_model_creator\\Participants\\Brittney 05")

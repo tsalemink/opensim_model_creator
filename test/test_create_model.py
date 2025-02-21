@@ -1,6 +1,6 @@
 
 import os
-import pandas as pd
+import pickle
 
 from opensim_model_creator.Create_Model import create_model
 
@@ -10,7 +10,8 @@ def test(input_directory, height, weight):
 
     # Read in dictionary of static marker data.
     marker_data_path = os.path.join(input_directory, "Inputs", "static.pkl")
-    static_marker_data = pd.read_pickle(marker_data_path)
+    with open(marker_data_path, "rb") as f:
+        static_marker_data = pickle.load(f)
 
     create_model(absolute_path, static_marker_data, height=height, weight=weight, create_muscles=False, testing=True)
 

@@ -48,6 +48,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     # Generate mesh files using ASM.
     run_asm(static_marker_data, meshes)
 
+    scale_marker_data(static_marker_data, 0.001)
 
     #%%Extraction of meshes from stl files
 

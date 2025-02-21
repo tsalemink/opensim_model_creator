@@ -15,15 +15,15 @@ from opensim_model_creator.Functions.file_utils import reset_folder
 # TODO: Automatically define inertial properties from participant specific inputs such as height and weight and then use cadaveric data to infer these properties for each limb segment
 
 
-def create_model(participant_folder, static_marker_data, weight, height, create_muscles=False, testing=False, scale_factor=1000):
+def create_model(participant_folder, static_marker_data, weight, height, create_muscles=False, testing=False):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
 
     Args:
         participant_folder (str): Path to the participant's folder.
+        static_marker_data (dict): Static marker data coordinates.
         create_muscles (bool): Whether to add muscles to the model.
         testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
-        scale_factor (int): Scaling factor for mesh conversion.
         weight (float, optional): Participant's weight in kg.
         height (float, optional): Participant's height in meters.
 
@@ -51,7 +51,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
     #%%Extraction of meshes from stl files
 
-    process_participant_meshes(meshes, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
+    process_participant_meshes(meshes, meshes) #Now setup to handle stls placed directly within the input folder
 
     # Initialize muscles
     muscle_linkages = muscle_initialisation(meshes)

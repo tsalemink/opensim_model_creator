@@ -12,7 +12,7 @@ def test(input_directory, height, weight):
     marker_data_path = os.path.join(input_directory, "Inputs", "static.pkl")
     static_marker_data = pd.read_pickle(marker_data_path)
 
-    create_model(absolute_path, static_marker_data, height=height, weight=weight, create_muscles=False, testing=True, scale_factor=1000)
+    create_model(absolute_path, static_marker_data, height=height, weight=weight, create_muscles=False, testing=True)
 
 
 if __name__ == "__main__":

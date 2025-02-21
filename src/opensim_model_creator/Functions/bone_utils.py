@@ -1112,12 +1112,13 @@ def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_loca
     # Adjust model markers
     adjust_model_markers(model_path, output_model_path, average_marker_differences)
 
-def initialize_model_and_extract_landmarks(participant_inputs):
+
+def initialize_model_and_extract_landmarks(asm_directory):
     """
     Initializes the OpenSim model and extracts relevant landmarks and marker placements.
 
     Parameters:
-        participant_inputs (str): Path to the participant's input directory.
+        asm_directory (str): Path to the directory containing the mesh and landmarks produced by the ASM fit.
 
     Returns:
         tuple: A tuple containing:
@@ -1132,13 +1133,14 @@ def initialize_model_and_extract_landmarks(participant_inputs):
     state = empty_model.initSystem()  # Initialise the system
 
     # Load and extract landmarks for left and right limbs
-    left_landmarks_file = search_files_by_keywords(participant_inputs, "left lms predicted")[0]
-    right_landmarks_file = search_files_by_keywords(participant_inputs, "right lms predicted")[0]
+    left_landmarks_file = search_files_by_keywords(asm_directory, "left lms predicted")[0]
+    right_landmarks_file = search_files_by_keywords(asm_directory, "right lms predicted")[0]
     left_landmarks = load_landmarks(left_landmarks_file)
     right_landmarks = load_landmarks(right_landmarks_file)
 
     # Load the TRC file and extract marker placements
-    mocap_trc_file = search_files_by_keywords(participant_inputs, "static")[0]
+    input_directory = os.path.dirname(asm_directory)
+    mocap_trc_file = search_files_by_keywords(input_directory, "static trc")[0]
     mocap_static_trc, _ = read_trc_file_as_dict(mocap_trc_file)
 
     return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file

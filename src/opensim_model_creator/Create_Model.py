@@ -1,7 +1,10 @@
 
 import os
 import numpy as np
+import pandas as pd
 import opensim as osim
+
+from articulated_ssm_both_sides.MainASM import run_asm
 
 #%%Import functions from folders
 from opensim_model_creator.Functions.general_utils import *
@@ -43,11 +46,17 @@ def create_model(participant_folder, weight, height, create_muscles=False, testi
     reset_folder(output_folder)
     reset_folder(meshes)
 
+    # Read in dictionary of static marker data.
+    marker_data_path = os.path.join(participant_inputs, "static.pkl")
+    static_marker_data = pd.read_pickle(marker_data_path)
+
+    # Generate mesh files using ASM.
+    run_asm(static_marker_data, meshes)
 
 
     #%%Extraction of meshes from stl files
 
-    process_participant_meshes(participant_inputs, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
+    process_participant_meshes(meshes, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
 
     # Initialize muscles
     muscle_linkages = muscle_initialisation(meshes)
@@ -61,8 +70,8 @@ def create_model(participant_folder, weight, height, create_muscles=False, testi
 
 
     # %% Initialisation of models and extraction of relevant landmarks/marker placements
-    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(participant_inputs)
 
+    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(meshes)
 
     # %% Creation of the pelvis body and pelvis joint (to ground)
 

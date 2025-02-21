@@ -1,7 +1,6 @@
 
 import os
 import numpy as np
-import pandas as pd
 import opensim as osim
 
 from articulated_ssm_both_sides.MainASM import run_asm
@@ -16,7 +15,7 @@ from opensim_model_creator.Functions.file_utils import reset_folder
 # TODO: Automatically define inertial properties from participant specific inputs such as height and weight and then use cadaveric data to infer these properties for each limb segment
 
 
-def create_model(participant_folder, weight, height, create_muscles=False, testing=False, scale_factor=1000):
+def create_model(participant_folder, static_marker_data, weight, height, create_muscles=False, testing=False, scale_factor=1000):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
 
@@ -45,10 +44,6 @@ def create_model(participant_folder, weight, height, create_muscles=False, testi
     # Clear the output_folder and meshes folder - this essentially recreates these folders upon each operation of the code, ensures that no remnants are left over from the previous running of the code.
     reset_folder(output_folder)
     reset_folder(meshes)
-
-    # Read in dictionary of static marker data.
-    marker_data_path = os.path.join(participant_inputs, "static.pkl")
-    static_marker_data = pd.read_pickle(marker_data_path)
 
     # Generate mesh files using ASM.
     run_asm(static_marker_data, meshes)

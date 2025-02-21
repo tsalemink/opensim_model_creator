@@ -1,5 +1,6 @@
 
 import os
+import pandas as pd
 
 from opensim_model_creator.Create_Model import create_model
 
@@ -7,10 +8,13 @@ from opensim_model_creator.Create_Model import create_model
 def test(input_directory, height, weight):
     absolute_path = os.path.abspath(input_directory)
 
+    # Read in dictionary of static marker data.
+    marker_data_path = os.path.join(input_directory, "Inputs", "static.pkl")
+    static_marker_data = pd.read_pickle(marker_data_path)
 
     # For creation of muscles, include True statement, for testing purposes include a true statement (sets knee joint optimisation iteration_count to 1, to speed up development)
     #included a scale_factor for the stl meshes that are brought from lauras code as currently usure if she is scaling or not
-    create_model(absolute_path, height=height, weight=weight, create_muscles=False, testing=True, scale_factor=1000)
+    create_model(absolute_path, static_marker_data, height=height, weight=weight, create_muscles=False, testing=True, scale_factor=1000)
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 #Import Packages
+import copy
 import os
 import opensim as osim
 import numpy as np
@@ -6,13 +7,13 @@ import trimesh
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 
+
 #Import required functions
 from opensim_model_creator.Functions.file_utils import search_files_by_keywords
 from opensim_model_creator.Functions.bone_utils import add_markers_to_body
 
-
 #Contains the muscle linkages definitions
-muscle_linkages = {
+muscle_linkages_global = {
     "Extobl": {
         "ins": [["Pelvis", "58"]],
     },
@@ -173,9 +174,6 @@ muscle_linkages = {
 
     },
 }
-
-
-
 
 
 #Functions of use
@@ -604,8 +602,11 @@ def muscle_initialisation(participant_inputs):
     Returns:
         dict: Updated muscle_linkages dictionary with mapped coordinates.
     """
+
+    global muscle_linkages_global  # Reference the global dictionary
+
     # Correlation between muscle names and their respective origin/insertion bodies and muscle numbers
-    global muscle_linkages  # Ensure global access to muscle_linkages
+    muscle_linkages = copy.deepcopy(muscle_linkages_global)
 
     # Relate muscle numbers to nodes that make up the insertion/origin
     muscle_number_to_nodes_key = parse_muscle_node_files_recursive("High_Level_Inputs/final_node_numbers")

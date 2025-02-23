@@ -202,6 +202,12 @@ def compute_marker_midpoint(model, marker1_name, marker2_name):
     return midpoint
 
 
+def scale_marker_data(marker_data, scale_factor) -> None:
+    for values in marker_data.values():
+        for i in range(3):
+            values[i] *= scale_factor
+
+
 def scale_stl_mesh(input_stl, output_stl, scale_factor=1000):
     """
     Scales an STL mesh by a given factor and saves it.

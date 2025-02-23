@@ -1,20 +1,23 @@
 
 import os
+import pickle
 
 from opensim_model_creator.Create_Model import create_model
 
 
-def test(input_directory):
+def test(input_directory, height, weight):
     absolute_path = os.path.abspath(input_directory)
 
+    # Read in dictionary of static marker data.
+    marker_data_path = os.path.join(input_directory, "Inputs", "static.pkl")
+    with open(marker_data_path, "rb") as f:
+        static_marker_data = pickle.load(f)
 
-    # For creation of muscles, include True statement, for testing purposes include a true statement (sets knee joint optimisation iteration_count to 1, to speed up development)
-    #included a scale_factor for the stl meshes that are brought from lauras code as currently usure if she is scaling or not
-    create_model(absolute_path, height=1.4, weight=40, create_muscles=True, testing=True, scale_factor=1000)
+    create_model(absolute_path, static_marker_data, height=height, weight=weight, create_muscles=True, testing=True)
 
 
 if __name__ == "__main__":
     # TODO: Move test data into test directory.
-    test("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 01")
-    #test("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 02")
-    #test("..\\..\\src\\opensim_model_creator\\Participants\\Brittney 05")
+    test("..\\..\\src\\opensim_model_creator\\Participants\\Brittney 05", 159.1, 40.8)
+    test("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 01", 136.3, 32.9)
+    #test("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 02", 117.9, 23)

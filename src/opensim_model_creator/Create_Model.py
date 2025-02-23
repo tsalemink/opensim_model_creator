@@ -3,6 +3,8 @@ import os
 import numpy as np
 import opensim as osim
 
+from articulated_ssm_both_sides.MainASM import run_asm
+
 #%%Import functions from folders
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
@@ -13,15 +15,15 @@ from opensim_model_creator.Functions.file_utils import reset_folder
 # TODO: Automatically define inertial properties from participant specific inputs such as height and weight and then use cadaveric data to infer these properties for each limb segment
 
 
-def create_model(participant_folder, weight, height, create_muscles=False, testing=False, scale_factor=1000):
+def create_model(participant_folder, static_marker_data, weight, height, create_muscles=False, testing=False):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
 
     Args:
         participant_folder (str): Path to the participant's folder.
+        static_marker_data (dict): Static marker data coordinates.
         create_muscles (bool): Whether to add muscles to the model.
         testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
-        scale_factor (int): Scaling factor for mesh conversion.
         weight (float, optional): Participant's weight in kg.
         height (float, optional): Participant's height in meters.
 
@@ -43,11 +45,14 @@ def create_model(participant_folder, weight, height, create_muscles=False, testi
     reset_folder(output_folder)
     reset_folder(meshes)
 
+    # Generate mesh files using ASM.
+    run_asm(static_marker_data, meshes)
 
+    scale_marker_data(static_marker_data, 0.001)
 
     #%%Extraction of meshes from stl files
 
-    process_participant_meshes(participant_inputs, meshes, scale_factor) #Now setup to handle stls placed directly within the input folder
+    process_participant_meshes(meshes, meshes) #Now setup to handle stls placed directly within the input folder
 
     # Initialize muscles
     muscle_linkages = muscle_initialisation(meshes)
@@ -61,8 +66,8 @@ def create_model(participant_folder, weight, height, create_muscles=False, testi
 
 
     # %% Initialisation of models and extraction of relevant landmarks/marker placements
-    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(participant_inputs)
 
+    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(meshes)
 
     # %% Creation of the pelvis body and pelvis joint (to ground)
 

@@ -12,9 +12,6 @@ from opensim_model_creator.Functions.muscle_utils import *
 from opensim_model_creator.Functions.file_utils import reset_folder
 
 
-# TODO: Automatically define inertial properties from participant specific inputs such as height and weight and then use cadaveric data to infer these properties for each limb segment
-
-
 def create_model(participant_folder, static_marker_data, weight, height, create_muscles=False, testing=False):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
@@ -32,77 +29,66 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     """
 
     #%% Setup of folders
+    # Define paths for inputs and outputs
     participant_inputs = os.path.join(participant_folder, "Inputs")
-
-    #Needs to create this folder (delete it if it exists already and then make it again)
     output_folder = os.path.join(participant_folder, "Models")
-
-    #Needs to create this folder (delete it if it exists already and then make it again)
     meshes = os.path.join(participant_inputs, "Meshes")
 
-
-    # Clear the output_folder and meshes folder - this essentially recreates these folders upon each operation of the code, ensures that no remnants are left over from the previous running of the code.
+    # Clear output and mesh folders to avoid residuals from previous runs
     reset_folder(output_folder)
     reset_folder(meshes)
 
-    # Generate mesh files using ASM.
+    #%%Initialisation
+
+    # Generate mesh files using ASM
     run_asm(static_marker_data, meshes)
 
+    # Scale marker data from millimeters to meters (variable currently unused)
     scale_marker_data(static_marker_data, 0.001)
 
-    #%%Extraction of meshes from stl files
+    # Process and extract meshes from STL files
+    process_participant_meshes(meshes, meshes)
 
-    process_participant_meshes(meshes, meshes) #Now setup to handle stls placed directly within the input folder
-
-    # Initialize muscles
+    # Initializes muscle linkage directory
     muscle_linkages = muscle_initialisation(meshes)
 
+    #Splits specific muscles into a number of segments
     segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
     segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
     segment_muscle_origins_insertions(muscle_linkages, "Add mag", pair_to_segment=0, num_segments=2)
 
-    # Apply a swap for Adductor Magnus origins
+    # Apply a swap for Adductor Magnus origins to have better anatomical consistency
     swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
 
-
-    # %% Initialisation of models and extraction of relevant landmarks/marker placements
-
+    #Initialises model, trc files, and landmarks
     empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(meshes)
 
-    # %% Creation of the pelvis body and pelvis joint (to ground)
-
+    # %% Creation of the pelvis body and pelvis joint
     pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center = create_pelvis_body_and_joint(
         empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True
     )
 
-
     # %% Creation of femur bodies and attachment of meshes, markers, and landmarks
-
     (l_LEC, l_MEC, l_HJC, l_EC_midpoint, left_femur, femur_l_center, rotated_l_femur_center,
      LKNE_alignment_angles, LHIP_vert_alignment_angles, r_LEC, r_MEC, r_HJC, r_EC_midpoint, right_femur, femur_r_center, rotated_r_femur_center,
      RKNE_alignment_angles, RHIP_vert_alignment_angles) = create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, rotated_pelvis_center, pelvis_realignment, pelvis, realign_femurs= True)
 
     # %% Creation of the Tibia/Fibula (TibFib) Bodies
-
     rotated_l_tibfib_center, rotated_r_tibfib_center, tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = create_tibfib_bodies_and_knee_joints(
         empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc,
         rotated_l_femur_center, rotated_r_femur_center, LHIP_vert_alignment_angles, RHIP_vert_alignment_angles,
         left_femur, right_femur,l_LEC, l_MEC, l_HJC, l_EC_midpoint, r_LEC, r_MEC, r_HJC, r_EC_midpoint, realign_tibias=True
     )
 
-
     #%% Create feet bodies
     repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib)
 
-    #Further augment the muscle linkages dictionary
+    #Further augment the muscle linkages dictionary and model to contain markers represenitng origins and insertions for all muscles (must be done prior to scaling as unused markers are removed via scaling process)
     empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
         "Pelvis": pelvis_center,
         "Femur": [femur_l_center,femur_r_center],
         "Tibfib": [tibfib_l_center,tibfib_r_center],
     })
-
-
-    #%% Save the model with all markers
 
     # Finalise the connections of the model
     empty_model.finalizeConnections()
@@ -119,7 +105,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     # Combine the folder path and filename
     output_path = os.path.join(output_folder, f"{model_name}.osim")
 
-    # Save the model to the specified location
+    # Save the model to output folder
     empty_model.printToXML(output_path)
     print(f"Model saved to: {output_path}")
 
@@ -129,7 +115,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     # Reload the model
     empty_model = osim.Model(output_file)
 
-    #%% Reinitialise the model for feet adjustments
+    #%% Reinitialise the model for further feet adjustments (aligning with static trc as gait2392 feet are perfectly straight whilst participants may have their feet angled when neutral)
     feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet= True)
 
     # Finalise the non-scaled foot
@@ -141,66 +127,15 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
 
 
-
     #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
     perform_scaling(participant_folder, output_file, mocap_trc_file)
 
 
-    #%% Create the JMP settings files and move trcs & model automatically
+    #%% Create variables required by knee joint optimisation
     source_file_path1 = os.path.join(participant_folder, "Models", "scaled_foot.osim")  # Source path
     knee_optimisation_trc_file = search_files_by_keywords(participant_inputs, "optimisation")[0]  # Find the TRC file containing marker data
     ignore,(start_time, end_time),knee_optimisation_marker_dictionary = read_trc_file_as_dict(knee_optimisation_trc_file,True)
 
-    #This feature was removed due to no longer being necessary, however funcitonality will be left below incase desired at some future point in time
-    """ 
-    
-    # Define file paths
-    default_file_path = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\JMP_Default.xml"
-    output_file_path = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\JMP_Actual.xml"
-    
-    
-    #copy the scaled_feet_variant.osim from the directory above to the JMP Code direcotry
-    import shutil
-    # Define source and destination file paths
-    
-    destination_file_path1 = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\scaled_foot.osim"  # Destination path
-    destination_file_path2 = r"C:/Users\jplu752\Documents\My Project Stuff\Python_Code_Location\JMP Code\trcfile.trc"
-    
-    # Copy the file
-    try:
-        shutil.copy(source_file_path1, destination_file_path1)
-        shutil.copy(knee_optimisation_trc_file, destination_file_path2)
-        print(f"File copied successfully to {destination_file_path1}")
-    except Exception as e:
-        print(f"Error while copying the file: {e}")
-    
-    #Replacement words
-    replacements = {
-        "INSERTMODELINPUT": "scaled_foot.osim",
-        "INSERTMODELOUTPUT": "JMP_optimised_knee.osim",
-        "INSERTTRCFILE": "trcfile.trc",
-    }
-    
-    # Read the default file, replace placeholders, and save to the output file
-    try:
-        with open(default_file_path, 'r') as file:
-            content = file.read()
-    
-        # Perform replacements
-        for placeholder, replacement in replacements.items():
-            content = content.replace(placeholder, replacement)
-    
-        # Save the updated content to a new file
-        with open(output_file_path, 'w') as file:
-            file.write(content)
-    
-        print(f"File updated successfully and saved as: {output_file_path}")
-    
-    except FileNotFoundError:
-        print(f"File not found: {default_file_path}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-    """
 
     #%%Adjusting & Optimising the Knee Joint Orientations
 
@@ -209,7 +144,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     temp_model_path_2 = output_folder+ "/temp2.osim"
     optimised_knee_model = output_folder+ "/Optimised_Knee_Axes.osim"
 
-
+    #marker weights used in the IK process
     marker_weights = {
                 "RASI": 5, "LASI": 5, "RTHI": 1, "RTIB": 1,
                 "RANK": 10, "LTHI": 1, "LTIB": 1, "LANK": 10,
@@ -217,6 +152,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
                 "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5
             }
 
+    #itersation count of 5 appears to allow convergence whilst not taking overtly long
     if testing:
         iteration_count = 1
     else:
@@ -229,15 +165,14 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
 
 
-    #%% Run IK, and extract the model marker positions and compare to those of the actual marker positions across the entire time trial.
-
+    #%% Run IK, and extract the model marker positions and compare to those of the actual marker positions across the entire time trial, then adjust.
 
     optimised_knee_moved_marker_model = output_folder+"/Optimised_Knee_Axes_Moved_Markers.osim"
 
     compute_and_adjust_markers(optimised_knee_model,"ik_output.mot","_ik_model_marker_locations.sto",knee_optimisation_marker_dictionary,optimised_knee_moved_marker_model)
 
 
-    # Run the Inverse Kinematics (IK) analysis and store results
+    # Run the Inverse Kinematics (IK) analysis and print results for the 3 different models
     print("\n")
     print(f"Prior to Knee Alignment & Marker Movement - name of file: {os.path.basename(source_file_path1)}")
     ik_result_1 = perform_IK(source_file_path1, knee_optimisation_trc_file, start_time, end_time, marker_weights)
@@ -287,22 +222,18 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
 
 
-
+    #creation of muscles is optional, work in progress (contains no wrapping or participant specific muscle parameters)
     if create_muscles:
 
 
-        #print("Following Both Knee Alignment & Marker Adjustment (Then Re-Aligned Again)")
-        #print(perform_IK(re_optimised_knee_moved_marker_model,knee_optimisation_trc_file,start_time, end_time, marker_weights))
-
-        #Lets try to add some muscles to the model
-        #function to compute the position of a mesh node in the local coordinate system of a bone (can try it on the landmarks first), im assuming we can create a new model, add the body/ mesh, add a "marker" to represent this point, then use the marker.getlocation attribute thing to get the position of the marker in the local bone coordinate system (hopefully)
-
+        #Load the model
         model = osim.Model(final_model_path)
 
+        #Adds muscles to the model
         add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
 
+        #Saves the model
         muscle_model_name = os.path.basename(participant_folder).replace(" ", "_")
-
         muscle_model = output_folder+"/Muscle_" +muscle_model_name+ ".osim"
         model.setName("Muscle_"+muscle_model_name)
         model.finalizeConnections()
@@ -310,6 +241,9 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
 
 
+
+
+        #END##############################################################################################################
 
         #begin attempt at adding wrapping objects to muscles
 

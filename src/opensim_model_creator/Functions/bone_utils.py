@@ -856,6 +856,7 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
         print(errors["Average RMS Error"])
         return errors["Average RMS Error"]*1e4 if errors else float("inf")
 
+    #Sets bounds for knee joint optimisation
     bounds = [(-0.001, 0.001)] * 4
     result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": iteration_count})
     model = osim.Model(temp_model_path_2)
@@ -1223,7 +1224,41 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     return pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center
 
 def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, rotated_pelvis_center,pelvis_realignment, pelvis, realign_femurs=True):
+    """
+    Creates the left and right femur bodies and attaches custom hip joints to the OpenSim model.
 
+    Args:
+        empty_model (osim.Model): The OpenSim model to which femur bodies and hip joints will be added.
+        left_landmarks (dict): Dictionary containing the anatomical landmarks for the left side.
+        right_landmarks (dict): Dictionary containing the anatomical landmarks for the right side.
+        meshes (str): Directory containing the mesh files for the left and right femurs.
+        mocap_static_trc (dict): Motion capture static marker data used to position markers.
+        rotated_pelvis_center (np.array): The center position of the pelvis after rotation.
+        pelvis_realignment (np.array): The realignment angles applied to the pelvis.
+        pelvis (osim.Body): The pelvis body in the OpenSim model.
+        realign_femurs (bool, optional): If True, performs alignment of femurs. Defaults to True.
+
+    Returns:
+        tuple: A tuple containing:
+            - l_LEC (np.array): Rotated coordinates of the left lateral epicondyle.
+            - l_MEC (np.array): Rotated coordinates of the left medial epicondyle.
+            - l_HJC (np.array): Rotated coordinates of the left hip joint center.
+            - l_EC_midpoint (np.array): Midpoint of the left lateral and medial epicondyles.
+            - left_femur (osim.Body): The left femur body added to the model.
+            - femur_l_center (np.array): Original center of the left femur.
+            - rotated_l_femur_center (np.array): Rotated center of the left femur.
+            - LKNE_alignment_angles (np.array): Alignment angles for the left knee.
+            - LHIP_vert_alignment_angles (np.array): Vertical alignment angles for the left hip.
+            - r_LEC (np.array): Rotated coordinates of the right lateral epicondyle.
+            - r_MEC (np.array): Rotated coordinates of the right medial epicondyle.
+            - r_HJC (np.array): Rotated coordinates of the right hip joint center.
+            - r_EC_midpoint (np.array): Midpoint of the right lateral and medial epicondyles.
+            - right_femur (osim.Body): The right femur body added to the model.
+            - femur_r_center (np.array): Original center of the right femur.
+            - rotated_r_femur_center (np.array): Rotated center of the right femur.
+            - RKNE_alignment_angles (np.array): Alignment angles for the right knee.
+            - RHIP_vert_alignment_angles (np.array): Vertical alignment angles for the right hip.
+    """
     # Define the femur body properties (common for both left and right femurs)
     femur_mass = 8.0  # Mass of the femur in kg
     femur_mass_center = osim.Vec3(0, -0.2, 0)  # Center of mass location in the femur frame
@@ -1472,6 +1507,40 @@ def create_tibfib_bodies_and_knee_joints(
         rotated_l_femur_center, rotated_r_femur_center,LHIP_vert_alignment_angles, RHIP_vert_alignment_angles,
         left_femur, right_femur, l_LEC, l_MEC, l_HJC, l_EC_midpoint,r_LEC, r_MEC, r_HJC, r_EC_midpoint, realign_tibias=True
 ):
+    """
+    Creates tibia and fibula (tibfib) bodies and defines the knee joints within an OpenSim model.
+
+    Args:
+        empty_model (osim.Model): The OpenSim model to which the tibfib bodies and knee joints will be added.
+        left_landmarks (dict): Landmark coordinates for the left side.
+        right_landmarks (dict): Landmark coordinates for the right side.
+        meshes (str): Path to the folder containing mesh files.
+        mocap_static_trc (dict): Motion capture data for static trials.
+        rotated_l_femur_center (np.ndarray): Center of the rotated left femur.
+        rotated_r_femur_center (np.ndarray): Center of the rotated right femur.
+        LHIP_vert_alignment_angles (np.ndarray): Vertical alignment angles for the left hip.
+        RHIP_vert_alignment_angles (np.ndarray): Vertical alignment angles for the right hip.
+        left_femur (osim.Body): The left femur body in the model.
+        right_femur (osim.Body): The right femur body in the model.
+        l_LEC (np.ndarray): Left lateral epicondyle coordinates.
+        l_MEC (np.ndarray): Left medial epicondyle coordinates.
+        l_HJC (np.ndarray): Left hip joint center coordinates.
+        l_EC_midpoint (np.ndarray): Midpoint of the left epicondyles.
+        r_LEC (np.ndarray): Right lateral epicondyle coordinates.
+        r_MEC (np.ndarray): Right medial epicondyle coordinates.
+        r_HJC (np.ndarray): Right hip joint center coordinates.
+        r_EC_midpoint (np.ndarray): Midpoint of the right epicondyles.
+        realign_tibias (bool, optional): Whether to realign tibias during the process. Defaults to True.
+
+    Returns:
+        tuple:
+            - rotated_l_tibia_center (np.ndarray): Rotated center of the left tibia.
+            - rotated_r_tibia_center (np.ndarray): Rotated center of the right tibia.
+            - tibia_l_center (np.ndarray): Center of the left tibia.
+            - tibia_r_center (np.ndarray): Center of the right tibia.
+            - left_tibfib (osim.Body): Created left tibfib body.
+            - right_tibfib (osim.Body): Created right tibfib body.
+    """
     # Define the tibfib body properties
     tibfib_mass = 5.0  # Mass of the tibfib body in kilograms
     tibfib_mass_center = osim.Vec3(0, -0.3, 0)  # Center of mass location relative to the tibfib frame
@@ -1698,7 +1767,24 @@ def create_tibfib_bodies_and_knee_joints(
     return rotated_l_tibia_center, rotated_r_tibia_center, tibia_l_center, tibia_r_center, left_tibfib, right_tibfib
 
 def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib):
+    """
+      Repurposes the foot bodies (talus) in the OpenSim model and creates ankle joints
+      (PinJoint) connecting the talus to the tibia/fibula (tibfib) segments.
 
+      Args:
+          empty_model (osim.Model): The OpenSim model where the joints and bodies are added.
+          left_landmarks (dict): Dictionary of left leg anatomical landmarks with their 3D coordinates.
+          right_landmarks (dict): Dictionary of right leg anatomical landmarks with their 3D coordinates.
+          rotated_l_tibfib_center (np.array): Center of the left tibfib segment in the rotated coordinate system.
+          rotated_r_tibfib_center (np.array): Center of the right tibfib segment in the rotated coordinate system.
+          l_EC_midpoint (np.array): Midpoint of the left femoral epicondyles.
+          r_EC_midpoint (np.array): Midpoint of the right femoral epicondyles.
+          left_tibfib (osim.Body): The left tibfib body in the OpenSim model.
+          right_tibfib (osim.Body): The right tibfib body in the OpenSim model.
+
+      Returns:
+          None: The function modifies the OpenSim model in place by adding new joints.
+      """
     # Access the body named "talus_l_b"
     left_talus = empty_model.getBodySet().get("talus_l_b")
     # Access the body named "talus_r_b"
@@ -1949,6 +2035,30 @@ def estimate_body_segment_parameters(height, weight):
 
 
 def perform_updates(empty_model, output_folder, model_name, weight, height):
+    """
+    Performs a series of updates on an OpenSim model including setting joint ranges,
+    renaming coordinates, updating body segment properties, modifying joint rotation axes,
+    and ensuring proper subtalar joint configuration.
+
+    Args:
+        empty_model (osim.Model): The OpenSim model to be updated.
+        output_folder (str): Path to the directory where the updated model will be saved.
+        model_name (str): Name of the model, used for output file naming.
+        weight (float): Participant's weight in kilograms.
+        height (float): Participant's height in meters.
+
+    Returns:
+        str: The path to the final updated .osim model file.
+
+    Steps:
+        1. Load and configure the initial OpenSim model.
+        2. Set joint coordinate names and ranges for the pelvis, hip, knee, and ankle joints.
+        3. Configure body segment properties including mass, center of mass, and inertia.
+        4. Update rotation axes for subtalar joints ('calcn_l_to_talus_l' and 'calcn_r_to_talus_r').
+        5. Move 'rx' coordinate from rotation3 to rotation1 for subtalar joints.
+        6. Apply specific updates to the left and right subtalar joints, including renaming and range setting.
+        7. Update mesh file paths for foot and talus models.
+    """
     output_file = output_folder +"/"f"{model_name}.osim"
 
     # Load the selected model
@@ -2142,7 +2252,39 @@ def perform_updates(empty_model, output_folder, model_name, weight, height):
     return output_file
 
 def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = True):
+    """
+      Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
+      The function computes the appropriate rotations for both feet to ensure they are aligned with the ground
+      and match the positions indicated by the mocap static trial. This is particularly useful for preparing the
+      model for inverse kinematics or other biomechanical analyses.
+
+      Args:
+          output_file (str): Path to save the updated OpenSim model file.
+          empty_model (osim.Model): The OpenSim model with foot components to be aligned.
+          mocap_static_trc (dict): Dictionary containing motion capture marker data with marker names as keys
+                                   and (x, y, z) coordinates as values.
+          realign_feet (bool, optional): Whether to fully realign the feet.
+                                         If False, only minimal adjustments are made. Default is True.
+
+      Returns:
+          None. The function modifies the OpenSim model in place and saves the updated model to the specified file.
+
+      Key Steps:
+      1. Initialize the model's system.
+      2. Calculate the foot vectors (heel to toe) for both feet in the model's coordinate system.
+      3. Compute the target foot vectors from the mocap data.
+      4. Calculate the Euler angles required to align the model foot vectors with the mocap vectors.
+      5. Apply these rotations to the ankle joints of both feet.
+      6. Further adjust the foot orientation to ensure they are flat with the ground.
+
+      Example Usage:
+          feet_adjustments("updated_model.osim", model, mocap_data, realign_feet=True)
+
+      Note:
+          This function primarily handles the left and right feet independently and uses Euler angles for
+          rotation adjustments. It focuses on aligning the feet both forward-facing and flat to the ground.
+      """
     # Initialize the model's system
     state = empty_model.initSystem()
     # === Adjust Orientation of the Left Foot ===
@@ -2386,6 +2528,22 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
 
 
 def perform_scaling(participant_folder, output_file, mocap_trc_file):
+    """
+    Performs scaling of an OpenSim model using a scaling tool with marker-based calibration.
+
+    This function uses an OpenSim ScaleTool to adjust the size and marker positions of a musculoskeletal model
+    based on a participant's motion capture data. The scaling process uses a predefined ScaleSettings XML file
+    to guide the scaling and marker placement process.
+
+    Args:
+        participant_folder (str): Path to the folder containing participant-specific data and inputs.
+        output_file (str): Path to the OpenSim model (.osim) file to be scaled.
+        mocap_trc_file (str): Path to the motion capture (.trc) file containing static marker data.
+
+    Returns:
+        None
+    """
+
     scaling_file = search_files_by_keywords("High_Level_Inputs", "ScaleSettings")[0]
     scale_tool = osim.ScaleTool(scaling_file)
     scale_tool.setPathToSubject(participant_folder)

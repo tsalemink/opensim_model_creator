@@ -325,34 +325,61 @@ def add_all_muscle_attachment_markers(model, muscle_linkages, centers):
                 for side in sides:
                     # Extract the body name from the attachment and convert to lowercase
                     body_name = attachment[0].lower()
+
+                    # Special handling for non-pelvis bones (femur, tibia, fibula)
                     if body_name != "pelvis":
+
+                        # Combine tibia and fibula into a single "tibfib" entity
                         if body_name == "tibia" or body_name == "fibula":
                             body_name = "tibfib"
                             attachment[0] = "Tibfib"
+
+                        # Append the side suffix (_l for left, _r for right) to the body name
                         body_name = body_name + side
+
+                        # Determine the center based on the side
                         if side == "_l":
-                            center = centers[attachment[0]][0]
+                            center = centers[attachment[0]][0]  # Left side center
                         elif side == "_r":
-                            center = centers[attachment[0]][1]
+                            center = centers[attachment[0]][1]  # Right side center
+
+                    # Handling for the pelvis, which does not need side-specific processing
                     else:
                         center = centers[attachment[0]]
+
+                    # Append the "_b" suffix to create the body name format used in OpenSim (e.g., "femur_l_b")
                     body_name = body_name + "_b"
 
+                    # Determine the muscle name with a unique identifier
                     if len(muscle_linkages[muscle][attachment_type]) > 1:
-                        muscle_name = attachment_type + side+ "_" + muscle.lower().replace(" ", "_") + "_" + str(i)
+                        # Adds a numeric index if multiple attachments exist (e.g., 'ori_l_glut_med_1')
+                        muscle_name = attachment_type + side + "_" + muscle.lower().replace(" ", "_") + "_" + str(i)
                     else:
+                        # Simple naming without index if only one attachment exists (e.g., 'ins_r_rect_fem')
                         muscle_name = attachment_type + side + "_" + muscle.lower().replace(" ", "_")
+
+                    # Store the muscle name in a list format (required by add_markers_to_body function)
                     muscle_name = [muscle_name]
+
                     if side == "_l":
-                        location = {muscle_name[0]:np.mean(attachment[2], axis=0)}
-                        muscle_name_storage[0] = muscle_name[0]
+                        # Compute the mean coordinate for the left side attachment points
+                        location = {muscle_name[0]: np.mean(attachment[2], axis=0)}
+                        muscle_name_storage[0] = muscle_name[0]  # Store the left muscle name
                     elif side == "_r":
-                        location = {muscle_name[0]:np.mean(attachment[3], axis=0)}
-                        muscle_name_storage[1] = muscle_name[0]
-                    add_markers_to_body(model, body_name, muscle_name,location, center)
-                attachment.append(muscle_name_storage[0])
-                attachment.append(muscle_name_storage[1])
-                i = i+1
+                        # Compute the mean coordinate for the right side attachment points
+                        location = {muscle_name[0]: np.mean(attachment[3], axis=0)}
+                        muscle_name_storage[1] = muscle_name[0]  # Store the right muscle name
+
+                    # Add the computed marker to the OpenSim body using the add_markers_to_body function
+                    add_markers_to_body(model, body_name, muscle_name, location, center)
+
+                # Append the generated marker names to the muscle attachment
+                attachment.append(muscle_name_storage[0])  # Left side marker
+                attachment.append(muscle_name_storage[1])  # Right side marker
+
+                # Increment the index for naming multi-attachment muscles
+                i = i + 1
+
     return model, muscle_linkages
 
 def add_all_muscles_to_model_with_simple_names(model, local_muscle_positions, muscle_linkages):

@@ -162,7 +162,8 @@ def read_trc_file_as_dict(file_path, include_times=False):
         avg_y = np.nanmean(coords["Y"]) if len(coords["Y"]) > 0 else None
         avg_z = np.nanmean(coords["Z"]) if len(coords["Z"]) > 0 else None
 
-        # Store the averages as a tuple
+        # Store the averages as a tuple (divided by 1000 to match opensim)
+        #TODO: Just a reminder placed here incase trc files are ever converted to mm to come back to this
         marker_static_avg[marker] = (avg_x / 1000, avg_y / 1000, avg_z / 1000)
 
     if include_times:

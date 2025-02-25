@@ -7,22 +7,23 @@ from opensim_model_creator.Create_Model import create_model
 
 
 def test(input_directory, height, weight):
-    absolute_path = os.path.abspath(input_directory)
+    script_directory = os.path.dirname(os.path.abspath(__file__))
+    data_directory = os.path.join(script_directory, "data", input_directory)
 
     # Read in dictionary of static marker data.
-    marker_data_path = os.path.join(input_directory, "Inputs", "static.pkl")
+    marker_data_path = os.path.join(data_directory, "Inputs", "static.pkl")
     with open(marker_data_path, "rb") as f:
         static_marker_data = pickle.load(f)
 
-    create_model(absolute_path, static_marker_data, height=height, weight=weight, create_muscles=True, testing=True)
+    create_model(data_directory, static_marker_data, height=height, weight=weight, create_muscles=True, testing=True)
 
 
 if __name__ == "__main__":
     # Define test cases as (directory, height, weight) tuples
     test_cases = [
-        ("..\\..\\src\\opensim_model_creator\\Participants\\Brittney 05", 159.1, 40.8),
-        ("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 01", 136.3, 32.9),
-        ("..\\..\\src\\opensim_model_creator\\Participants\\Jinella 02", 117.9, 23)
+        ("Brittney 05", 159.1, 40.8),
+        ("Jinella 01", 136.3, 32.9),
+        ("Jinella 02", 117.9, 23)
     ]
 
     # Use ProcessPoolExecutor for parallel execution

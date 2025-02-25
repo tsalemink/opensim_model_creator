@@ -2570,8 +2570,7 @@ def perform_scaling(participant_folder, output_file, mocap_trc_file):
     scale_tool.getModelScaler().setMarkerFileName(marker_file)
     scale_tool.getModelScaler().setTimeRange(time_range)
 
-    scaled_output_file = os.path.join("Participants", os.path.basename(participant_folder), "Models",
-                                      "scaling_tool_settings.xml")
+    scaled_output_file = os.path.join(participant_folder, "Models", "scaling_tool_settings.xml")
 
     # Verify the loaded scaling settings (optional)
     scale_tool.printToXML(scaled_output_file)  # Outputs a copy of the loaded settings

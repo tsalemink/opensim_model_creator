@@ -1,8 +1,8 @@
-Below is an overview of model creation utilizing openism_model_creator. 
+Below is an overview of how model creation works using openism_model_creator. 
 
 Bone Creation: 
 
-The primary inputs are participant specific tracking data (.trc files) related to a static (static.trc) and dynamic (kneeoptimisation.trc, along with a static pickle file (static.pkl).
+The primary inputs are participant specific tracking data (.trc files) related to a static (static.trc) and dynamic (kneeoptimisation.trc, along with a static pickle file (static.pkl, unsure what this is FYI).
 
 Model creation begins by utilising an articulated shape model (asm) to generate meshes that better represent the underlying bone geometry of the participant, as part of the asm's workflow it also predicts anatomical landmarks which are retained.
 

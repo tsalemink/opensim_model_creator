@@ -32,7 +32,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     # Define paths for inputs and outputs
     participant_inputs = os.path.join(participant_folder, "Inputs")
     output_folder = os.path.join(participant_folder, "Models")
-    meshes = os.path.join(participant_inputs, "Meshes")
+    meshes = os.path.join(output_folder, "Meshes")
 
     # Clear output and mesh folders to avoid residuals from previous runs
     reset_folder(output_folder)

@@ -1140,7 +1140,7 @@ def initialize_model_and_extract_landmarks(asm_directory):
     right_landmarks = load_landmarks(right_landmarks_file)
 
     # Load the TRC file and extract marker placements
-    input_directory = os.path.dirname(asm_directory)
+    input_directory = os.path.abspath(os.path.join(asm_directory, "..\\..\\Inputs"))
     mocap_trc_file = search_files_by_keywords(input_directory, "static trc")[0]
     mocap_static_trc, _ = read_trc_file_as_dict(mocap_trc_file)
 

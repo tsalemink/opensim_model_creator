@@ -1204,12 +1204,13 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     model.addJoint(pelvis_joint)
 
     # Attach the mesh for the pelvis
-    mesh_filename = search_files_by_keywords(meshes, "combined pelvis")[0]
+    mesh_path = os.path.join(meshes, "combined_pelvis_mesh.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     pelvis_center = midpoint_3d(RASIS_unrot, LASIS_unrot)
     rotated_pelvis_center = midpoint_3d(RASIS,LASIS)
 
-    add_mesh_to_body(model, "pelvis_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
+    add_mesh_to_body(model, "pelvis_b", relative_path, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_pelvis_center[0], rotated_pelvis_center[1], rotated_pelvis_center[2]))
 
     # Add mocap markers
@@ -1281,19 +1282,21 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
 
     # Attach the mesh for the right femur
-    mesh_filename = search_files_by_keywords(meshes, "right femur")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_right_femur.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_r_center = r_HJC_unrot  # Extract center of the right femur
     rotated_r_femur_center = rotate_coordinate_x(r_HJC_unrot, 90)  # Rotate to match coordinate system
-    add_mesh_to_body(empty_model, "femur_r_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
+    add_mesh_to_body(empty_model, "femur_r_b", relative_path, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_r_femur_center[0], rotated_r_femur_center[1], rotated_r_femur_center[2]))
 
 
 
     # Attach the mesh for the left femur
-    mesh_filename = search_files_by_keywords(meshes, "left femur")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_left_femur.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_l_center = l_HJC_unrot  # Extract center of the right femur
     rotated_l_femur_center = rotate_coordinate_x(l_HJC_unrot, 90)  # Rotate to match coordinate system
-    add_mesh_to_body(empty_model, "femur_l_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
+    add_mesh_to_body(empty_model, "femur_l_b", relative_path, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_l_femur_center[0], rotated_l_femur_center[1], rotated_l_femur_center[2]))
 
 
@@ -1557,23 +1560,25 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Attach the mesh for the right tibia body
     # Search for the mesh file corresponding to the right tibfib
-    mesh_filename = search_files_by_keywords(meshes, "right tibia")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)  # Extract mesh information using trimesh
+    mesh_path = os.path.join(meshes, "predicted_mesh_right_tibia.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
+    info = extract_mesh_info_trimesh(mesh_path)  # Extract mesh information using trimesh
     tibia_r_center = info['center']  # Get the center of the mesh
     rotated_r_tibia_center = rotate_coordinate_x(tibia_r_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_r_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
 
 
     # Attach the mesh for the right fibula body
     # Search for the mesh file corresponding to the right fibula
-    mesh_filename = search_files_by_keywords(meshes, "right fibula")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_right_fibula.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_r_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
 
@@ -1582,23 +1587,25 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Attach the mesh for the left tibia body
     # Search for the mesh file corresponding to the left tibfib
-    mesh_filename = search_files_by_keywords(meshes, "left tibia")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)  # Extract mesh information using trimesh
+    mesh_path = os.path.join(meshes, "predicted_mesh_left_tibia.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
+    info = extract_mesh_info_trimesh(mesh_path)  # Extract mesh information using trimesh
     tibia_l_center = info['center']  # Get the center of the mesh
     rotated_l_tibia_center = rotate_coordinate_x(tibia_l_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_l_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
 
 
     # Attach the mesh for the left fibula body
     # Search for the mesh file corresponding to the left tibfib
-    mesh_filename = search_files_by_keywords(meshes, "left fibula")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_left_fibula.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_l_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
 

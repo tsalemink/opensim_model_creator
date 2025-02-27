@@ -246,8 +246,10 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
         model.finalizeConnections()
         model.printToXML(muscle_model)
 
-
-
+    # Remove temporary .osim files.
+    for osim_file in [temp_model_path_1, temp_model_path_2, optimised_knee_model, source_file_path1]:
+        if os.path.isfile(osim_file):
+            os.remove(osim_file)
 
 
         #END##############################################################################################################

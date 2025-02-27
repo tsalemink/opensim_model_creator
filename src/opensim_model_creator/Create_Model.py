@@ -12,6 +12,10 @@ from opensim_model_creator.Functions.muscle_utils import *
 from opensim_model_creator.Functions.file_utils import reset_folder
 
 
+root_directory = os.path.dirname(os.path.abspath(__file__))
+high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
+
+
 def create_model(participant_folder, static_marker_data, weight, height, create_muscles=False, testing=False):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
@@ -42,6 +46,9 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
     # Generate mesh files using ASM
     run_asm(static_marker_data, meshes)
+
+    # Move foot mesh files into the meshes directory.
+    copy_mesh_files(high_level_inputs, meshes)
 
     # Scale marker data from millimeters to meters (variable currently unused)
     scale_marker_data(static_marker_data, 0.001)
@@ -110,7 +117,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     print(f"Model saved to: {output_path}")
 
     #%% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, output_folder, model_name,  weight, height)
+    output_file = perform_updates(empty_model, output_folder, meshes, model_name,  weight, height)
 
     # Reload the model
     empty_model = osim.Model(output_file)

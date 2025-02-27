@@ -1916,10 +1916,10 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_l
     empty_model.addJoint(right_ankle_joint)
 
 
-def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files):
+def update_mesh_file_paths(input_osim, output_osim, mesh_directory, foot_mesh_files):
     """
-    Updates the paths of <mesh_file> elements in an OpenSim .osim file to absolute paths
-    based on the script's execution directory.
+    Updates the paths of <mesh_file> elements in an OpenSim .osim file to relative paths
+    based on the path from the .osim file to the mesh directory.
 
     Parameters:
     - input_osim (str): Path to the input .osim file.
@@ -1944,12 +1944,11 @@ def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files):
         # Check if the current mesh file matches one in the provided list
         for foot_mesh in foot_mesh_files:
             if current_file.endswith(foot_mesh):  # Ensure we match the filename regardless of the path
-                # Construct the new absolute path dynamically
-                new_path = os.path.join(high_level_inputs, foot_mesh)
-                new_path = os.path.abspath(new_path).replace("\\", "/")  # Normalize for OpenSim compatibility
+                mesh_path = os.path.join(mesh_directory, foot_mesh)
+                relative_path = os.path.relpath(mesh_path, os.path.dirname(output_osim))
 
                 # Update the XML with the new absolute path
-                mesh_file_element.text = new_path
+                mesh_file_element.text = relative_path
                 updated_count += 1
                 break  # Stop checking once a match is found
 
@@ -2038,7 +2037,7 @@ def estimate_body_segment_parameters(height, weight):
     }
 
 
-def perform_updates(empty_model, output_folder, model_name, weight, height):
+def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, height):
     """
     Performs a series of updates on an OpenSim model including setting joint ranges,
     renaming coordinates, updating body segment properties, modifying joint rotation axes,
@@ -2047,6 +2046,7 @@ def perform_updates(empty_model, output_folder, model_name, weight, height):
     Args:
         empty_model (osim.Model): The OpenSim model to be updated.
         output_folder (str): Path to the directory where the updated model will be saved.
+        mesh_directory (str): Path to the directory containing the mesh files.
         model_name (str): Name of the model, used for output file naming.
         weight (float): Participant's weight in kilograms.
         height (float): Participant's height in meters.
@@ -2251,7 +2251,7 @@ def perform_updates(empty_model, output_folder, model_name, weight, height):
 
 
     #updates the path to feet mesh files
-    update_mesh_file_paths(input_file, output_file,["l_bofoot.vtp","r_bofoot.vtp","l_foot.vtp","r_foot.vtp","l_talus.vtp","r_talus.vtp"])
+    update_mesh_file_paths(input_file, output_file, mesh_directory, ["l_bofoot.vtp","r_bofoot.vtp","l_foot.vtp","r_foot.vtp","l_talus.vtp","r_talus.vtp"])
 
     return output_file
 

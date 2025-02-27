@@ -315,9 +315,9 @@ def combine_pelvis_meshes(meshes_folder):
         print(f"Failed to combine pelvis meshes: {e}")
 
 
-def move_mesh_files(input_dir, output_dir, extensions=(".stl", ".vtp")):
+def copy_mesh_files(input_dir, output_dir, extensions=(".stl", ".vtp")):
     """
-    Moves all .stl and .vtp files from the input directory to the output directory.
+    Copies all .stl and .vtp files from the input directory to the output directory.
     If a file with the same name already exists in the output directory, it is replaced.
 
     Parameters:
@@ -338,7 +338,7 @@ def move_mesh_files(input_dir, output_dir, extensions=(".stl", ".vtp")):
         if f.lower().endswith(extensions)
     ]
 
-    # Move each file to the output directory
+    # Copy each file to the output directory
     for mesh_file in mesh_files:
         dest_file = os.path.join(output_dir, os.path.basename(mesh_file))
         try:
@@ -346,8 +346,8 @@ def move_mesh_files(input_dir, output_dir, extensions=(".stl", ".vtp")):
             if os.path.exists(dest_file):
                 os.remove(dest_file)
 
-            # Move the file to the output directory
-            shutil.move(mesh_file, output_dir)
+            # Copy the file to the output directory
+            shutil.copy(mesh_file, output_dir)
             print(f"Moved: {mesh_file} -> {output_dir}")
         except Exception as e:
             print(f"Failed to move {mesh_file}: {e}")

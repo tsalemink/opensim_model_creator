@@ -14,6 +14,10 @@ from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, v
 from opensim_model_creator.Functions.file_utils import search_files_by_keywords
 
 
+root_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
+
+
 def add_mesh_to_body(model, body_name, mesh_filename, offset_translation=(0, 0, 0), offset_orientation=(0, 0, 0)):
     """
     Adds a mesh geometry to a specified body in the OpenSim model.
@@ -1130,7 +1134,7 @@ def initialize_model_and_extract_landmarks(asm_directory):
             - mocap_static_trc (dict): Dictionary containing marker placements from TRC file.
     """
     # Initialise the OpenSim model
-    empty_model = osim.Model("High_Level_Inputs/Feet.osim")  # Load the base model file
+    empty_model = osim.Model(os.path.join(high_level_inputs, "Feet.osim"))  # Load the base model file
     state = empty_model.initSystem()  # Initialise the system
 
     # Load and extract landmarks for left and right limbs
@@ -1912,7 +1916,7 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_l
     empty_model.addJoint(right_ankle_joint)
 
 
-def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files, high_level_inputs_folder="High_Level_Inputs"):
+def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files):
     """
     Updates the paths of <mesh_file> elements in an OpenSim .osim file to absolute paths
     based on the script's execution directory.
@@ -1921,17 +1925,10 @@ def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files, high_level_
     - input_osim (str): Path to the input .osim file.
     - output_osim (str): Path to save the updated .osim file.
     - foot_mesh_files (list of str): List of mesh filenames (e.g., ["l_talus.vtp", "r_talus.vtp"]).
-    - high_level_inputs_folder (str): Name of the folder containing the mesh files (default: "High_Level_Inputs").
 
     Returns:
     - None
     """
-
-    # Get the directory where the script is running
-    script_dir = os.getcwd()
-
-    # Construct the full path to the High_Level_Inputs directory
-    mesh_dir = os.path.join(script_dir, high_level_inputs_folder)
 
     # Parse the .osim file
     tree = ET.parse(input_osim)
@@ -1948,7 +1945,7 @@ def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files, high_level_
         for foot_mesh in foot_mesh_files:
             if current_file.endswith(foot_mesh):  # Ensure we match the filename regardless of the path
                 # Construct the new absolute path dynamically
-                new_path = os.path.join(mesh_dir, foot_mesh)
+                new_path = os.path.join(high_level_inputs, foot_mesh)
                 new_path = os.path.abspath(new_path).replace("\\", "/")  # Normalize for OpenSim compatibility
 
                 # Update the XML with the new absolute path
@@ -2551,7 +2548,7 @@ def perform_scaling(participant_folder, output_file, mocap_trc_file):
         None
     """
 
-    scaling_file = search_files_by_keywords("High_Level_Inputs", "ScaleSettings")[0]
+    scaling_file = os.path.join(high_level_inputs, "ScaleSettings.xml")
     scale_tool = osim.ScaleTool(scaling_file)
     scale_tool.setPathToSubject(participant_folder)
 

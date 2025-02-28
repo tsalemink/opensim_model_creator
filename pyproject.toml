@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 package_dir = {'' = 'src'}
 
 [project]
-name = "opensim_model_creator"
+name = "opensim-model-creator"
 description = "Python code for OpenSim model creation using an articulated statistical shape model."
 authors = [{name = "Josh Plummer", email = "jplu752@aucklanduni.ac.nz" },
            {name = "Timothy Salemink", email = "tim.nicolas@outlook.com" }]

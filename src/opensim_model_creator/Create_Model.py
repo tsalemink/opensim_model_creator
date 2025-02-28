@@ -101,7 +101,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     empty_model.finalizeConnections()
 
     # Extract the directory name as the model name and replace spaces with underscores
-    model_name = os.path.basename(participant_folder).replace(" ", "_")
+    model_name = "Bone_Model"
 
     # Update the model name
     empty_model.setName(model_name)
@@ -211,10 +211,9 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     best_model_error = models[best_model_path]
 
     # Format the participant's name by replacing spaces with underscores
-    participant_name = os.path.basename(participant_folder).replace(" ", "_")
 
     # Define the output file name
-    final_model_filename = f"Final_Bone_Model_{participant_name}.osim"
+    final_model_filename = f"Final_Bone_Model.osim"
     final_model_path = os.path.join(os.path.dirname(best_model_path), final_model_filename)
 
     # Check if the final model file already exists, and remove it if it does
@@ -240,11 +239,11 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
         add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
 
         #Saves the model
-        muscle_model_name = os.path.basename(participant_folder).replace(" ", "_")
-        muscle_model = output_folder+"/Muscle_" +muscle_model_name+ ".osim"
-        model.setName("Muscle_"+muscle_model_name)
+        muscle_model_name = "Muscle_Model"
+        muscle_model_file = os.path.join(output_folder, f"{muscle_model_name}.osim")
+        model.setName(muscle_model_name)
         model.finalizeConnections()
-        model.printToXML(muscle_model)
+        model.printToXML(muscle_model_file)
 
     # Remove temporary .osim files.
     for osim_file in [temp_model_path_1, temp_model_path_2, optimised_knee_model, source_file_path1]:

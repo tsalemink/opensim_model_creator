@@ -69,7 +69,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
 
     #Initialises model, trc files, and landmarks
-    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(static_trc, mesh_directory)
+    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc = initialize_model_and_extract_landmarks(static_trc, mesh_directory)
 
     # %% Creation of the pelvis body and pelvis joint
     pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center = create_pelvis_body_and_joint(
@@ -136,7 +136,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
 
     #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
-    perform_scaling(model_directory, output_file, mocap_trc_file)
+    perform_scaling(model_directory, output_file, static_trc)
 
 
     #%% Create variables required by knee joint optimisation

@@ -1147,7 +1147,7 @@ def initialize_model_and_extract_landmarks(static_trc, asm_directory):
     # Load the TRC file and extract marker placements
     mocap_static_trc, _ = read_trc_file_as_dict(static_trc)
 
-    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, static_trc
+    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc
 
 def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True):
     """

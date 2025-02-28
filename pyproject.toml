@@ -13,6 +13,12 @@ authors = [{name = "Josh Plummer", email = "jplu752@aucklanduni.ac.nz" },
 version = "0.1.1"
 dynamic = ["dependencies"]
 
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+opensim_model_creator = ["High_Level_Inputs/**/*"]
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 

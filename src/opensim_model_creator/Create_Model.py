@@ -16,12 +16,14 @@ root_directory = os.path.dirname(os.path.abspath(__file__))
 high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
 
 
-def create_model(participant_folder, static_marker_data, weight, height, create_muscles=False, testing=False):
+def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=False):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
 
     Args:
-        participant_folder (str): Path to the participant's folder.
+        static_trc (str): Path to the static TRC file.
+        dynamic_trc (str): Path to the dynamic TRC file.
+        output_directory (str): Path to the directory where the models should be produced.
         static_marker_data (dict): Static marker data coordinates.
         create_muscles (bool): Whether to add muscles to the model.
         testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
@@ -34,30 +36,29 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
     #%% Setup of folders
     # Define paths for inputs and outputs
-    participant_inputs = os.path.join(participant_folder, "Inputs")
-    output_folder = os.path.join(participant_folder, "Models")
-    meshes = os.path.join(output_folder, "Meshes")
+    model_directory = os.path.join(output_directory, "Models")
+    mesh_directory = os.path.join(model_directory, "Meshes")
 
     # Clear output and mesh folders to avoid residuals from previous runs
-    reset_folder(output_folder)
-    reset_folder(meshes)
+    reset_folder(model_directory)
+    reset_folder(mesh_directory)
 
     #%%Initialisation
 
     # Generate mesh files using ASM
-    run_asm(static_marker_data, meshes)
+    run_asm(static_marker_data, mesh_directory)
 
     # Move foot mesh files into the meshes directory.
-    copy_mesh_files(high_level_inputs, meshes)
+    copy_mesh_files(high_level_inputs, mesh_directory)
 
     # Scale marker data from millimeters to meters (variable currently unused)
     scale_marker_data(static_marker_data, 0.001)
 
     # Process and extract meshes from STL files
-    process_participant_meshes(meshes, meshes)
+    process_participant_meshes(mesh_directory, mesh_directory)
 
     # Initializes muscle linkage directory
-    muscle_linkages = muscle_initialisation(meshes)
+    muscle_linkages = muscle_initialisation(mesh_directory)
 
     #Splits specific muscles into a number of segments
     segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
@@ -68,21 +69,21 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
 
     #Initialises model, trc files, and landmarks
-    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(meshes)
+    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file = initialize_model_and_extract_landmarks(static_trc, mesh_directory)
 
     # %% Creation of the pelvis body and pelvis joint
     pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center = create_pelvis_body_and_joint(
-        empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True
+        empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc, realign_pelvis=True
     )
 
     # %% Creation of femur bodies and attachment of meshes, markers, and landmarks
     (l_LEC, l_MEC, l_HJC, l_EC_midpoint, left_femur, femur_l_center, rotated_l_femur_center,
      LKNE_alignment_angles, LHIP_vert_alignment_angles, r_LEC, r_MEC, r_HJC, r_EC_midpoint, right_femur, femur_r_center, rotated_r_femur_center,
-     RKNE_alignment_angles, RHIP_vert_alignment_angles) = create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, rotated_pelvis_center, pelvis_realignment, pelvis, realign_femurs= True)
+     RKNE_alignment_angles, RHIP_vert_alignment_angles) = create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc, rotated_pelvis_center, pelvis_realignment, pelvis, realign_femurs= True)
 
     # %% Creation of the Tibia/Fibula (TibFib) Bodies
     rotated_l_tibfib_center, rotated_r_tibfib_center, tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = create_tibfib_bodies_and_knee_joints(
-        empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc,
+        empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc,
         rotated_l_femur_center, rotated_r_femur_center, LHIP_vert_alignment_angles, RHIP_vert_alignment_angles,
         left_femur, right_femur,l_LEC, l_MEC, l_HJC, l_EC_midpoint, r_LEC, r_MEC, r_HJC, r_EC_midpoint, realign_tibias=True
     )
@@ -107,17 +108,17 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
     empty_model.setName(model_name)
 
     # Ensure the output folder exists
-    os.makedirs(output_folder, exist_ok=True)
+    os.makedirs(model_directory, exist_ok=True)
 
     # Combine the folder path and filename
-    output_path = os.path.join(output_folder, f"{model_name}.osim")
+    output_path = os.path.join(model_directory, f"{model_name}.osim")
 
     # Save the model to output folder
     empty_model.printToXML(output_path)
     print(f"Model saved to: {output_path}")
 
     #%% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, output_folder, meshes, model_name,  weight, height)
+    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,  weight, height)
 
     # Reload the model
     empty_model = osim.Model(output_file)
@@ -135,21 +136,21 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
 
     #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
-    perform_scaling(participant_folder, output_file, mocap_trc_file)
+    perform_scaling(model_directory, output_file, mocap_trc_file)
 
 
     #%% Create variables required by knee joint optimisation
-    source_file_path1 = os.path.join(participant_folder, "Models", "scaled_foot.osim")  # Source path
-    knee_optimisation_trc_file = search_files_by_keywords(participant_inputs, "optimisation")[0]  # Find the TRC file containing marker data
+    source_file_path1 = os.path.join(model_directory, "scaled_foot.osim")  # Source path
+    knee_optimisation_trc_file = dynamic_trc
     ignore,(start_time, end_time),knee_optimisation_marker_dictionary = read_trc_file_as_dict(knee_optimisation_trc_file,True)
 
 
     #%%Adjusting & Optimising the Knee Joint Orientations
 
     # Default temporary model paths
-    temp_model_path_1 = output_folder+ "/temp1.osim"
-    temp_model_path_2 = output_folder+ "/temp2.osim"
-    optimised_knee_model = output_folder+ "/Optimised_Knee_Axes.osim"
+    temp_model_path_1 = model_directory + "/temp1.osim"
+    temp_model_path_2 = model_directory + "/temp2.osim"
+    optimised_knee_model = model_directory + "/Optimised_Knee_Axes.osim"
 
     #marker weights used in the IK process
     marker_weights = {
@@ -174,7 +175,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
     #%% Run IK, and extract the model marker positions and compare to those of the actual marker positions across the entire time trial, then adjust.
 
-    optimised_knee_moved_marker_model = output_folder+"/Optimised_Knee_Axes_Moved_Markers.osim"
+    optimised_knee_moved_marker_model = model_directory+"/Optimised_Knee_Axes_Moved_Markers.osim"
 
     compute_and_adjust_markers(optimised_knee_model,"ik_output.mot","_ik_model_marker_locations.sto",knee_optimisation_marker_dictionary,optimised_knee_moved_marker_model)
 
@@ -240,7 +241,7 @@ def create_model(participant_folder, static_marker_data, weight, height, create_
 
         #Saves the model
         muscle_model_name = "Muscle_Model"
-        muscle_model_file = os.path.join(output_folder, f"{muscle_model_name}.osim")
+        muscle_model_file = os.path.join(model_directory, f"{muscle_model_name}.osim")
         model.setName(muscle_model_name)
         model.finalizeConnections()
         model.printToXML(muscle_model_file)

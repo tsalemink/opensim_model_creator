@@ -10,12 +10,16 @@ def test(input_directory, height, weight):
     script_directory = os.path.dirname(os.path.abspath(__file__))
     data_directory = os.path.join(script_directory, "data", input_directory)
 
+    static_trc = os.path.join(data_directory, "Inputs", "static.trc")
+    dynamic_trc = os.path.join(data_directory, "Inputs", "kneeoptimisation.trc")
+    output_directory = os.path.join(data_directory, "_output")
+
     # Read in dictionary of static marker data.
     marker_data_path = os.path.join(data_directory, "Inputs", "static.pkl")
     with open(marker_data_path, "rb") as f:
         static_marker_data = pickle.load(f)
 
-    create_model(data_directory, static_marker_data, height=height, weight=weight, create_muscles=True, testing=True)
+    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=True, testing=True)
 
 
 if __name__ == "__main__":

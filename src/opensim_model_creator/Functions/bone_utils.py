@@ -1118,11 +1118,12 @@ def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_loca
     adjust_model_markers(model_path, output_model_path, average_marker_differences)
 
 
-def initialize_model_and_extract_landmarks(asm_directory):
+def initialize_model_and_extract_landmarks(static_trc, asm_directory):
     """
     Initializes the OpenSim model and extracts relevant landmarks and marker placements.
 
     Parameters:
+        static_trc (str): Path to the static TRC file.
         asm_directory (str): Path to the directory containing the mesh and landmarks produced by the ASM fit.
 
     Returns:
@@ -1144,11 +1145,9 @@ def initialize_model_and_extract_landmarks(asm_directory):
     right_landmarks = load_landmarks(right_landmarks_file)
 
     # Load the TRC file and extract marker placements
-    input_directory = os.path.abspath(os.path.join(asm_directory, "..\\..\\Inputs"))
-    mocap_trc_file = search_files_by_keywords(input_directory, "static trc")[0]
-    mocap_static_trc, _ = read_trc_file_as_dict(mocap_trc_file)
+    mocap_static_trc, _ = read_trc_file_as_dict(static_trc)
 
-    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file
+    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, static_trc
 
 def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True):
     """
@@ -2531,7 +2530,7 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
 
-def perform_scaling(participant_folder, output_file, mocap_trc_file):
+def perform_scaling(output_directory, output_file, static_trc_file):
     """
     Performs scaling of an OpenSim model using a scaling tool with marker-based calibration.
 
@@ -2540,9 +2539,9 @@ def perform_scaling(participant_folder, output_file, mocap_trc_file):
     to guide the scaling and marker placement process.
 
     Args:
-        participant_folder (str): Path to the folder containing participant-specific data and inputs.
+        output_directory (str): Path to the directory where the outputs should be written.
         output_file (str): Path to the OpenSim model (.osim) file to be scaled.
-        mocap_trc_file (str): Path to the motion capture (.trc) file containing static marker data.
+        static_trc_file (str): Path to the motion capture (.trc) file containing static marker data.
 
     Returns:
         None
@@ -2550,12 +2549,12 @@ def perform_scaling(participant_folder, output_file, mocap_trc_file):
 
     scaling_file = os.path.join(high_level_inputs, "ScaleSettings.xml")
     scale_tool = osim.ScaleTool(scaling_file)
-    scale_tool.setPathToSubject(participant_folder)
+    scale_tool.setPathToSubject(os.path.join(output_directory, ""))
 
     # Set the model file
     scale_tool.getGenericModelMaker().setModelFileName(output_file)  # Replace with your model file
 
-    ignore, (start_time, end_time), dontcare = read_trc_file_as_dict(mocap_trc_file, True)
+    ignore, (start_time, end_time), dontcare = read_trc_file_as_dict(static_trc_file, True)
     # Create an OpenSim ArrayDouble and populate it with start_time and end_time
     time_range = osim.ArrayDouble()
     time_range.append(start_time)
@@ -2563,18 +2562,18 @@ def perform_scaling(participant_folder, output_file, mocap_trc_file):
 
     # Set the output file for the MarkerPlacer and MarkerPlacer settings
     # Do u want to move markers to match the static file? - causes the feet to be poor currently
-    marker_file = os.path.join(os.sep, "Inputs", os.path.basename(mocap_trc_file))
+    relative_path = os.path.relpath(static_trc_file, output_directory)
 
     scale_tool.getMarkerPlacer().setApply(True)
-    scale_tool.getMarkerPlacer().setOutputModelFileName("/Models/scaled_foot.osim")
-    scale_tool.getMarkerPlacer().setMarkerFileName(marker_file)
+    scale_tool.getMarkerPlacer().setOutputModelFileName("scaled_foot.osim")
+    scale_tool.getMarkerPlacer().setMarkerFileName(relative_path)
     scale_tool.getMarkerPlacer().setTimeRange(time_range)
 
-    scale_tool.getModelScaler().setOutputModelFileName("Models/scaled_foot.osim")
-    scale_tool.getModelScaler().setMarkerFileName(marker_file)
+    scale_tool.getModelScaler().setOutputModelFileName("scaled_foot.osim")
+    scale_tool.getModelScaler().setMarkerFileName(relative_path)
     scale_tool.getModelScaler().setTimeRange(time_range)
 
-    scaled_output_file = os.path.join(participant_folder, "Models", "scaling_tool_settings.xml")
+    scaled_output_file = os.path.join(output_directory, "scaling_tool_settings.xml")
 
     # Verify the loaded scaling settings (optional)
     scale_tool.printToXML(scaled_output_file)  # Outputs a copy of the loaded settings

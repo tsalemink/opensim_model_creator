@@ -1624,7 +1624,7 @@ def create_tibfib_bodies_and_knee_joints(
     add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,["lms_LMMAL","lms_LLMAL"])
 
     # Add mocap markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibia_r_b", ["RANK", "RTIB","RTOE","RHEE"], mocap_static_trc, tibia_r_center)
+    add_markers_to_body(empty_model, "tibfib_r_b", ["RANK", "RTIB","RTOE","RHEE"], mocap_static_trc, tibia_r_center)
 
     #Add landmark markers for the right tibfib body
     add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,["lms_RMMAL","lms_RLMAL"])

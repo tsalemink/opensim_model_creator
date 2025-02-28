@@ -12,6 +12,11 @@ from sklearn.cluster import KMeans
 from opensim_model_creator.Functions.file_utils import search_files_by_keywords
 from opensim_model_creator.Functions.bone_utils import add_markers_to_body
 
+
+root_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
+
+
 #Contains the muscle linkages definitions
 muscle_linkages_global = {
     "Extobl": {
@@ -636,7 +641,8 @@ def muscle_initialisation(participant_inputs):
     muscle_linkages = copy.deepcopy(muscle_linkages_global)
 
     # Relate muscle numbers to nodes that make up the insertion/origin
-    muscle_number_to_nodes_key = parse_muscle_node_files_recursive("High_Level_Inputs/final_node_numbers")
+    node_directory = os.path.join(high_level_inputs, "final_node_numbers")
+    muscle_number_to_nodes_key = parse_muscle_node_files_recursive(node_directory)
 
     # Relate node numbers to their coordinates
     node_to_coordinate = parse_stl_files_by_side_and_bone(participant_inputs, ["Femur", "Tibia", "Pelvis", "Fibula"])

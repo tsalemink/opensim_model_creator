@@ -6,12 +6,18 @@ build-backend = "setuptools.build_meta"
 package_dir = {'' = 'src'}
 
 [project]
-name = "opensim_model_creator"
+name = "opensim-model-creator"
 description = "Python code for OpenSim model creation using an articulated statistical shape model."
 authors = [{name = "Josh Plummer", email = "jplu752@aucklanduni.ac.nz" },
            {name = "Timothy Salemink", email = "tim.nicolas@outlook.com" }]
-version = "0.1.0"
+version = "0.1.3"
 dynamic = ["dependencies"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+opensim_model_creator = ["High_Level_Inputs/**/*"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

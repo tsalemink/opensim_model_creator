@@ -14,6 +14,10 @@ from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, v
 from opensim_model_creator.Functions.file_utils import search_files_by_keywords
 
 
+root_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
+
+
 def add_mesh_to_body(model, body_name, mesh_filename, offset_translation=(0, 0, 0), offset_orientation=(0, 0, 0)):
     """
     Adds a mesh geometry to a specified body in the OpenSim model.
@@ -1114,11 +1118,12 @@ def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_loca
     adjust_model_markers(model_path, output_model_path, average_marker_differences)
 
 
-def initialize_model_and_extract_landmarks(asm_directory):
+def initialize_model_and_extract_landmarks(static_trc, asm_directory):
     """
     Initializes the OpenSim model and extracts relevant landmarks and marker placements.
 
     Parameters:
+        static_trc (str): Path to the static TRC file.
         asm_directory (str): Path to the directory containing the mesh and landmarks produced by the ASM fit.
 
     Returns:
@@ -1130,7 +1135,7 @@ def initialize_model_and_extract_landmarks(asm_directory):
             - mocap_static_trc (dict): Dictionary containing marker placements from TRC file.
     """
     # Initialise the OpenSim model
-    empty_model = osim.Model("High_Level_Inputs/Feet.osim")  # Load the base model file
+    empty_model = osim.Model(os.path.join(high_level_inputs, "Feet.osim"))  # Load the base model file
     state = empty_model.initSystem()  # Initialise the system
 
     # Load and extract landmarks for left and right limbs
@@ -1140,11 +1145,9 @@ def initialize_model_and_extract_landmarks(asm_directory):
     right_landmarks = load_landmarks(right_landmarks_file)
 
     # Load the TRC file and extract marker placements
-    input_directory = os.path.dirname(asm_directory)
-    mocap_trc_file = search_files_by_keywords(input_directory, "static trc")[0]
-    mocap_static_trc, _ = read_trc_file_as_dict(mocap_trc_file)
+    mocap_static_trc, _ = read_trc_file_as_dict(static_trc)
 
-    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc, mocap_trc_file
+    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc
 
 def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True):
     """
@@ -1204,12 +1207,13 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     model.addJoint(pelvis_joint)
 
     # Attach the mesh for the pelvis
-    mesh_filename = search_files_by_keywords(meshes, "combined pelvis")[0]
+    mesh_path = os.path.join(meshes, "combined_pelvis_mesh.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     pelvis_center = midpoint_3d(RASIS_unrot, LASIS_unrot)
     rotated_pelvis_center = midpoint_3d(RASIS,LASIS)
 
-    add_mesh_to_body(model, "pelvis_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
+    add_mesh_to_body(model, "pelvis_b", relative_path, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_pelvis_center[0], rotated_pelvis_center[1], rotated_pelvis_center[2]))
 
     # Add mocap markers
@@ -1281,19 +1285,21 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
 
     # Attach the mesh for the right femur
-    mesh_filename = search_files_by_keywords(meshes, "right femur")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_right_femur.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_r_center = r_HJC_unrot  # Extract center of the right femur
     rotated_r_femur_center = rotate_coordinate_x(r_HJC_unrot, 90)  # Rotate to match coordinate system
-    add_mesh_to_body(empty_model, "femur_r_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
+    add_mesh_to_body(empty_model, "femur_r_b", relative_path, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_r_femur_center[0], rotated_r_femur_center[1], rotated_r_femur_center[2]))
 
 
 
     # Attach the mesh for the left femur
-    mesh_filename = search_files_by_keywords(meshes, "left femur")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_left_femur.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_l_center = l_HJC_unrot  # Extract center of the right femur
     rotated_l_femur_center = rotate_coordinate_x(l_HJC_unrot, 90)  # Rotate to match coordinate system
-    add_mesh_to_body(empty_model, "femur_l_b", mesh_filename, offset_orientation=(-1.5708, 0, 0),
+    add_mesh_to_body(empty_model, "femur_l_b", relative_path, offset_orientation=(-1.5708, 0, 0),
                      offset_translation=(rotated_l_femur_center[0], rotated_l_femur_center[1], rotated_l_femur_center[2]))
 
 
@@ -1557,23 +1563,25 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Attach the mesh for the right tibia body
     # Search for the mesh file corresponding to the right tibfib
-    mesh_filename = search_files_by_keywords(meshes, "right tibia")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)  # Extract mesh information using trimesh
+    mesh_path = os.path.join(meshes, "predicted_mesh_right_tibia.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
+    info = extract_mesh_info_trimesh(mesh_path)  # Extract mesh information using trimesh
     tibia_r_center = info['center']  # Get the center of the mesh
     rotated_r_tibia_center = rotate_coordinate_x(tibia_r_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_r_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
 
 
     # Attach the mesh for the right fibula body
     # Search for the mesh file corresponding to the right fibula
-    mesh_filename = search_files_by_keywords(meshes, "right fibula")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_right_fibula.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_r_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
 
@@ -1582,23 +1590,25 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Attach the mesh for the left tibia body
     # Search for the mesh file corresponding to the left tibfib
-    mesh_filename = search_files_by_keywords(meshes, "left tibia")[0]
-    info = extract_mesh_info_trimesh(mesh_filename)  # Extract mesh information using trimesh
+    mesh_path = os.path.join(meshes, "predicted_mesh_left_tibia.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
+    info = extract_mesh_info_trimesh(mesh_path)  # Extract mesh information using trimesh
     tibia_l_center = info['center']  # Get the center of the mesh
     rotated_l_tibia_center = rotate_coordinate_x(tibia_l_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_l_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
 
 
     # Attach the mesh for the left fibula body
     # Search for the mesh file corresponding to the left tibfib
-    mesh_filename = search_files_by_keywords(meshes, "left fibula")[0]
+    mesh_path = os.path.join(meshes, "predicted_mesh_left_fibula.stl")
+    relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_l_b", mesh_filename,
+    add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
                      offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
 
@@ -1613,7 +1623,7 @@ def create_tibfib_bodies_and_knee_joints(
     add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,["lms_LMMAL","lms_LLMAL"])
 
     # Add mocap markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibia_r_b", ["RANK", "RTIB","RTOE","RHEE"], mocap_static_trc, tibia_r_center)
+    add_markers_to_body(empty_model, "tibfib_r_b", ["RANK", "RTIB","RTOE","RHEE"], mocap_static_trc, tibia_r_center)
 
     #Add landmark markers for the right tibfib body
     add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,["lms_RMMAL","lms_RLMAL"])
@@ -1905,26 +1915,19 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_l
     empty_model.addJoint(right_ankle_joint)
 
 
-def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files, high_level_inputs_folder="High_Level_Inputs"):
+def update_mesh_file_paths(input_osim, output_osim, mesh_directory, foot_mesh_files):
     """
-    Updates the paths of <mesh_file> elements in an OpenSim .osim file to absolute paths
-    based on the script's execution directory.
+    Updates the paths of <mesh_file> elements in an OpenSim .osim file to relative paths
+    based on the path from the .osim file to the mesh directory.
 
     Parameters:
     - input_osim (str): Path to the input .osim file.
     - output_osim (str): Path to save the updated .osim file.
     - foot_mesh_files (list of str): List of mesh filenames (e.g., ["l_talus.vtp", "r_talus.vtp"]).
-    - high_level_inputs_folder (str): Name of the folder containing the mesh files (default: "High_Level_Inputs").
 
     Returns:
     - None
     """
-
-    # Get the directory where the script is running
-    script_dir = os.getcwd()
-
-    # Construct the full path to the High_Level_Inputs directory
-    mesh_dir = os.path.join(script_dir, high_level_inputs_folder)
 
     # Parse the .osim file
     tree = ET.parse(input_osim)
@@ -1940,12 +1943,11 @@ def update_mesh_file_paths(input_osim, output_osim, foot_mesh_files, high_level_
         # Check if the current mesh file matches one in the provided list
         for foot_mesh in foot_mesh_files:
             if current_file.endswith(foot_mesh):  # Ensure we match the filename regardless of the path
-                # Construct the new absolute path dynamically
-                new_path = os.path.join(mesh_dir, foot_mesh)
-                new_path = os.path.abspath(new_path).replace("\\", "/")  # Normalize for OpenSim compatibility
+                mesh_path = os.path.join(mesh_directory, foot_mesh)
+                relative_path = os.path.relpath(mesh_path, os.path.dirname(output_osim))
 
                 # Update the XML with the new absolute path
-                mesh_file_element.text = new_path
+                mesh_file_element.text = relative_path
                 updated_count += 1
                 break  # Stop checking once a match is found
 
@@ -2034,7 +2036,7 @@ def estimate_body_segment_parameters(height, weight):
     }
 
 
-def perform_updates(empty_model, output_folder, model_name, weight, height):
+def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, height):
     """
     Performs a series of updates on an OpenSim model including setting joint ranges,
     renaming coordinates, updating body segment properties, modifying joint rotation axes,
@@ -2043,6 +2045,7 @@ def perform_updates(empty_model, output_folder, model_name, weight, height):
     Args:
         empty_model (osim.Model): The OpenSim model to be updated.
         output_folder (str): Path to the directory where the updated model will be saved.
+        mesh_directory (str): Path to the directory containing the mesh files.
         model_name (str): Name of the model, used for output file naming.
         weight (float): Participant's weight in kilograms.
         height (float): Participant's height in meters.
@@ -2247,7 +2250,7 @@ def perform_updates(empty_model, output_folder, model_name, weight, height):
 
 
     #updates the path to feet mesh files
-    update_mesh_file_paths(input_file, output_file,["l_bofoot.vtp","r_bofoot.vtp","l_foot.vtp","r_foot.vtp","l_talus.vtp","r_talus.vtp"])
+    update_mesh_file_paths(input_file, output_file, mesh_directory, ["l_bofoot.vtp","r_bofoot.vtp","l_foot.vtp","r_foot.vtp","l_talus.vtp","r_talus.vtp"])
 
     return output_file
 
@@ -2527,7 +2530,7 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
 
-def perform_scaling(participant_folder, output_file, mocap_trc_file):
+def perform_scaling(output_directory, output_file, static_trc_file):
     """
     Performs scaling of an OpenSim model using a scaling tool with marker-based calibration.
 
@@ -2536,22 +2539,22 @@ def perform_scaling(participant_folder, output_file, mocap_trc_file):
     to guide the scaling and marker placement process.
 
     Args:
-        participant_folder (str): Path to the folder containing participant-specific data and inputs.
+        output_directory (str): Path to the directory where the outputs should be written.
         output_file (str): Path to the OpenSim model (.osim) file to be scaled.
-        mocap_trc_file (str): Path to the motion capture (.trc) file containing static marker data.
+        static_trc_file (str): Path to the motion capture (.trc) file containing static marker data.
 
     Returns:
         None
     """
 
-    scaling_file = search_files_by_keywords("High_Level_Inputs", "ScaleSettings")[0]
+    scaling_file = os.path.join(high_level_inputs, "ScaleSettings.xml")
     scale_tool = osim.ScaleTool(scaling_file)
-    scale_tool.setPathToSubject(participant_folder)
+    scale_tool.setPathToSubject(os.path.join(output_directory, ""))
 
     # Set the model file
     scale_tool.getGenericModelMaker().setModelFileName(output_file)  # Replace with your model file
 
-    ignore, (start_time, end_time), dontcare = read_trc_file_as_dict(mocap_trc_file, True)
+    ignore, (start_time, end_time), dontcare = read_trc_file_as_dict(static_trc_file, True)
     # Create an OpenSim ArrayDouble and populate it with start_time and end_time
     time_range = osim.ArrayDouble()
     time_range.append(start_time)
@@ -2559,19 +2562,18 @@ def perform_scaling(participant_folder, output_file, mocap_trc_file):
 
     # Set the output file for the MarkerPlacer and MarkerPlacer settings
     # Do u want to move markers to match the static file? - causes the feet to be poor currently
-    marker_file = os.path.join(os.sep, "Inputs", os.path.basename(mocap_trc_file))
+    relative_path = os.path.relpath(static_trc_file, output_directory)
 
     scale_tool.getMarkerPlacer().setApply(True)
-    scale_tool.getMarkerPlacer().setOutputModelFileName("/Models/scaled_foot.osim")
-    scale_tool.getMarkerPlacer().setMarkerFileName(marker_file)
+    scale_tool.getMarkerPlacer().setOutputModelFileName("scaled_foot.osim")
+    scale_tool.getMarkerPlacer().setMarkerFileName(relative_path)
     scale_tool.getMarkerPlacer().setTimeRange(time_range)
 
-    scale_tool.getModelScaler().setOutputModelFileName("Models/scaled_foot.osim")
-    scale_tool.getModelScaler().setMarkerFileName(marker_file)
+    scale_tool.getModelScaler().setOutputModelFileName("scaled_foot.osim")
+    scale_tool.getModelScaler().setMarkerFileName(relative_path)
     scale_tool.getModelScaler().setTimeRange(time_range)
 
-    scaled_output_file = os.path.join("Participants", os.path.basename(participant_folder), "Models",
-                                      "scaling_tool_settings.xml")
+    scaled_output_file = os.path.join(output_directory, "scaling_tool_settings.xml")
 
     # Verify the loaded scaling settings (optional)
     scale_tool.printToXML(scaled_output_file)  # Outputs a copy of the loaded settings

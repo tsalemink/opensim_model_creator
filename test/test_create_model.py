@@ -23,27 +23,32 @@ def test(input_directory, height, weight):
 
 
 if __name__ == "__main__":
-    # Define test cases as (directory, height, weight) tuples
-    test_cases = [
-        ("Sydney 01", 1.634, 53.5),
-        ("Brittney 05", 1.591, 40.8),
-        ("Jinella 01", 1.363, 32.9),
-        ("Jinella 02", 1.179, 23)
-    ]
+    test("Sydney 01", 1.634, 53.5)
+    # test("Brittney 05", 1.591, 40.8),
+    # test("Jinella 01", 1.363, 32.9),
+    # test("Jinella 02", 1.179, 23)
 
-    # Use ProcessPoolExecutor for parallel execution
-    max_workers = os.cpu_count() or 4  # Default to the number of CPU cores
-    print(f"Starting with {max_workers} parallel processes...")
-
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all test cases to the executor
-        futures = {executor.submit(test, *case): case for case in test_cases}
-
-        # As each future completes, log the result
-        for future in as_completed(futures):
-            case = futures[future]
-            try:
-                future.result()  # Will raise any exceptions that occurred
-                print(f"\033[92m✅ Test completed successfully for {case[0]}\033[0m")
-            except Exception as e:
-                print(f"\033[91m❌ Test failed for {case[0]}: {e}\033[0m")
+    # # Define test cases as (directory, height, weight) tuples
+    # test_cases = [
+    #     ("Sydney 01", 1.634, 53.5),
+    #     ("Brittney 05", 159.1, 40.8),
+    #     ("Jinella 01", 136.3, 32.9),
+    #     ("Jinella 02", 117.9, 23)
+    # ]
+    #
+    # # Use ProcessPoolExecutor for parallel execution
+    # max_workers = os.cpu_count() or 4  # Default to the number of CPU cores
+    # print(f"Starting with {max_workers} parallel processes...")
+    #
+    # with ProcessPoolExecutor(max_workers=max_workers) as executor:
+    #     # Submit all test cases to the executor
+    #     futures = {executor.submit(test, *case): case for case in test_cases}
+    #
+    #     # As each future completes, log the result
+    #     for future in as_completed(futures):
+    #         case = futures[future]
+    #         try:
+    #             future.result()  # Will raise any exceptions that occurred
+    #             print(f"\033[92m✅ Test completed successfully for {case[0]}\033[0m")
+    #         except Exception as e:
+    #             print(f"\033[91m❌ Test failed for {case[0]}: {e}\033[0m")

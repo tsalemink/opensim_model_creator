@@ -25,6 +25,7 @@ def test(input_directory, height, weight):
 if __name__ == "__main__":
     # Define test cases as (directory, height, weight) tuples
     test_cases = [
+        ("Sydney 01", 1.634, 53.5),
         ("Brittney 05", 159.1, 40.8),
         ("Jinella 01", 136.3, 32.9),
         ("Jinella 02", 117.9, 23)

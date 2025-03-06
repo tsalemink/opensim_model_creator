@@ -2137,13 +2137,13 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     # Set coordinates range and names for left knee joint
     l_knee_flexion = l_knee_joint.upd_coordinates(0)
-    l_knee_flexion.setName("knee_flexion_l")
+    l_knee_flexion.setName("knee_angle_l")
     l_knee_flexion.setRangeMin(-2.2)
     l_knee_flexion.setRangeMax(0.0)
 
     # Set coordinates range and names for right knee joint
     r_knee_flexion = r_knee_joint.upd_coordinates(0)
-    r_knee_flexion.setName("knee_flexion_r")
+    r_knee_flexion.setName("knee_angle_r")
     r_knee_flexion.setRangeMin(-2.2)
     r_knee_flexion.setRangeMax(0.0)
 

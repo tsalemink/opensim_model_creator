@@ -16,7 +16,8 @@ root_directory = os.path.dirname(os.path.abspath(__file__))
 high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
 
 
-def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=False):
+def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=False,
+                 progress_tracker=None):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
 
@@ -27,8 +28,9 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         static_marker_data (dict): Static marker data coordinates.
         create_muscles (bool): Whether to add muscles to the model.
         testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
-        weight (float, optional): Participant's weight in kg.
-        height (float, optional): Participant's height in meters.
+        weight (float): Participant's weight in kg.
+        height (float): Participant's height in meters.
+        progress_tracker (ProgressTracker, optional): Progress-tracker for emitting progress signals.
 
     Returns:
         None
@@ -45,8 +47,14 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
     #%%Initialisation
 
+    if progress_tracker:
+        progress_tracker.progress.emit("Fitting articulated shape model")
+
     # Generate mesh files using ASM
     run_asm(static_marker_data, mesh_directory)
+
+    if progress_tracker:
+        progress_tracker.progress.emit("Creating OpenSim model")
 
     # Move foot mesh files into the meshes directory.
     copy_mesh_files(high_level_inputs, mesh_directory)

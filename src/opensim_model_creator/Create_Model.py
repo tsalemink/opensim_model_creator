@@ -48,13 +48,13 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     #%%Initialisation
 
     if progress_tracker:
-        progress_tracker.progress.emit("Fitting articulated shape model")
+        progress_tracker.progress.emit("Fitting articulated shape model", "black")
 
     # Generate mesh files using ASM
     run_asm(static_marker_data, mesh_directory)
 
     if progress_tracker:
-        progress_tracker.progress.emit("Creating OpenSim model")
+        progress_tracker.progress.emit("Creating OpenSim model", "black")
 
     # Move foot mesh files into the meshes directory.
     copy_mesh_files(high_level_inputs, mesh_directory)

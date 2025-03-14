@@ -10,7 +10,7 @@ name = "opensim-model-creator"
 description = "Python code for OpenSim model creation using an articulated statistical shape model."
 authors = [{name = "Josh Plummer", email = "jplu752@aucklanduni.ac.nz" },
            {name = "Timothy Salemink", email = "tim.nicolas@outlook.com" }]
-version = "0.1.5"
+version = "0.1.6"
 dynamic = ["dependencies"]
 readme = "README.md"
 

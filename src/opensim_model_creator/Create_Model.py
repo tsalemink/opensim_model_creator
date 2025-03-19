@@ -9,7 +9,7 @@ from articulated_ssm_both_sides.MainASM import run_asm
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
-from opensim_model_creator.Functions.file_utils import reset_folder
+from opensim_model_creator.Functions.file_utils import reset_folder, get_results_dir
 
 
 root_directory = os.path.dirname(os.path.abspath(__file__))
@@ -185,7 +185,10 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
     optimised_knee_moved_marker_model = model_directory+"/Optimised_Knee_Axes_Moved_Markers.osim"
 
-    compute_and_adjust_markers(optimised_knee_model,"ik_output.mot","_ik_model_marker_locations.sto",knee_optimisation_marker_dictionary,optimised_knee_moved_marker_model)
+    results_directory = get_results_dir()
+    ik_output = os.path.join(results_directory, "ik_output.mot")
+    ik_marker_locations = os.path.join(results_directory, "_ik_model_marker_locations.sto")
+    compute_and_adjust_markers(optimised_knee_model, ik_output, ik_marker_locations, knee_optimisation_marker_dictionary, optimised_knee_moved_marker_model)
 
 
     # Run the Inverse Kinematics (IK) analysis and print results for the 3 different models

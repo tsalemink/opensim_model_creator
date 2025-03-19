@@ -11,7 +11,7 @@ import pandas as pd
 
 #Import required functions
 from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, vector_between_points, read_trc_file_as_dict, midpoint_3d
-from opensim_model_creator.Functions.file_utils import search_files_by_keywords
+from opensim_model_creator.Functions.file_utils import search_files_by_keywords, get_results_dir
 
 
 root_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -869,7 +869,8 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
     model.printToXML(final_output_model)
     return result
 
-def perform_IK(model_file, trc_file, start_time, end_time, marker_weights, output_errors_file="_ik_marker_errors.sto"):
+
+def perform_IK(model_file, trc_file, start_time, end_time, marker_weights):
     """
     Perform Inverse Kinematics analysis using OpenSim.
 
@@ -879,20 +880,22 @@ def perform_IK(model_file, trc_file, start_time, end_time, marker_weights, outpu
         start_time (float): Start time for IK.
         end_time (float): End time for IK.
         marker_weights (dict): Marker weights for IK analysis.
-        output_errors_file (str): Path to save marker errors.
 
     Returns:
         dict: Dictionary containing average RMS error and max error.
     """
     try:
+        results_directory = get_results_dir()
         model = osim.Model(model_file)
         ik_tool = osim.InverseKinematicsTool()
         ik_tool.setModel(model)
         ik_tool.setMarkerDataFileName(trc_file)
         ik_tool.setStartTime(start_time)
         ik_tool.setEndTime(end_time)
-        ik_tool.setOutputMotionFileName("ik_output.mot")
+        ik_output = os.path.join(results_directory, "ik_output.mot")
+        ik_tool.setOutputMotionFileName(ik_output)
         ik_tool.set_report_marker_locations(True)
+        ik_tool.setResultsDir(results_directory)
 
         # Configure marker weights
         ik_task_set = osim.IKTaskSet()
@@ -906,11 +909,14 @@ def perform_IK(model_file, trc_file, start_time, end_time, marker_weights, outpu
         ik_tool.set_IKTaskSet(ik_task_set)
         ik_tool.run()
 
+        output_errors_file = os.path.join(results_directory, "_ik_marker_errors.sto")
+
         return extract_ik_errors(output_errors_file)
 
     except Exception as e:
         print(f"Error during IK: {e}")
         return None
+
 
 def extract_ik_errors(error_file_path):
     """

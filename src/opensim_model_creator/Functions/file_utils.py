@@ -52,3 +52,5 @@ def get_results_dir():
     else:
         results_directory = os.path.join(os.getcwd(), "opensim_results")
     os.makedirs(results_directory, exist_ok=True)
+
+    return results_directory

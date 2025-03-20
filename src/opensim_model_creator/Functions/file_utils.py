@@ -1,6 +1,8 @@
 # file_utils.py contains helper functions designed for the retrieval, manipulation or saving of files for the opensim_model_creator
 import os
+import sys
 import shutil
+
 
 def search_files_by_keywords(folder_path, keywords):
     """
@@ -42,3 +44,11 @@ def reset_folder(folder_path):
     if os.path.exists(folder_path):  # Check if folder exists
         shutil.rmtree(folder_path)  # Delete the entire folder
     os.makedirs(folder_path, exist_ok=True)  # Recreate the empty folder
+
+
+def get_results_dir():
+    if getattr(sys, 'frozen', False):
+        results_directory = os.path.join(os.getenv("LOCALAPPDATA"), "MusculoSkeletal", "C3D-Parser")
+    else:
+        results_directory = os.path.join(os.getcwd(), "opensim_results")
+    os.makedirs(results_directory, exist_ok=True)

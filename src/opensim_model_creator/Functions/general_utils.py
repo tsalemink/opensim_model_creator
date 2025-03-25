@@ -7,6 +7,7 @@ import trimesh
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
 import shutil
+from gias3.mesh import vtktools, simplemesh
 
 def rotate_coordinate_x(coord, angle_degrees):
     """
@@ -222,16 +223,13 @@ def scale_stl_mesh(input_stl, output_stl, scale_factor=1000):
     - None
     """
     # Load the STL file
-    mesh = trimesh.load(input_stl)
-
-    if not isinstance(mesh, trimesh.Trimesh):
-        raise ValueError(f"File '{input_stl}' is not a valid mesh.")
+    mesh = vtktools.loadpoly(input_stl)
 
     # Scale the mesh
-    mesh.apply_scale(1 / scale_factor)
+    mesh.v = mesh.v*(1/scale_factor)
 
     # Export the scaled STL
-    mesh.export(output_stl, file_type="stl")
+    vtktools.savepoly(mesh, output_stl)
     print(f"Scaled and saved: {output_stl}")
 
 
@@ -299,15 +297,24 @@ def combine_pelvis_meshes(meshes_folder):
 
     try:
         # Load the meshes
-        mesh1 = trimesh.load(pelvis_files[0])
-        mesh2 = trimesh.load(pelvis_files[1])
+        mesh1 = vtktools.loadpoly(pelvis_files[0])
+        mesh2 = vtktools.loadpoly(pelvis_files[1])
 
-        # Combine meshes
-        combined_mesh = trimesh.util.concatenate([mesh1, mesh2])
+        # create a new merged mesh object
+        merged_mesh = simplemesh.SimpleMesh()
+        # merge vertices of all meshes
+        merged_mesh_vert = np.concatenate((mesh1.v, mesh2.v), axis=0)
+        # merge faces of all meshes, need to add number of vertices for all previous meshes so the face numbers are correct
+        a = len(mesh1.v)
+
+        merged_mesh_faces = np.concatenate((mesh1.f, mesh2.f + a), axis=0)
+        # assign vertices and faces to new mesh
+        merged_mesh.v = merged_mesh_vert
+        merged_mesh.f = merged_mesh_faces
 
         # Save combined pelvis mesh
         output_path = os.path.join(meshes_folder, "combined_pelvis_mesh.stl")
-        combined_mesh.export(output_path, file_type="stl")
+        vtktools.savepoly(merged_mesh,output_path)
 
         print(f"Combined pelvis mesh saved to: {output_path}")
 

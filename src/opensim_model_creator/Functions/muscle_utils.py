@@ -3,9 +3,9 @@ import copy
 import os
 import opensim as osim
 import numpy as np
-import trimesh
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
+from gias3.mesh import vtktools
 
 
 #Import required functions
@@ -245,15 +245,11 @@ def parse_stl_files_by_side_and_bone(directory, bones):
 
             stl_path = stl_files[0]  # Use the first match
 
-            # Load the STL file using trimesh
-            mesh = trimesh.load(stl_path)
-
-            if not isinstance(mesh, trimesh.Trimesh):
-                print(f"Invalid mesh file: {stl_path}. Skipping.")
-                continue
+            # Load the STL file
+            mesh = vtktools.loadpoly(stl_path)
 
             # Extract unique vertex coordinates
-            unique_vertices = mesh.vertices
+            unique_vertices = mesh.v
 
             # Store the parsed vertices in the dictionary
             vertex_dict = {i: list(unique_vertices[i]) for i in range(len(unique_vertices))}

@@ -3,7 +3,6 @@ import numpy as np
 import re
 import pandas as pd
 import os
-import trimesh
 from tkinter import Tk
 from tkinter.filedialog import askdirectory
 import shutil

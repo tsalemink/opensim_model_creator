@@ -1,8 +1,7 @@
 #Import Packages
 import opensim as osim
 import os
-import trimesh
-import pyvista as pv
+from gias3.mesh import vtktools
 import numpy as np
 import xml.etree.ElementTree as ET
 from scipy.spatial.transform import Rotation as R
@@ -60,9 +59,10 @@ def add_mesh_to_body(model, body_name, mesh_filename, offset_translation=(0, 0, 
 
     print(f"Added mesh '{geometry_name}' to body '{body_name}' with translation {offset_translation} and orientation {offset_orientation}.")
 
-def extract_mesh_info_trimesh(file_path):
+def extract_mesh_info(file_path):
+    #need to evaluate if we actually need this function
     """
-    Extracts size, position, and volume information from a mesh file (STL or VTP) using trimesh.
+    Extracts size, position, and volume information from a mesh file (STL or VTP) using gias3.mesh.vtktools.
     If the file is a VTP, it converts it to an STL beforehand.
 
     Args:
@@ -74,30 +74,32 @@ def extract_mesh_info_trimesh(file_path):
     # Check if the file is a VTP
     if file_path.lower().endswith('.vtp'):
         print(f"Converting VTP file to STL: {file_path}")
-        # Load the VTP file with pyvista
-        mesh = pv.read(file_path)
+        # Load the VTP file
+        mesh = vtktools.loadpoly(file_path)
 
         # Temporary STL filename
         stl_temp_file = file_path.replace('.vtp', '.stl')
 
         # Save the mesh as an STL file
-        mesh.save(stl_temp_file)
+        vtktools.savepoly(mesh, stl_temp_file)
         print(f"Converted to STL: {stl_temp_file}")
 
         # Update the file path to point to the STL file
         file_path = stl_temp_file
 
     # Load the mesh with trimesh
-    mesh = trimesh.load(file_path)
+    mesh = vtktools.loadpoly(file_path)
 
     # Get bounding box size
-    bounding_box_size = mesh.bounding_box.extents
+    bounding_box = mesh.calcBoundingBox()
+    bounding_box_size = bounding_box[:,1] - bounding_box[:,0]
 
     # Get the center of the mesh
-    center = mesh.bounding_box.centroid
+    mesh.calcFaceProperties()
+    center = mesh.calcCoM()
 
     # Get the volume
-    volume = mesh.volume
+    volume = compute_mesh_volume(mesh.v,mesh.f)
 
     # Optionally remove the temporary STL file
     if file_path.endswith('.stl') and '_temp' in file_path:
@@ -1571,7 +1573,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Search for the mesh file corresponding to the right tibfib
     mesh_path = os.path.join(meshes, "predicted_mesh_right_tibia.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
-    info = extract_mesh_info_trimesh(mesh_path)  # Extract mesh information using trimesh
+    info = extract_mesh_info(mesh_path)  # Extract mesh information using trimesh
     tibia_r_center = info['center']  # Get the center of the mesh
     rotated_r_tibia_center = rotate_coordinate_x(tibia_r_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
@@ -1598,7 +1600,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Search for the mesh file corresponding to the left tibfib
     mesh_path = os.path.join(meshes, "predicted_mesh_left_tibia.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
-    info = extract_mesh_info_trimesh(mesh_path)  # Extract mesh information using trimesh
+    info = extract_mesh_info(mesh_path)  # Extract mesh information using trimesh
     tibia_l_center = info['center']  # Get the center of the mesh
     rotated_l_tibia_center = rotate_coordinate_x(tibia_l_center, 90)  # Rotate the center to align with OpenSim's coordinate system
 
@@ -2587,6 +2589,24 @@ def perform_scaling(output_directory, output_file, static_trc_file):
     # Run the scaling process
     scale_tool.run()
 
+def compute_mesh_volume(vertices, faces):
+    """
+    Computes the volume of a 3D mesh using the divergence theorem.
 
+    :param vertices: (N, 3) array of vertex coordinates (x, y, z).
+    :param faces: (M, 3) array of indices representing triangular faces.
+    :return: Volume of the mesh.
+    """
+    volume = 0.0
+
+    for face in faces:
+        # Get the vertices of the triangle
+        v0, v1, v2 = vertices[face]
+
+        # Compute the signed volume of the tetrahedron formed with the origin
+        tetra_volume = np.dot(v0, np.cross(v1, v2)) / 6.0
+        volume += tetra_volume
+
+    return abs(volume)  # Ensure positive volume
 
 

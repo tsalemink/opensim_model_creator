@@ -1,17 +1,17 @@
-#Import Packages
+# Import Packages
 import opensim as osim
 import os
-from gias3.mesh import vtktools
-import numpy as np
 import xml.etree.ElementTree as ET
-from scipy.spatial.transform import Rotation as R
+
+import numpy as np
+from gias3.mesh import vtktools
 from scipy.optimize import minimize
-import pandas as pd
+from scipy.spatial.transform import Rotation as R
 
-#Import required functions
-from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, vector_between_points, read_trc_file_as_dict, midpoint_3d
 from opensim_model_creator.Functions.file_utils import search_files_by_keywords, get_results_dir
-
+# Import required functions
+from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, vector_between_points, \
+    read_trc_file_as_dict, midpoint_3d
 
 root_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
@@ -57,10 +57,12 @@ def add_mesh_to_body(model, body_name, mesh_filename, offset_translation=(0, 0, 
     # Attach the mesh to the offset frame
     offset_frame.attachGeometry(mesh_geometry)
 
-    print(f"Added mesh '{geometry_name}' to body '{body_name}' with translation {offset_translation} and orientation {offset_orientation}.")
+    print(
+        f"Added mesh '{geometry_name}' to body '{body_name}' with translation {offset_translation} and orientation {offset_orientation}.")
+
 
 def extract_mesh_info(file_path):
-    #need to evaluate if we actually need this function
+    # need to evaluate if we actually need this function
     """
     Extracts size, position, and volume information from a mesh file (STL or VTP) using gias3.mesh.vtktools.
     If the file is a VTP, it converts it to an STL beforehand.
@@ -92,14 +94,14 @@ def extract_mesh_info(file_path):
 
     # Get bounding box size
     bounding_box = mesh.calcBoundingBox()
-    bounding_box_size = bounding_box[:,1] - bounding_box[:,0]
+    bounding_box_size = bounding_box[:, 1] - bounding_box[:, 0]
 
     # Get the center of the mesh
     mesh.calcFaceProperties()
     center = mesh.calcCoM()
 
     # Get the volume
-    volume = compute_mesh_volume(mesh.v,mesh.f)
+    volume = compute_mesh_volume(mesh.v, mesh.f)
 
     # Optionally remove the temporary STL file
     if file_path.endswith('.stl') and '_temp' in file_path:
@@ -110,6 +112,7 @@ def extract_mesh_info(file_path):
         "center": center,
         "volume": volume,
     }
+
 
 def load_landmarks(file_path):
     """
@@ -134,26 +137,54 @@ def load_landmarks(file_path):
                 landmarks[name] = np.array(coordinates)
     return landmarks
 
-def determine_transform_child_to_parent(parent_rotated_centre, child_rotated_centre, initial_parent_landmark,initial_child_landmark):
+def load_x_opt(file_path):
+    """
+    Loads optimisation parameters from a file where each line contains a name and a different number of variables for
+    pelvis: translation (x,y,z) and rotation (x(list), y(rotation), z(tilt))
+    hip: flexion, adduction, rotation
+    knee: flexion, adduction
 
-    #Computing the initial rotated vector from the child to parent landmarks (i.e lateral epicondyle to ASIS)
+    Args:
+        file_path (str): Path to the file containing x_opt parameters.
+
+    Returns:
+        dict: A dictionary where keys are joint names and values are numpy arrays of coordinates.
+    """
+    x_opt = {}
+    with open(file_path, 'r') as file:
+        for line in file:
+            if line != "\n":
+                # Split the line into parts
+                parts = line.strip().split()
+                name = parts[0]  # The first part is the name
+                coordinates = list(map(float, parts[1:]))  # Remaining parts are coordinates
+                x_opt[name] = np.array(coordinates)
+    return x_opt
+
+
+def determine_transform_child_to_parent(parent_rotated_centre, child_rotated_centre, initial_parent_landmark,
+                                        initial_child_landmark):
+    # Computing the initial rotated vector from the child to parent landmarks (i.e lateral epicondyle to ASIS)
     initial_vector = initial_child_landmark - initial_parent_landmark
-    initial_vector_rot = rotate_coordinate_x(initial_vector, 90)
+    # initial_vector_rot = rotate_coordinate_x(initial_vector, 90)
+    initial_vector_rot = initial_vector
 
-    #rotate landmarks to match opensim configuration
-    parent_landmark_rot = rotate_coordinate_x(initial_parent_landmark, 90)
-    child_landmark_rot = rotate_coordinate_x(initial_child_landmark, 90)
+    # rotate landmarks to match opensim configuration
+    # parent_landmark_rot = rotate_coordinate_x(initial_parent_landmark, 90)
+    parent_landmark_rot = initial_parent_landmark
+    # child_landmark_rot = rotate_coordinate_x(initial_child_landmark, 90)
+    child_landmark_rot = initial_child_landmark
 
-    #remove rotated centres from landmarks to get their actual positions on a rotated mesh
+    # remove rotated centres from landmarks to get their actual positions on a rotated mesh
     parent_landmark_global = parent_rotated_centre - parent_landmark_rot
     child_landmark_global = child_rotated_centre - child_landmark_rot
 
-    #compute the current vector between landmarks in their current configurations
+    # compute the current vector between landmarks in their current configurations
     current_vector_global = child_landmark_global - parent_landmark_global
-
 
     update_vector = initial_vector_rot + current_vector_global
     return -update_vector
+
 
 def update_subtalar_joint_range(input_file, output_file, joint_name, range_min, range_max):
     """
@@ -284,6 +315,7 @@ def update_subtalar_joint_range(input_file, output_file, joint_name, range_min, 
             tree.write(output_file)
             print(f"Updated .osim file saved to: {output_file}")
 
+
 def update_rx_coordinates(input_file, output_file, updates):
     """
     Updates 'rx' coordinate names in both <Coordinate> and <SpatialTransform> sections.
@@ -329,6 +361,7 @@ def update_rx_coordinates(input_file, output_file, updates):
     tree.write(output_file)
     print(f"Updated .osim file saved to: {output_file}")
 
+
 def update_rotation_axes(file_path, output_path, joint_names, new_axes):
     """
     Updates the rotation axes of specified CustomJoints in an OpenSim .osim file.
@@ -373,6 +406,7 @@ def update_rotation_axes(file_path, output_path, joint_names, new_axes):
     # Save the updated .osim file
     tree.write(output_path)
     print(f"Updated .osim file saved to: {output_path}")
+
 
 def move_rx_to_first_rotation(file_path, output_path, joint_names):
     """
@@ -426,6 +460,7 @@ def move_rx_to_first_rotation(file_path, output_path, joint_names):
     # Save the updated .osim file
     tree.write(output_path)
     print(f"Updated .osim file saved to: {output_path}")
+
 
 def update_subtalar_joint(file_path, output_path, joint_name):
     """
@@ -496,6 +531,7 @@ def update_subtalar_joint(file_path, output_path, joint_name):
     tree.write(output_path)
     print(f"Updated .osim file saved to: {output_path}")
 
+
 def add_markers_to_body(model, body_name, marker_names, mocap_file, center, custom_names=None):
     """
     Adds multiple markers to a specified body in an OpenSim model with optional custom names.
@@ -525,9 +561,9 @@ def add_markers_to_body(model, body_name, marker_names, mocap_file, center, cust
 
             # Get the marker location
             location = mocap_file[marker_name]
-            landmark_position = vector_between_points(location, center)
-            landmark_position = rotate_coordinate_x(landmark_position, 90)
-            marker_location = osim.Vec3(*landmark_position)
+            landmark_position = vector_between_points(center, location)
+            # landmark_position = rotate_coordinate_x(landmark_position, 90)
+            marker_location = osim.Vec3(*location)
 
             # Determine the marker's name
             final_name = custom_names[i] if custom_names else marker_name
@@ -540,6 +576,7 @@ def add_markers_to_body(model, body_name, marker_names, mocap_file, center, cust
 
     except Exception as e:
         print(f"Error adding markers to body '{body_name}': {e}")
+
 
 def calculate_euler_to_align_axis_with_optimization(target_vector, secondary_vector, align_axis='z'):
     """
@@ -596,7 +633,8 @@ def calculate_euler_to_align_axis_with_optimization(target_vector, secondary_vec
         return 1 - dot_product  # Maximize alignment (dot product close to 1)
 
     # Perform optimization
-    result = minimize(objective, [initial_euler_angles[euler_index]], bounds=[(-1.3*np.pi, 2*np.pi)],options={"disp": False, "maxiter": 10000, "gtol": 1e-15, "ftol": 1e-15})
+    result = minimize(objective, [initial_euler_angles[euler_index]], bounds=[(-1.3 * np.pi, 2 * np.pi)],
+                      options={"disp": False, "maxiter": 10000, "gtol": 1e-15, "ftol": 1e-15})
     optimized_angle = result.x[0]
 
     # Update the Euler angles with the optimized value
@@ -608,6 +646,7 @@ def calculate_euler_to_align_axis_with_optimization(target_vector, secondary_vec
     optimized_secondary_vector = rotation.apply(secondary_vector)
 
     return optimized_euler_angles
+
 
 def align_y_axis_with_vector_and_z_axis_to_plane(vector, plane_points):
     """
@@ -652,6 +691,7 @@ def align_y_axis_with_vector_and_z_axis_to_plane(vector, plane_points):
 
     return euler_angles
 
+
 def compute_euler_angles_from_vectors(from_vector, to_vector, order='xyz'):
     """
     Computes the Euler angles required to rotate one vector to align with another.
@@ -677,7 +717,8 @@ def compute_euler_angles_from_vectors(from_vector, to_vector, order='xyz'):
             return np.array([0.0, 0.0, 0.0])  # No rotation needed
         else:
             # Opposite vectors: Rotate by 180 degrees
-            orthogonal_axis = np.array([1.0, 0.0, 0.0]) if not np.allclose(from_vector, [1, 0, 0]) else np.array([0, 1, 0])
+            orthogonal_axis = np.array([1.0, 0.0, 0.0]) if not np.allclose(from_vector, [1, 0, 0]) else np.array(
+                [0, 1, 0])
             rotation_axis = np.cross(from_vector, orthogonal_axis)
             rotation_axis /= np.linalg.norm(rotation_axis)
             angle = np.pi
@@ -693,6 +734,7 @@ def compute_euler_angles_from_vectors(from_vector, to_vector, order='xyz'):
     # Convert to Euler angles
     euler_angles = rotation.as_euler(order, degrees=False)
     return euler_angles
+
 
 def adjust_model_markers(model_path, output_model_path, marker_differences):
     """
@@ -720,7 +762,7 @@ def adjust_model_markers(model_path, output_model_path, marker_differences):
             # Get the current location offset (relative to the parent frame)
             current_offset = marker.get_location()
 
-            #%% Trying to convert the average marker distnace to be representative to the parent frame
+            # %% Trying to convert the average marker distnace to be representative to the parent frame
 
             # Convert the global difference to an OpenSim Vec3
             global_difference = osim.Vec3(*difference)
@@ -728,8 +770,8 @@ def adjust_model_markers(model_path, output_model_path, marker_differences):
             # Find the current marker position in the global frame
             current_location_in_ground = parent_body.findStationLocationInGround(state, marker.get_location())
 
-            current_local_offset = parent_body.findStationLocationInAnotherFrame(state, current_location_in_ground, parent_body)
-
+            current_local_offset = parent_body.findStationLocationInAnotherFrame(state, current_location_in_ground,
+                                                                                 parent_body)
 
             # Compute the new marker position in the global frame
             new_location_in_ground = osim.Vec3(
@@ -739,7 +781,8 @@ def adjust_model_markers(model_path, output_model_path, marker_differences):
             )
 
             # Transform the new global position back to the local frame of the parent body
-            new_local_offset = model.getGround().findStationLocationInAnotherFrame(state, new_location_in_ground, parent_body)
+            new_local_offset = model.getGround().findStationLocationInAnotherFrame(state, new_location_in_ground,
+                                                                                   parent_body)
 
             print(new_location_in_ground)
             print(new_local_offset)
@@ -756,6 +799,7 @@ def adjust_model_markers(model_path, output_model_path, marker_differences):
     model.setName("Optimised_Knee_Moved_Markers")
     model.printToXML(output_model_path)
     print(f"Model updated and saved to: {output_model_path}")
+
 
 def parse_model_marker_locations(sto_file_path):
     """
@@ -791,7 +835,6 @@ def parse_model_marker_locations(sto_file_path):
     # Organize data into a dictionary
     marker_positions = {name: [] for name in marker_names}
 
-
     time_list = data[:, 0]
     for i, marker_name in enumerate(marker_positions.keys()):
         marker_positions[marker_name] = data[:, 1 + i]
@@ -820,7 +863,9 @@ def parse_model_marker_locations(sto_file_path):
 
     return combined_marker_positions, time_list
 
-def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weights, initial_params, temp_model_path_1, temp_model_path_2,final_output_model, iteration_count):
+
+def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weights, initial_params, temp_model_path_1,
+                       temp_model_path_2, final_output_model, iteration_count):
     """
     Optimize the knee joint orientation to minimize IK errors.
 
@@ -838,8 +883,9 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
     Returns:
         OptimizeResult: Results of the optimization process.
     """
+
     def objective(params):
-        left_knee_x, left_knee_y, right_knee_x, right_knee_y = params*1000
+        left_knee_x, left_knee_y, right_knee_x, right_knee_y = params * 1000
 
         # Adjust left knee
         adjust_joint_orientation(
@@ -860,11 +906,12 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
         # Perform IK and compute error
         errors = perform_IK(temp_model_path_2, trc_file, start_time, end_time, marker_weights)
         print(errors["Average RMS Error"])
-        return errors["Average RMS Error"]*1e4 if errors else float("inf")
+        return errors["Average RMS Error"] * 1e4 if errors else float("inf")
 
-    #Sets bounds for knee joint optimisation
+    # Sets bounds for knee joint optimisation
     bounds = [(-0.001, 0.001)] * 4
-    result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds, options={"disp": True, "maxiter": iteration_count})
+    result = minimize(objective, initial_params, method="L-BFGS-B", bounds=bounds,
+                      options={"disp": True, "maxiter": iteration_count})
     model = osim.Model(temp_model_path_2)
     model_name_here = os.path.basename(final_output_model)
     model.setName(model_name_here)
@@ -958,6 +1005,7 @@ def extract_ik_errors(error_file_path):
         print(f"Error reading IK error file: {e}")
         return None
 
+
 def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output_model_path):
     """
     Adjust the orientation of a joint's child frame in an OpenSim model.
@@ -987,7 +1035,6 @@ def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output
         new_orientation1 = current_orientation1 + np.array([rotation_adjustment.get(i) for i in range(3)])
         child_frame.set_orientation(osim.Vec3(*new_orientation1))
 
-
         # Access the parent frame
         parent_frame = joint.upd_frames(0)
         current_orientation2 = np.array([parent_frame.get_orientation().get(i) for i in range(3)])
@@ -996,9 +1043,6 @@ def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output
         new_orientation2 = current_orientation2 + np.array([rotation_adjustment.get(i) for i in range(3)])
         parent_frame.set_orientation(osim.Vec3(*new_orientation2))
 
-
-
-
         # Save the updated model
         model.printToXML(output_model_path)
         print(f"Joint '{joint_name}' updated and saved to: {output_model_path}")
@@ -1006,7 +1050,10 @@ def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output
     except Exception as e:
         print(f"Error updating joint '{joint_name}': {e}")
 
-def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2, marker_weights, final_output_model_path, initial_params=None, iteration_count = 5):
+
+def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1,
+                                temp_model_path_2, marker_weights, final_output_model_path, initial_params=None,
+                                iteration_count=5):
     """
     Run knee joint optimization for an OpenSim model.
 
@@ -1027,8 +1074,6 @@ def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, s
     if initial_params is None:
         initial_params = [0, 0, 0, 0]
 
-
-
     # Suppress OpenSim logging
     osim.Logger.setLevelString("Off")
 
@@ -1042,13 +1087,15 @@ def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, s
         initial_params=initial_params,
         temp_model_path_1=temp_model_path_1,
         temp_model_path_2=temp_model_path_2,
-        final_output_model = final_output_model_path,
-        iteration_count= iteration_count
+        final_output_model=final_output_model_path,
+        iteration_count=iteration_count
     )
 
     print(f"Optimized Joint Orientations: {result.x}")
 
-def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_locations_path, actual_marker_positions_dict, output_model_path):
+
+def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_locations_path,
+                               actual_marker_positions_dict, output_model_path):
     """
     Compute marker differences and adjust markers in the model.
 
@@ -1126,12 +1173,11 @@ def compute_and_adjust_markers(model_path, ik_output_mot_path, model_marker_loca
     adjust_model_markers(model_path, output_model_path, average_marker_differences)
 
 
-def initialize_model_and_extract_landmarks(static_trc, asm_directory):
+def initialize_model_and_extract_landmarks(asm_directory):
     """
     Initializes the OpenSim model and extracts relevant landmarks and marker placements.
 
     Parameters:
-        static_trc (str): Path to the static TRC file.
         asm_directory (str): Path to the directory containing the mesh and landmarks produced by the ASM fit.
 
     Returns:
@@ -1151,13 +1197,15 @@ def initialize_model_and_extract_landmarks(static_trc, asm_directory):
     right_landmarks_file = search_files_by_keywords(asm_directory, "right lms predicted")[0]
     left_landmarks = load_landmarks(left_landmarks_file)
     right_landmarks = load_landmarks(right_landmarks_file)
+    x_opt_left_file = search_files_by_keywords(asm_directory, "x opt left")[0]
+    x_opt_right_file = search_files_by_keywords(asm_directory, "x opt right")[0]
+    x_opt_left = load_x_opt(x_opt_left_file)
+    x_opt_right = load_x_opt(x_opt_right_file)
 
-    # Load the TRC file and extract marker placements
-    mocap_static_trc, _ = read_trc_file_as_dict(static_trc)
+    return empty_model, state, left_landmarks, right_landmarks, x_opt_left, x_opt_right
 
-    return empty_model, state, left_landmarks, right_landmarks, mocap_static_trc
 
-def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc, realign_pelvis=True):
+def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc):
     """
     Creates the pelvis body, attaches it to the ground with a FreeJoint, and adds a mesh and markers.
 
@@ -1167,7 +1215,6 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
         right_landmarks (dict): Dictionary of extracted right limb landmarks.
         meshes (str): Path to the directory containing mesh files.
         mocap_static_trc (dict): Dictionary containing marker placements from TRC file.
-        realign_pelvis (bool): Whether to apply pelvis realignment (default: True).
 
     Returns:
         tuple:
@@ -1180,23 +1227,10 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     model.addBody(pelvis)
 
     # Compute pelvis alignment
-    LASIS_unrot = left_landmarks["ASIS"]
-    RASIS_unrot = right_landmarks["ASIS"]
-
-    LASIS = rotate_coordinate_x(LASIS_unrot, 90)
-    RASIS = rotate_coordinate_x(RASIS_unrot, 90)
-
-    RANK = rotate_coordinate_x(right_landmarks["malleolus_med"], 90)
-
-    pelvis_sideways_vector = vector_between_points(LASIS, RASIS)
-    alignment_to_axis = (0, 0, 1)
-    pelvis_realignment = compute_euler_angles_from_vectors(pelvis_sideways_vector, alignment_to_axis)
-    pelvis_realignment[0] = 0
-    pelvis_realignment[2] = 0  # Keep necessary rotations
-
-    # Apply realignment conditionally
-    if not realign_pelvis:
-        pelvis_realignment[1] = 0  # Set to 0 if realign_pelvis is False
+    LASIS = left_landmarks["ASIS"]
+    RASIS = right_landmarks["ASIS"]
+    RANK = right_landmarks["malleolus_med"]
+    pelvis_center = midpoint_3d(RASIS, LASIS)
 
     # Compute ground height offset (for visualization)
     RASIS_to_RANK = np.linalg.norm(vector_between_points(RASIS, RANK))
@@ -1206,11 +1240,11 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     pelvis_joint = osim.FreeJoint(
         "pelvis_to_ground",
         model.getGround(),
-        osim.Vec3(0, height_offset, 0),
+        osim.Vec3(pelvis_center[0], pelvis_center[1], pelvis_center[2]),
         osim.Vec3(0, 0, 0),
         pelvis,
         osim.Vec3(0, 0, 0),
-        osim.Vec3(pelvis_realignment)
+        osim.Vec3(0, 0, 0)
     )
     model.addJoint(pelvis_joint)
 
@@ -1218,11 +1252,8 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     mesh_path = os.path.join(meshes, "combined_pelvis_mesh.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
-    pelvis_center = midpoint_3d(RASIS_unrot, LASIS_unrot)
-    rotated_pelvis_center = midpoint_3d(RASIS,LASIS)
-
-    add_mesh_to_body(model, "pelvis_b", relative_path, offset_orientation=(-1.5708, 0, 0),
-                     offset_translation=(rotated_pelvis_center[0], rotated_pelvis_center[1], rotated_pelvis_center[2]))
+    add_mesh_to_body(model, "pelvis_b", relative_path, offset_orientation=(0, 0, 0),
+                     offset_translation=(0, 0, 0))
 
     # Add mocap markers
     add_markers_to_body(model, "pelvis_b", ["RASI", "LASI", "RPSI", "LPSI"], mocap_static_trc, pelvis_center)
@@ -1233,9 +1264,10 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS"], right_landmarks, pelvis_center,
                         ["lms_RASI", "lms_RPSI"])
 
-    return pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center
+    return pelvis, pelvis_joint, pelvis_center
 
-def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, rotated_pelvis_center,pelvis_realignment, pelvis, realign_femurs=True):
+
+def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, pelvis):
     """
     Creates the left and right femur bodies and attaches custom hip joints to the OpenSim model.
 
@@ -1245,10 +1277,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
         right_landmarks (dict): Dictionary containing the anatomical landmarks for the right side.
         meshes (str): Directory containing the mesh files for the left and right femurs.
         mocap_static_trc (dict): Motion capture static marker data used to position markers.
-        rotated_pelvis_center (np.array): The center position of the pelvis after rotation.
-        pelvis_realignment (np.array): The realignment angles applied to the pelvis.
         pelvis (osim.Body): The pelvis body in the OpenSim model.
-        realign_femurs (bool, optional): If True, performs alignment of femurs. Defaults to True.
 
     Returns:
         tuple: A tuple containing:
@@ -1286,98 +1315,39 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
     # Extract landmarks required to position the joint coordinate systems of the left hip joint
 
-    r_HJC_unrot = right_landmarks["hjc"]
-    l_HJC_unrot = left_landmarks["hjc"]
-
-
-
+    r_hjc = right_landmarks["hjc"]
+    l_hjc = left_landmarks["hjc"]
 
     # Attach the mesh for the right femur
     mesh_path = os.path.join(meshes, "predicted_mesh_right_femur.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
-    femur_r_center = r_HJC_unrot  # Extract center of the right femur
-    rotated_r_femur_center = rotate_coordinate_x(r_HJC_unrot, 90)  # Rotate to match coordinate system
-    add_mesh_to_body(empty_model, "femur_r_b", relative_path, offset_orientation=(-1.5708, 0, 0),
-                     offset_translation=(rotated_r_femur_center[0], rotated_r_femur_center[1], rotated_r_femur_center[2]))
-
-
+    femur_r_center = r_hjc  # Extract center of the right femur
+    add_mesh_to_body(empty_model, "femur_r_b", relative_path, offset_orientation=(0, 0, 0),
+                     offset_translation=(0, 0, 0))
 
     # Attach the mesh for the left femur
     mesh_path = os.path.join(meshes, "predicted_mesh_left_femur.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
-    femur_l_center = l_HJC_unrot  # Extract center of the right femur
-    rotated_l_femur_center = rotate_coordinate_x(l_HJC_unrot, 90)  # Rotate to match coordinate system
-    add_mesh_to_body(empty_model, "femur_l_b", relative_path, offset_orientation=(-1.5708, 0, 0),
-                     offset_translation=(rotated_l_femur_center[0], rotated_l_femur_center[1], rotated_l_femur_center[2]))
-
-
-
-
+    femur_l_center = l_hjc  # Extract center of the right femur
+    add_mesh_to_body(empty_model, "femur_l_b", relative_path, offset_orientation=(0, 0, 0),
+                     offset_translation=(0, 0, 0))
 
     # Add mocap markers to the femur bodies
     add_markers_to_body(empty_model, "femur_l_b", ["LTHI", "LPAT", "LKNE"], mocap_static_trc, femur_l_center)
     add_markers_to_body(empty_model, "femur_r_b", ["RTHI", "RPAT", "RKNE"], mocap_static_trc, femur_r_center)
 
     # Add anatomical landmarks to the femur bodies with custom marker names
-    add_markers_to_body(empty_model, "femur_l_b", ["LEC", "MEC"], left_landmarks, femur_l_center, ["lms_LLEC", "lms_LMEC"])
-    add_markers_to_body(empty_model, "femur_r_b", ["LEC", "MEC"], right_landmarks, femur_r_center, ["lms_RLEC", "lms_RMEC"])
+    add_markers_to_body(empty_model, "femur_l_b", ["LEC", "MEC"], left_landmarks, femur_l_center,
+                        ["lms_LLEC", "lms_LMEC"])
+    add_markers_to_body(empty_model, "femur_r_b", ["LEC", "MEC"], right_landmarks, femur_r_center,
+                        ["lms_RLEC", "lms_RMEC"])
 
-
-    # Creation of the left hip joint coordinate system
-
-    LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
-    RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
-    l_LEC = rotate_coordinate_x(left_landmarks["LEC"], 90)
-    l_MEC = rotate_coordinate_x(left_landmarks["MEC"], 90)
-    l_HJC = rotate_coordinate_x(left_landmarks["hjc"], 90)
+    # find midpoint of knee
+    l_LEC = left_landmarks["LEC"]
+    l_MEC = left_landmarks["MEC"]
     l_EC_midpoint = midpoint_3d(l_LEC, l_MEC)
 
-
-
-
-    # Compute the vectors for flexion and rotation of the left hip joint
-    flexion_vector = vector_between_points(RASIS, LASIS)  # Flexion occurs about the alignment of the pelvis ASIS landmarks
-    rotation_vector = vector_between_points(l_HJC, l_EC_midpoint)  # Rotation about the HJC and epicondylar midpoint
-
-    # Compute the Euler rotation angles to adjust the coordinate system for the left hip joint
-    l_hip_angles = calculate_euler_to_align_axis_with_optimization(flexion_vector, rotation_vector, 'z')
-
-
-    LKNE_sideways_vector = vector_between_points(l_LEC, l_MEC)
-    alignment_to_axis = (0,0,1)
-
-    LKNE_alignment_angles = compute_euler_angles_from_vectors(LKNE_sideways_vector, alignment_to_axis)
-    LKNE_alignment_angles[0] = 0
-    LKNE_alignment_angles[2] = 0
-
-    LHIP_vertical_vector = vector_between_points(l_EC_midpoint, l_HJC)
-    alignment_to_axis = (0,-1,0)
-    LHIP_vert_alignment_angles = compute_euler_angles_from_vectors(LHIP_vertical_vector, alignment_to_axis)
-    #LHIP_vert_alignment_angles[0] = 0
-    LHIP_vert_alignment_angles[1] = 0
-
-    if not realign_femurs:
-        LKNE_alignment_angles[1] = 0
-        LHIP_vert_alignment_angles[2] = 0
-
-
-
-    #Positioning of the left hip joint
-
-    # Compute the absolute translation required to position the left femur
-    l_hip_position_total = determine_transform_child_to_parent(rotated_pelvis_center, rotated_l_femur_center,
-                                                                left_landmarks["ASIS"], left_landmarks["LEC"])
-
-    # Extract the left hip joint center
-    l_hjc = left_landmarks['hjc']
-
-    # Compute the child position as the vector between the femur center and the joint center
-    l_hip_child_position = rotate_coordinate_x(vector_between_points(l_hjc, femur_l_center), 90)
-
-    # Compute the parent position by combining the absolute and child positions
-    l_hip_parent_position = l_hip_position_total + l_hip_child_position
-
-    # Create the spatial transform for the custom left hip joint
+    # Create the spatial transform for the custom left hip joint ###need to modify with values from shape model
     spatial_transform_left = osim.SpatialTransform()
 
     # First rotation (Flexion/Extension) along X-axis
@@ -1398,78 +1368,28 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     rotation_axis_left.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
     rotation_axis_left.set_function(osim.LinearFunction(1, 0))  # Ensures movement
 
-    # Restore your original orientation adjustments for the femur frame
-    adjusted_femur_orientation_left = (
-        l_hip_angles + LKNE_alignment_angles - pelvis_realignment - LHIP_vert_alignment_angles
-    )
-
     # Create the custom left hip joint with all restored parameters
     left_hip_joint = osim.CustomJoint(
-        "femur_l_to_pelvis",              # Joint name
-        pelvis,                           # Parent frame (Pelvis)
-        osim.Vec3(l_hip_parent_position), # Location in parent frame
-        osim.Vec3(l_hip_angles),          # Orientation in parent frame
-        left_femur,                       # Child frame (Femur)
-        osim.Vec3(l_hip_child_position),  # Location in child frame
-        osim.Vec3(adjusted_femur_orientation_left),  # Adjusted orientation in child frame
-        spatial_transform_left             # The defined spatial transform
+        "femur_l_to_pelvis",  # Joint name
+        pelvis,  # Parent frame (Pelvis)
+        osim.Vec3(l_hjc),  # Location in parent frame
+        osim.Vec3(0, 0, 0),  # Orientation in parent frame
+        left_femur,  # Child frame (Femur)
+        osim.Vec3(l_hjc),  # Location in child frame
+        osim.Vec3(0, 0, 0),  # Adjusted orientation in child frame
+        spatial_transform_left  # The defined spatial transform
     )
-
 
     # Creation of the right hip joint coordinate system
 
-    # Extract landmarks required to position the joint coordinate systems of the right hip joint
-    LASIS = rotate_coordinate_x(left_landmarks["ASIS"], 90)
-    RASIS = rotate_coordinate_x(right_landmarks["ASIS"], 90)
-    r_LEC = rotate_coordinate_x(right_landmarks["LEC"], 90)
-    r_MEC = rotate_coordinate_x(right_landmarks["MEC"], 90)
-    r_HJC = rotate_coordinate_x(right_landmarks["hjc"], 90)
+    # find midpoint of right knee
+    r_LEC = right_landmarks["LEC"]
+    r_MEC = right_landmarks["MEC"]
     r_EC_midpoint = midpoint_3d(r_LEC, r_MEC)
-
-    # Compute the vectors for flexion and rotation of the right hip joint
-    flexion_vector = vector_between_points(RASIS, LASIS)  # Flexion occurs about the alignment of the pelvis ASIS landmarks
-    rotation_vector = vector_between_points(r_HJC, r_EC_midpoint)  # Rotation about the HJC and epicondylar midpoint
-
-    # Compute the Euler rotation angles to adjust the coordinate system for the right hip joint
-    r_hip_angles = calculate_euler_to_align_axis_with_optimization(flexion_vector, rotation_vector, 'z')
-
-    RKNE_sideways_vector = vector_between_points(r_MEC, r_LEC)
-    alignment_to_axis = (0,0,1)
-
-    RKNE_alignment_angles = compute_euler_angles_from_vectors(RKNE_sideways_vector, alignment_to_axis)
-    RKNE_alignment_angles[0] = 0
-    RKNE_alignment_angles[2] = 0
-
-    RHIP_vertical_vector = vector_between_points(r_EC_midpoint, r_HJC)
-    alignment_to_axis = (0,-1,0)
-    RHIP_vert_alignment_angles = compute_euler_angles_from_vectors(RHIP_vertical_vector, alignment_to_axis)
-    #RHIP_vert_alignment_angles[0] = 0
-    RHIP_vert_alignment_angles[1] = 0
-
-    if not realign_femurs:
-        RKNE_alignment_angles[1] = 0
-        RHIP_vert_alignment_angles[2] = 0
-
-
-
-    # Positioning of the right hip joint
-
-    # Compute the absolute translation required to position the right femur
-    r_hip_position_total = determine_transform_child_to_parent(rotated_pelvis_center, rotated_r_femur_center,
-                                                                right_landmarks["ASIS"], right_landmarks["LEC"])
-
-    # Extract the right hip joint center
-    r_hjc = right_landmarks['hjc']
-
-    # Compute the child position as the vector between the femur center and the joint center
-    r_hip_child_position = rotate_coordinate_x(vector_between_points(r_hjc, femur_r_center), 90)
-
-    # Compute the parent position by combining the absolute and child positions
-    r_hip_parent_position = r_hip_position_total + r_hip_child_position
 
     ################################################
 
-    # Create the spatial transform for the custom joint
+    # Create the spatial transform for the custom joint ###Need to update
     spatial_transform = osim.SpatialTransform()
 
     # First rotation (Flexion/Extension) along X-axis
@@ -1490,21 +1410,16 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     rotation_axis.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
     rotation_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
 
-    # Restore your original orientation adjustments for the femur frame
-    adjusted_femur_orientation = (
-        r_hip_angles + RKNE_alignment_angles - pelvis_realignment - RHIP_vert_alignment_angles
-    )
-
     # Create the custom hip joint with all restored parameters
     right_hip_joint = osim.CustomJoint(
-        "femur_r_to_pelvis",              # Joint name
-        pelvis,                           # Parent frame (Pelvis)
-        osim.Vec3(r_hip_parent_position), # Location in parent frame
-        osim.Vec3(r_hip_angles),          # Orientation in parent frame
-        right_femur,                      # Child frame (Femur)
-        osim.Vec3(r_hip_child_position),  # Location in child frame
-        osim.Vec3(adjusted_femur_orientation),  # Adjusted orientation in child frame
-        spatial_transform                  # The defined spatial transform
+        "femur_r_to_pelvis",  # Joint name
+        pelvis,  # Parent frame (Pelvis)
+        osim.Vec3(r_hjc),  # Location in parent frame
+        osim.Vec3(0, 0, 0),  # Orientation in parent frame
+        right_femur,  # Child frame (Femur)
+        osim.Vec3(r_hjc),  # Location in child frame
+        osim.Vec3(0, 0, 0),  # Adjusted orientation in child frame
+        spatial_transform  # The defined spatial transform
     )
 
     ########################################################################################
@@ -1513,14 +1428,12 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     empty_model.addJoint(left_hip_joint)
     empty_model.addJoint(right_hip_joint)
 
+    return l_LEC, l_MEC, l_hjc, l_EC_midpoint, left_femur, femur_l_center, r_LEC, r_MEC, r_hjc, r_EC_midpoint, right_femur, femur_r_center
 
-    return l_LEC, l_MEC, l_HJC, l_EC_midpoint, left_femur, femur_l_center, rotated_l_femur_center, LKNE_alignment_angles, LHIP_vert_alignment_angles, r_LEC, r_MEC, r_HJC, r_EC_midpoint, right_femur, femur_r_center, rotated_r_femur_center, RKNE_alignment_angles, RHIP_vert_alignment_angles
 
 def create_tibfib_bodies_and_knee_joints(
         empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc,
-        rotated_l_femur_center, rotated_r_femur_center,LHIP_vert_alignment_angles, RHIP_vert_alignment_angles,
-        left_femur, right_femur, l_LEC, l_MEC, l_HJC, l_EC_midpoint,r_LEC, r_MEC, r_HJC, r_EC_midpoint, realign_tibias=True
-):
+        left_femur, right_femur):
     """
     Creates tibia and fibula (tibfib) bodies and defines the knee joints within an OpenSim model.
 
@@ -1530,21 +1443,8 @@ def create_tibfib_bodies_and_knee_joints(
         right_landmarks (dict): Landmark coordinates for the right side.
         meshes (str): Path to the folder containing mesh files.
         mocap_static_trc (dict): Motion capture data for static trials.
-        rotated_l_femur_center (np.ndarray): Center of the rotated left femur.
-        rotated_r_femur_center (np.ndarray): Center of the rotated right femur.
-        LHIP_vert_alignment_angles (np.ndarray): Vertical alignment angles for the left hip.
-        RHIP_vert_alignment_angles (np.ndarray): Vertical alignment angles for the right hip.
         left_femur (osim.Body): The left femur body in the model.
         right_femur (osim.Body): The right femur body in the model.
-        l_LEC (np.ndarray): Left lateral epicondyle coordinates.
-        l_MEC (np.ndarray): Left medial epicondyle coordinates.
-        l_HJC (np.ndarray): Left hip joint center coordinates.
-        l_EC_midpoint (np.ndarray): Midpoint of the left epicondyles.
-        r_LEC (np.ndarray): Right lateral epicondyle coordinates.
-        r_MEC (np.ndarray): Right medial epicondyle coordinates.
-        r_HJC (np.ndarray): Right hip joint center coordinates.
-        r_EC_midpoint (np.ndarray): Midpoint of the right epicondyles.
-        realign_tibias (bool, optional): Whether to realign tibias during the process. Defaults to True.
 
     Returns:
         tuple:
@@ -1568,20 +1468,19 @@ def create_tibfib_bodies_and_knee_joints(
     empty_model.addBody(left_tibfib)  # Add the left tibfib body to the model
     empty_model.addBody(right_tibfib)  # Add the right tibfib body to the model
 
-
     # Attach the mesh for the right tibia body
     # Search for the mesh file corresponding to the right tibfib
     mesh_path = os.path.join(meshes, "predicted_mesh_right_tibia.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
-    info = extract_mesh_info(mesh_path)  # Extract mesh information using trimesh
-    tibia_r_center = info['center']  # Get the center of the mesh
-    rotated_r_tibia_center = rotate_coordinate_x(tibia_r_center, 90)  # Rotate the center to align with OpenSim's coordinate system
+    r_LMAL = right_landmarks['malleolus_lat']
+    r_MMAL = right_landmarks['malleolus_med']
+    r_mid_mal = midpoint_3d(r_LMAL, r_MMAL)
+    tibia_r_center = r_mid_mal
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
-                     offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
-
+                     offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
+                     offset_translation=(0, 0, 0))
 
     # Attach the mesh for the right fibula body
     # Search for the mesh file corresponding to the right fibula
@@ -1590,25 +1489,22 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
-                     offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(rotated_r_tibia_center[0], rotated_r_tibia_center[1], rotated_r_tibia_center[2]))
-
-
-
+                     offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
+                     offset_translation=(0, 0, 0))
 
     # Attach the mesh for the left tibia body
     # Search for the mesh file corresponding to the left tibfib
     mesh_path = os.path.join(meshes, "predicted_mesh_left_tibia.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
-    info = extract_mesh_info(mesh_path)  # Extract mesh information using trimesh
-    tibia_l_center = info['center']  # Get the center of the mesh
-    rotated_l_tibia_center = rotate_coordinate_x(tibia_l_center, 90)  # Rotate the center to align with OpenSim's coordinate system
+    l_LMAL = left_landmarks['malleolus_lat']
+    l_MMAL = left_landmarks['malleolus_med']
+    l_mid_mal = midpoint_3d(l_LMAL, l_MMAL)
+    tibia_l_center = l_mid_mal
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
-                     offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
-
+                     offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
+                     offset_translation=(0, 0, 0))
 
     # Attach the mesh for the left fibula body
     # Search for the mesh file corresponding to the left tibfib
@@ -1617,158 +1513,69 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
-                     offset_orientation=(-1.5708, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(rotated_l_tibia_center[0], rotated_l_tibia_center[1], rotated_l_tibia_center[2]))
-
-
-
+                     offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
+                     offset_translation=(0, 0, 0))
 
     # Add mocap markers to the tibfib bodies
     # Add mocap markers for the left tibfib body
-    add_markers_to_body(empty_model, "tibfib_l_b", ["LANK", "LTIB","LTOE","LHEE"], mocap_static_trc, tibia_l_center)
+    add_markers_to_body(empty_model, "tibfib_l_b", ["LANK", "LTIB", "LTOE", "LHEE"], mocap_static_trc, tibia_l_center)
 
-    #Add landmark markers for the left tibfib body
-    add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,["lms_LMMAL","lms_LLMAL"])
+    # Add landmark markers for the left tibfib body
+    add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,
+                        ["lms_LMMAL", "lms_LLMAL"])
 
     # Add mocap markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibfib_r_b", ["RANK", "RTIB","RTOE","RHEE"], mocap_static_trc, tibia_r_center)
+    add_markers_to_body(empty_model, "tibfib_r_b", ["RANK", "RTIB", "RTOE", "RHEE"], mocap_static_trc, tibia_r_center)
 
-    #Add landmark markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,["lms_RMMAL","lms_RLMAL"])
+    # Add landmark markers for the right tibfib body
+    add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,
+                        ["lms_RMMAL", "lms_RLMAL"])
 
-
-    # %% Creation of the left knee joint coordinate system
-
-    # Compute the flexion vector
-    # Flexion and extension occur about the line connecting the medial and lateral epicondyles
-    flexion_vector = vector_between_points(l_MEC, l_LEC)
-
-    # Compute the rotation vector
-    # Rotation occurs about the line connecting the hip joint center (HJC) and the midpoint of the femoral epicondyles
-    rotation_vector = vector_between_points(l_HJC, l_EC_midpoint)
-
-    # Calculate the Euler rotation angles (radians) to align the knee joint coordinate system
-    # The z-axis is aligned with the flexion vector, and other axes are orthogonalized appropriately
-    l_knee_angles = calculate_euler_to_align_axis_with_optimization(flexion_vector, rotation_vector, 'z')
-
-
-    # %% Positioning of the left knee joint
-
-    # Compute the total transformation required to align the tibfib with the femur
-    # This determines the relative movement required to transition from the femur's frame to the tibfib's frame
-    l_knee_position_total = determine_transform_child_to_parent(
-        rotated_l_femur_center, rotated_l_tibia_center, left_landmarks["LEC"], left_landmarks["malleolus_lat"]
-    )
 
     # Extract the medial and lateral epicondyle landmarks
-    lec = left_landmarks["LEC"]  # Lateral epicondyle landmark
-    mec = left_landmarks["MEC"]  # Medial epicondyle landmark
+    l_lec = left_landmarks["LEC"]  # Lateral epicondyle landmark
+    l_mec = left_landmarks["MEC"]  # Medial epicondyle landmark
 
     # Compute the midpoint between the lateral and medial epicondyles
-    EC_midpoint = midpoint_3d(lec, mec)
-
-    # Compute the child position (location of the joint in the tibfib frame)
-    # This is the vector between the midpoint of the epicondyles and the center of the tibfib body
-    l_knee_child_position = rotate_coordinate_x(vector_between_points(EC_midpoint, tibia_l_center), 90)
-
-    # Compute the parent position (location of the joint in the femur frame)
-    # This is the total transformation combined with the child position
-    l_knee_parent_position = l_knee_position_total + l_knee_child_position
-
-
-
-    # Find the midpoint of the medial and lateral malleoli
-    malleolus_med = rotate_coordinate_x(left_landmarks["malleolus_med"],90) # Medial malleolus landmark
-    LKNE_vertical_vector = vector_between_points(malleolus_med, rotate_coordinate_x(mec,90))
-    alignment_to_axis = (0,-1,0)
-    LKNE_vert_alignment_angles = compute_euler_angles_from_vectors(LKNE_vertical_vector, alignment_to_axis)
-    LKNE_vert_alignment_angles[0] = 0
-    LKNE_vert_alignment_angles[1] = 0
-
-    if not realign_tibias:
-        LKNE_vert_alignment_angles[2] = 0
-
-
-
+    l_EC_midpoint = midpoint_3d(l_lec, l_mec)
 
     # %% Define the left knee joint
 
     # Define the knee joint connecting the left tibfib to the left femur
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
     left_knee_joint = osim.PinJoint(
-        "tibfib_l_to_femur_l",          # Name of the joint
-        left_femur,                     # Parent body (femur)
-        osim.Vec3(l_knee_parent_position),  # Location of the joint in the femur frame
-        osim.Vec3(l_knee_angles),           # Orientation of the joint in the femur frame
-        left_tibfib,                        # Child body (tibfib)
-        osim.Vec3(l_knee_child_position),   # Location of the joint in the tibfib frame
-        osim.Vec3(l_knee_angles-LKNE_vert_alignment_angles+LHIP_vert_alignment_angles)            # Orientation of the joint in the tibfib frame
+        "tibfib_l_to_femur_l",  # Name of the joint
+        left_femur,  # Parent body (femur)
+        osim.Vec3(l_EC_midpoint),  # Location of the joint in the femur frame
+        osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
+        left_tibfib,  # Child body (tibfib)
+        osim.Vec3(l_EC_midpoint),  # Location of the joint in the tibfib frame
+        osim.Vec3(0, 0, 0)
+        # Orientation of the joint in the tibfib frame
     )
-
 
     # %% Positioning of the right knee joint
 
-    # Compute the total transformation required to align the tibfib with the femur
-    # This determines the relative movement required to transition from the femur's frame to the tibfib's frame
-    r_knee_position_total = determine_transform_child_to_parent(
-        rotated_r_femur_center, rotated_r_tibia_center, right_landmarks["LEC"], right_landmarks["malleolus_lat"]
-    )
-
     # Extract the medial and lateral epicondyle landmarks
-    lec = right_landmarks["LEC"]  # Lateral epicondyle landmark
-    mec = right_landmarks["MEC"]  # Medial epicondyle landmark
+    r_lec = right_landmarks["LEC"]  # Lateral epicondyle landmark
+    r_mec = right_landmarks["MEC"]  # Medial epicondyle landmark
 
     # Compute the midpoint between the lateral and medial epicondyles
-    EC_midpoint = midpoint_3d(lec, mec)
-
-    # Compute the child position (location of the joint in the tibfib frame)
-    # This is the vector between the midpoint of the epicondyles and the center of the tibfib body
-    r_knee_child_position = rotate_coordinate_x(vector_between_points(EC_midpoint, tibia_r_center), 90)
-
-    # Compute the parent position (location of the joint in the femur frame)
-    # This is the total transformation combined with the child position
-    r_knee_parent_position = r_knee_position_total + r_knee_child_position
-
-
-    # %% Creation of the right knee joint coordinate system
-
-    # Compute the flexion vector
-    # Flexion and extension occur about the line connecting the medial and lateral epicondyles
-    flexion_vector = vector_between_points(r_LEC, r_MEC)
-
-    # Compute the rotation vector
-    # Rotation occurs about the line connecting the hip joint center (HJC) and the midpoint of the femoral epicondyles
-    rotation_vector = vector_between_points(r_HJC, r_EC_midpoint)
-
-    # Calculate the Euler rotation angles (radians) to align the knee joint coordinate system
-    # The z-axis is aligned with the flexion vector, and other axes are orthogonalized appropriately
-    r_knee_angles = calculate_euler_to_align_axis_with_optimization(flexion_vector, rotation_vector, 'z')
-
-
-    # Find the midpoint of the medial and lateral malleoli
-    malleolus_med = rotate_coordinate_x(right_landmarks["malleolus_med"],90) # Medial malleolus landmark
-    RKNE_vertical_vector = vector_between_points(malleolus_med, rotate_coordinate_x(mec,90))
-    alignment_to_axis = (0,-1,0)
-    RKNE_vert_alignment_angles = compute_euler_angles_from_vectors(RKNE_vertical_vector, alignment_to_axis)
-    RKNE_vert_alignment_angles[0] = 0
-    RKNE_vert_alignment_angles[1] = 0
-
-    if not realign_tibias:
-        RKNE_vert_alignment_angles[2] = 0
-
+    r_EC_midpoint = midpoint_3d(r_lec, r_mec)
 
     # %% Define the right knee joint
 
     # Define the knee joint connecting the right tibfib to the right femur
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
     right_knee_joint = osim.PinJoint(
-        "tibfib_r_to_femur_r",          # Name of the joint
-        right_femur,                    # Parent body (femur)
-        osim.Vec3(r_knee_parent_position),  # Location of the joint in the femur frame
-        osim.Vec3(r_knee_angles),           # Orientation of the joint in the femur frame
-        right_tibfib,                        # Child body (tibfib)
-        osim.Vec3(r_knee_child_position),   # Location of the joint in the tibfib frame
-        osim.Vec3(r_knee_angles-RKNE_vert_alignment_angles+RHIP_vert_alignment_angles)            # Orientation of the joint in the tibfib frame
+        "tibfib_r_to_femur_r",  # Name of the joint
+        right_femur,  # Parent body (femur)
+        osim.Vec3(r_EC_midpoint),  # Location of the joint in the femur frame
+        osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
+        right_tibfib,  # Child body (tibfib)
+        osim.Vec3(r_EC_midpoint),  # Location of the joint in the tibfib frame
+        osim.Vec3(0, 0, 0)
+        # Orientation of the joint in the tibfib frame
     )
 
     # %% Adding the knee joints to the model
@@ -1781,10 +1588,11 @@ def create_tibfib_bodies_and_knee_joints(
     # This connects the right tibfib to the right femur, allowing flexion/extension motion
     empty_model.addJoint(right_knee_joint)
 
+    return tibia_l_center, tibia_r_center, left_tibfib, right_tibfib
 
-    return rotated_l_tibia_center, rotated_r_tibia_center, tibia_l_center, tibia_r_center, left_tibfib, right_tibfib
 
-def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib):
+def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, tibfib_l_center,
+                                            tibfib_r_center, left_tibfib, right_tibfib):
     """
       Repurposes the foot bodies (talus) in the OpenSim model and creates ankle joints
       (PinJoint) connecting the talus to the tibia/fibula (tibfib) segments.
@@ -1793,10 +1601,8 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_l
           empty_model (osim.Model): The OpenSim model where the joints and bodies are added.
           left_landmarks (dict): Dictionary of left leg anatomical landmarks with their 3D coordinates.
           right_landmarks (dict): Dictionary of right leg anatomical landmarks with their 3D coordinates.
-          rotated_l_tibfib_center (np.array): Center of the left tibfib segment in the rotated coordinate system.
-          rotated_r_tibfib_center (np.array): Center of the right tibfib segment in the rotated coordinate system.
-          l_EC_midpoint (np.array): Midpoint of the left femoral epicondyles.
-          r_EC_midpoint (np.array): Midpoint of the right femoral epicondyles.
+          tibfib_l_center (np.array): Center of the left tibfib segment in the rotated coordinate system.
+          tibfib_r_center (np.array): Center of the right tibfib segment in the rotated coordinate system.
           left_tibfib (osim.Body): The left tibfib body in the OpenSim model.
           right_tibfib (osim.Body): The right tibfib body in the OpenSim model.
 
@@ -1827,94 +1633,30 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_l
 
     # Define manual adjustments for the left and right talus positions in the child frame
     manual__l_talus_positioning_child = (-0.001, 0.017, -0.0025)  # Manual adjustment for left talus
-    manual_r_talus_positioning_child = (-0.001, 0.017, 0.0025)   # Manual adjustment for right talus
-
-
-    # Calculate the left ankle joint center
-    # Find the midpoint of the medial and lateral malleoli
-    malleolus_lat = left_landmarks["malleolus_lat"]  # Lateral malleolus landmark
-    malleolus_med = left_landmarks["malleolus_med"]  # Medial malleolus landmark
-    mal_midpoint = midpoint_3d(malleolus_lat, malleolus_med)  # Midpoint between malleoli
-
-    # Compute the shift of the talus relative to the tibfib in the rotated coordinate system
-    l_talus_shift = vector_between_points(rotate_coordinate_x(mal_midpoint, 90), rotated_l_tibfib_center)
-
-    # Rotate malleolus landmarks to align with OpenSim's coordinate system
-    l_LMAL = rotate_coordinate_x(malleolus_lat, 90)  # Rotated lateral malleolus
-    l_MMAL = rotate_coordinate_x(malleolus_med, 90)  # Rotated medial malleolus
-
-
-    # Compute the flexion vector
-    # Flexion and extension occur about the line connecting the medial and lateral malleoli
-    flexion_vector = vector_between_points(l_MMAL, l_LMAL)
-
-    # Compute the midpoint of the malleoli
-    l_MAL_midpoint = midpoint_3d(l_MMAL, l_LMAL)
-
-    # Compute the rotation vector
-    # Rotation occurs about the line connecting the femoral epicondyle midpoint (l_EC_midpoint)
-    # and the midpoint of the malleoli (l_MAL_midpoint)
-    rotation_vector = vector_between_points(l_EC_midpoint, l_MAL_midpoint)
-
-    # Calculate the Euler rotation angles (radians) to align the left ankle joint coordinate system
-    # The z-axis is aligned with the flexion vector, and other axes are orthogonalized appropriately
-    l_ankle_angles = calculate_euler_to_align_axis_with_optimization(flexion_vector, rotation_vector, 'z')
-
+    manual_r_talus_positioning_child = (-0.001, 0.017, 0.0025)  # Manual adjustment for right talus
 
     # Define the ankle joint connecting the left talus to the left tibfib
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
     left_ankle_joint = osim.PinJoint(
-        "talus_l_to_tibfib_l",               # Name of the joint
-        left_tibfib,                         # Parent body (tibfib)
-        osim.Vec3(l_talus_shift),            # Location of the joint in the tibfib frame
-        osim.Vec3(l_ankle_angles),           # Orientation of the joint in the tibfib frame
-        left_talus,                          # Child body (talus)
+        "talus_l_to_tibfib_l",  # Name of the joint
+        left_tibfib,  # Parent body (tibfib)
+        osim.Vec3(tibfib_l_center),  # Location of the joint in the tibfib frame
+        osim.Vec3(0, 0, 0),  # Orientation of the joint in the tibfib frame
+        left_talus,  # Child body (talus)
         osim.Vec3(manual__l_talus_positioning_child),  # Manually adjusted location of the joint in the talus frame
-        osim.Vec3(l_ankle_angles)            # Orientation of the joint in the talus frame
+        osim.Vec3(0, 0, 0)  # Orientation of the joint in the talus frame
     )
-
-    # Calculate the right ankle joint center
-    # Find the midpoint of the medial and lateral malleoli
-    malleolus_lat = right_landmarks["malleolus_lat"]  # Lateral malleolus landmark
-    malleolus_med = right_landmarks["malleolus_med"]  # Medial malleolus landmark
-    mal_midpoint = midpoint_3d(malleolus_lat, malleolus_med)  # Midpoint between malleoli
-
-    # Compute the shift of the talus relative to the tibfib in the rotated coordinate system
-    r_talus_shift = vector_between_points(rotate_coordinate_x(mal_midpoint, 90), rotated_r_tibfib_center)
-
-    # Rotate malleolus landmarks to align with OpenSim's coordinate system
-    r_LMAL = rotate_coordinate_x(malleolus_lat, 90)  # Rotated lateral malleolus
-    r_MMAL = rotate_coordinate_x(malleolus_med, 90)  # Rotated medial malleolus
-
-
-    # Compute the flexion vector
-    # Flexion and extension occur about the line connecting the medial and lateral malleoli
-    flexion_vector = vector_between_points(r_LMAL, r_MMAL)
-
-    # Compute the midpoint of the malleoli
-    r_MAL_midpoint = midpoint_3d(r_MMAL, r_LMAL)
-
-    # Compute the rotation vector
-    # Rotation occurs about the line connecting the femoral epicondyle midpoint (r_EC_midpoint)
-    # and the midpoint of the malleoli (r_MAL_midpoint)
-    rotation_vector = vector_between_points(r_EC_midpoint, r_MAL_midpoint)
-
-    # Calculate the Euler rotation angles (radians) to align the right ankle joint coordinate system
-    # The z-axis is aligned with the flexion vector, and other axes are orthogonalized appropriately
-    r_ankle_angles = calculate_euler_to_align_axis_with_optimization(flexion_vector, rotation_vector, 'z')
-
 
     # Define the ankle joint connecting the right talus to the right tibfib
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
     right_ankle_joint = osim.PinJoint(
-        "talus_r_to_tibfib_r",               # Name of the joint
-        right_tibfib,                        # Parent body (tibfib)
-        osim.Vec3(r_talus_shift),            # Location of the joint in the tibfib frame
-        osim.Vec3(r_ankle_angles),           # Orientation of the joint in the tibfib frame
-        right_talus,                         # Child body (talus)
+        "talus_r_to_tibfib_r",  # Name of the joint
+        right_tibfib,  # Parent body (tibfib)
+        osim.Vec3(tibfib_r_center),  # Location of the joint in the tibfib frame
+        osim.Vec3(0, 0, 0),  # Orientation of the joint in the tibfib frame
+        right_talus,  # Child body (talus)
         osim.Vec3(manual_r_talus_positioning_child),  # Manually adjusted location of the joint in the talus frame
-        osim.Vec3(r_ankle_angles))
-
+        osim.Vec3(0, 0, 0))
 
     # Add the left ankle joint to the OpenSim model
     empty_model.addJoint(left_ankle_joint)
@@ -2031,9 +1773,9 @@ def estimate_body_segment_parameters(height, weight):
             length = segment_lengths[segment]
             radius = segment_radii[segment]
 
-            I1 = (1/12) * mass * (3 * radius**2 + length**2)  # Transverse moment (X)
-            I2 = (1/12) * mass * (3 * radius**2 + length**2)  # Transverse moment (Z)
-            I3 = (1/2) * mass * radius**2  # Longitudinal moment (Y)
+            I1 = (1 / 12) * mass * (3 * radius ** 2 + length ** 2)  # Transverse moment (X)
+            I2 = (1 / 12) * mass * (3 * radius ** 2 + length ** 2)  # Transverse moment (Z)
+            I3 = (1 / 2) * mass * radius ** 2  # Longitudinal moment (Y)
 
             # Assign inertia with correct OpenSim axes
             inertias[segment] = [I1, I3, I2, 0, 0, 0]  # Y-axis gets I3 (smallest)
@@ -2044,7 +1786,7 @@ def estimate_body_segment_parameters(height, weight):
     }
 
 
-def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, height):
+def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, height, x_opt_left, x_opt_right):
     """
     Performs a series of updates on an OpenSim model including setting joint ranges,
     renaming coordinates, updating body segment properties, modifying joint rotation axes,
@@ -2070,15 +1812,10 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
         6. Apply specific updates to the left and right subtalar joints, including renaming and range setting.
         7. Update mesh file paths for foot and talus models.
     """
-    output_file = output_folder +"/"f"{model_name}.osim"
+    output_file = output_folder + "/"f"{model_name}.osim"
 
     # Load the selected model
     model = empty_model
-
-    # Print out all the body names in the model
-    bodySet = model.getBodySet()
-    #for i in range(bodySet.getSize()):
-        #print(bodySet.get(i).getName())
 
     # Locate hip joints
     l_hip_joint = model.getJointSet().get('femur_l_to_pelvis')
@@ -2098,9 +1835,13 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     pelvis_obliquity = pelvis_joint.upd_coordinates(0)
     pelvis_rotation = pelvis_joint.upd_coordinates(1)
 
+    #rename pelvis rotations and set default values from x_opt
     pelvis_tilt.setName("pelvis_tilt")
+    pelvis_tilt.setDefaultValue(x_opt_left['pelvis_rigid'][5])
     pelvis_obliquity.setName("pelvis_list")
+    pelvis_obliquity.setDefaultValue(x_opt_left['pelvis_rigid'][3])
     pelvis_rotation.setName("pelvis_rotation")
+    pelvis_rotation.setDefaultValue(x_opt_left['pelvis_rigid'][4])
 
     # Access and rename the translational coordinates
     pelvis_translation_x = pelvis_joint.upd_coordinates(3)  # Translation along x-axis
@@ -2111,9 +1852,6 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     pelvis_translation_y.setName("pelvis_ty")
     pelvis_translation_z.setName("pelvis_tz")
 
-
-
-
     # Set coordinates range for left hip joint
     l_hip_flexion = l_hip_joint.upd_coordinates(0)
     l_hip_abduction = l_hip_joint.upd_coordinates(1)
@@ -2121,13 +1859,15 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     l_hip_flexion.setRangeMin(-1.5)
     l_hip_flexion.setRangeMax(1.8)
+    l_hip_flexion.setDefaultValue(x_opt_left['hip_rot'][0])
 
     l_hip_abduction.setRangeMin(-0.8)
     l_hip_abduction.setRangeMax(1.2)
+    l_hip_abduction.setDefaultValue(x_opt_left['hip_rot'][1])
 
     l_hip_rotation.setRangeMin(-0.8)
     l_hip_rotation.setRangeMax(0.8)
-
+    l_hip_rotation.setDefaultValue(x_opt_left['hip_rot'][2])
 
     # Set coordinates range for right hip joint
     r_hip_flexion = r_hip_joint.upd_coordinates(0)
@@ -2136,24 +1876,29 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     r_hip_flexion.setRangeMin(-1.5)
     r_hip_flexion.setRangeMax(1.8)
+    r_hip_flexion.setDefaultValue(x_opt_right['hip_rot'][0])
 
     r_hip_abduction.setRangeMin(-1.2)
     r_hip_abduction.setRangeMax(0.8)
+    r_hip_abduction.setDefaultValue(x_opt_right['hip_rot'][1])
 
     r_hip_rotation.setRangeMin(-0.8)
     r_hip_rotation.setRangeMax(0.8)
+    r_hip_rotation.setDefaultValue(x_opt_right['hip_rot'][2])
 
     # Set coordinates range and names for left knee joint
     l_knee_flexion = l_knee_joint.upd_coordinates(0)
     l_knee_flexion.setName("knee_angle_l")
     l_knee_flexion.setRangeMin(-2.2)
     l_knee_flexion.setRangeMax(0.0)
+    l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0])
 
     # Set coordinates range and names for right knee joint
     r_knee_flexion = r_knee_joint.upd_coordinates(0)
     r_knee_flexion.setName("knee_angle_r")
     r_knee_flexion.setRangeMin(-2.2)
     r_knee_flexion.setRangeMax(0.0)
+    r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0])
 
     # Set coordinates range and names for right ankle joint
     r_ankle_flexion = r_ankle_joint.upd_coordinates(0)
@@ -2186,7 +1931,6 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
         body.setMass(mass)
         body.setMassCenter(osim.Vec3(*com))
         body.setInertia(osim.Inertia(*inertia))
-
 
     # Compute body segment parameters
     params = estimate_body_segment_parameters(height, weight)
@@ -2256,13 +2000,14 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     update_subtalar_joint_range(input_file, output_file, "subtalar_angle_l", -1, 1)
     update_subtalar_joint_range(input_file, output_file, "subtalar_angle_r", -1, 1)
 
-
-    #updates the path to feet mesh files
-    update_mesh_file_paths(input_file, output_file, mesh_directory, ["l_bofoot.vtp","r_bofoot.vtp","l_foot.vtp","r_foot.vtp","l_talus.vtp","r_talus.vtp"])
+    # updates the path to feet mesh files
+    update_mesh_file_paths(input_file, output_file, mesh_directory,
+                           ["l_bofoot.vtp", "r_bofoot.vtp", "l_foot.vtp", "r_foot.vtp", "l_talus.vtp", "r_talus.vtp"])
 
     return output_file
 
-def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = True):
+
+def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=True):
     """
       Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
@@ -2326,7 +2071,8 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     toe_position_in_calcn = toe_local_array + translation_vector
 
     # The heel marker is already in the calcn_l_b frame
-    heel_position_in_calcn = np.array([heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
+    heel_position_in_calcn = np.array(
+        [heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
 
     # Compute the initial foot vector (heel to toe, normalized)
     left_foot_vector_initial = vector_between_points(heel_position_in_calcn, toe_position_in_calcn, True)
@@ -2338,7 +2084,6 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
         -rotate_coordinate_x(mocap_static_trc["LTOE"], 90),
         True
     )
-
 
     # Compute the Euler angles to align the initial vector with the actual vector
     l_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
@@ -2371,11 +2116,10 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     # Update the child frame's orientation with the new values
     left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
-
     # Initialize the model's system
     state = empty_model.initSystem()
 
-    #Attempting to make the foot be flat with the ground
+    # Attempting to make the foot be flat with the ground
     left_foot_transform_in_ground = toes_body.getTransformInGround(state)
     # Extract the rotation matrix from the transform
     rotation_matrix = left_foot_transform_in_ground.R().asMat33()
@@ -2389,12 +2133,11 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     if not realign_feet:
         euler_angles[2] = 0
 
-
     # Extract the components of the Vec3 and negate them
     inverse_euler_angles = osim.Vec3(
         -euler_angles.get(0),  # Negate X angle
         -euler_angles.get(1),  # Negate Y angle
-        -euler_angles.get(2)   # Negate Z angle
+        -euler_angles.get(2)  # Negate Z angle
     )
     # Convert osim.Vec3 to NumPy array
     inverse_euler_angles_array = np.array([
@@ -2407,15 +2150,14 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     # Access the child frame's current orientation
     current_orientation = left_ankle_joint.get_frames(1).get_orientation()
     current_orientation_values = np.array([current_orientation.get(0),
-                                            current_orientation.get(1),
-                                            current_orientation.get(2)])
+                                           current_orientation.get(1),
+                                           current_orientation.get(2)])
 
     # Apply the inverse rotation to the current orientation
     new_orientation_values = current_orientation_values - inverse_euler_angles_array
 
     # Update the child frame's orientation
     left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
-
 
     # === Adjust Orientation of the Right Foot ===
 
@@ -2445,7 +2187,8 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     toe_position_in_calcn_r = toe_local_array + translation_vector
 
     # The heel marker is already in the calcn_r_b frame
-    heel_position_in_calcn_r = np.array([heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
+    heel_position_in_calcn_r = np.array(
+        [heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
 
     # Compute the initial foot vector (heel to toe, normalized)
     right_foot_vector_initial = vector_between_points(heel_position_in_calcn_r, toe_position_in_calcn_r, True)
@@ -2459,7 +2202,7 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     )
 
     # Plot the two vectors for visualization
-    #plot_3d_vectors(right_foot_vector_initial, right_foot_vector_actual)
+    # plot_3d_vectors(right_foot_vector_initial, right_foot_vector_actual)
 
     # Compute the Euler angles to align the initial vector with the actual vector
     r_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
@@ -2495,7 +2238,7 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     # Initialize the model's system
     state = empty_model.initSystem()
 
-    #Attempting to make the foot be flat with the ground
+    # Attempting to make the foot be flat with the ground
     right_foot_transform_in_ground = toes_body.getTransformInGround(state)
     # Extract the rotation matrix from the transform
     rotation_matrix = right_foot_transform_in_ground.R().asMat33()
@@ -2510,12 +2253,11 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     if not realign_feet:
         euler_angles[2] = 0
 
-
     # Extract the components of the Vec3 and negate them
     inverse_euler_angles = osim.Vec3(
         -euler_angles.get(0),  # Negate X angle
         -euler_angles.get(1),  # Negate Y angle
-        -euler_angles.get(2)   # Negate Z angle
+        -euler_angles.get(2)  # Negate Z angle
     )
     # Convert osim.Vec3 to NumPy array
     inverse_euler_angles_array = np.array([
@@ -2528,8 +2270,8 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet = 
     # Access the child frame's current orientation
     current_orientation = right_ankle_joint.get_frames(1).get_orientation()
     current_orientation_values = np.array([current_orientation.get(0),
-                                            current_orientation.get(1),
-                                            current_orientation.get(2)])
+                                           current_orientation.get(1),
+                                           current_orientation.get(2)])
 
     # Apply the inverse rotation to the current orientation
     new_orientation_values = current_orientation_values - inverse_euler_angles_array
@@ -2589,6 +2331,7 @@ def perform_scaling(output_directory, output_file, static_trc_file):
     # Run the scaling process
     scale_tool.run()
 
+
 def compute_mesh_volume(vertices, faces):
     """
     Computes the volume of a 3D mesh using the divergence theorem.
@@ -2608,5 +2351,3 @@ def compute_mesh_volume(vertices, faces):
         volume += tetra_volume
 
     return abs(volume)  # Ensure positive volume
-
-

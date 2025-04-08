@@ -2,9 +2,10 @@
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import os
 import pickle
+import numpy as np
 
 from opensim_model_creator.Create_Model import create_model
-
+from opensim_model_creator.Functions.general_utils import rotate_coordinate_x
 
 def test(input_directory, height, weight):
     script_directory = os.path.dirname(os.path.abspath(__file__))
@@ -19,12 +20,21 @@ def test(input_directory, height, weight):
     with open(marker_data_path, "rb") as f:
         static_marker_data = pickle.load(f)
 
-    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=True, testing=True)
+    ## rotate static marker data to match opensim coordinate system (remove later)
+    rotation_matrix = np.array([
+        [1, 0, 0],
+        [0, 0, 1],
+        [0, -1, 0]
+    ])
+    for lm in static_marker_data:
+        static_marker_data[lm] = np.dot(rotation_matrix, static_marker_data[lm])
+
+    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=True)
 
 
 if __name__ == "__main__":
-    test("Sydney 01", 1.634, 53.5)
-    # test("Brittney 05", 1.591, 40.8),
+    #test("Sydney 01", 1.634, 53.5)
+    test("Brittney 05", 1.591, 40.8),
     # test("Jinella 01", 1.363, 32.9),
     # test("Jinella 02", 1.179, 23)
 

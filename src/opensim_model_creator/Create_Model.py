@@ -42,8 +42,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     mesh_directory = os.path.join(model_directory, "Meshes")
 
     # Clear output and mesh folders to avoid residuals from previous runs
-    reset_folder(model_directory)
-    reset_folder(mesh_directory)
+    #reset_folder(model_directory)
+    #reset_folder(mesh_directory)
 
     #%%Initialisation
 
@@ -51,7 +51,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         progress_tracker.progress.emit("Fitting articulated shape model", "black")
 
     # Generate mesh files using ASM
-    run_asm(static_marker_data, mesh_directory)
+    #run_asm(static_marker_data, mesh_directory)
 
     if progress_tracker:
         progress_tracker.progress.emit("Creating OpenSim model", "black")
@@ -63,48 +63,47 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     scale_marker_data(static_marker_data, 0.001)
 
     # Process and extract meshes from STL files
-    process_participant_meshes(mesh_directory, mesh_directory)
+    #process_participant_meshes(mesh_directory, mesh_directory)
 
     # Initializes muscle linkage directory
-    muscle_linkages = muscle_initialisation(mesh_directory)
+    #muscle_linkages = muscle_initialisation(mesh_directory)
 
     #Splits specific muscles into a number of segments
-    segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
-    segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
-    segment_muscle_origins_insertions(muscle_linkages, "Add mag", pair_to_segment=0, num_segments=2)
+    #segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
+    #segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
+    #segment_muscle_origins_insertions(muscle_linkages, "Add mag", pair_to_segment=0, num_segments=2)
 
     # Apply a swap for Adductor Magnus origins to have better anatomical consistency
-    swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
+    #swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
 
     #Initialises model, trc files, and landmarks
-    empty_model, state, left_landmarks, right_landmarks, mocap_static_trc = initialize_model_and_extract_landmarks(static_trc, mesh_directory)
+    empty_model, state, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(mesh_directory)
+    mocap_static_trc = static_marker_data
 
     # %% Creation of the pelvis body and pelvis joint
-    pelvis, pelvis_joint, rotated_pelvis_center, pelvis_realignment, pelvis_center = create_pelvis_body_and_joint(
-        empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc, realign_pelvis=True
-    )
+    pelvis, pelvis_joint, pelvis_center = create_pelvis_body_and_joint(
+        empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc)
 
     # %% Creation of femur bodies and attachment of meshes, markers, and landmarks
-    (l_LEC, l_MEC, l_HJC, l_EC_midpoint, left_femur, femur_l_center, rotated_l_femur_center,
-     LKNE_alignment_angles, LHIP_vert_alignment_angles, r_LEC, r_MEC, r_HJC, r_EC_midpoint, right_femur, femur_r_center, rotated_r_femur_center,
-     RKNE_alignment_angles, RHIP_vert_alignment_angles) = create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc, rotated_pelvis_center, pelvis_realignment, pelvis, realign_femurs= True)
+    (l_LEC, l_MEC, l_HJC, l_EC_midpoint, left_femur, femur_l_center, r_LEC, r_MEC, r_HJC, r_EC_midpoint, right_femur,
+     femur_r_center) = create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, mesh_directory,
+                                                          mocap_static_trc, pelvis)
 
     # %% Creation of the Tibia/Fibula (TibFib) Bodies
-    rotated_l_tibfib_center, rotated_r_tibfib_center, tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = create_tibfib_bodies_and_knee_joints(
-        empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc,
-        rotated_l_femur_center, rotated_r_femur_center, LHIP_vert_alignment_angles, RHIP_vert_alignment_angles,
-        left_femur, right_femur,l_LEC, l_MEC, l_HJC, l_EC_midpoint, r_LEC, r_MEC, r_HJC, r_EC_midpoint, realign_tibias=True
-    )
+    tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = (
+        create_tibfib_bodies_and_knee_joints(empty_model, left_landmarks, right_landmarks, mesh_directory,
+                                             mocap_static_trc, left_femur, right_femur))
 
     #%% Create feet bodies
-    repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, rotated_l_tibfib_center, rotated_r_tibfib_center, l_EC_midpoint, r_EC_midpoint, left_tibfib, right_tibfib)
+    repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, tibfib_l_center,
+                                            tibfib_r_center, left_tibfib, right_tibfib)
 
     #Further augment the muscle linkages dictionary and model to contain markers represenitng origins and insertions for all muscles (must be done prior to scaling as unused markers are removed via scaling process)
-    empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
-        "Pelvis": pelvis_center,
-        "Femur": [femur_l_center,femur_r_center],
-        "Tibfib": [tibfib_l_center,tibfib_r_center],
-    })
+    #empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
+    #    "Pelvis": pelvis_center,
+    #    "Femur": [femur_l_center,femur_r_center],
+    #    "Tibfib": [tibfib_l_center,tibfib_r_center],
+    #})
 
     # Finalise the connections of the model
     empty_model.finalizeConnections()
@@ -126,7 +125,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     print(f"Model saved to: {output_path}")
 
     #%% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,  weight, height)
+    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,  weight, height, x_opt_left, x_opt_right)
 
     # Reload the model
     empty_model = osim.Model(output_file)
@@ -248,7 +247,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         model = osim.Model(final_model_path)
 
         #Adds muscles to the model
-        add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
+        #add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
 
         #Saves the model
         muscle_model_name = "Muscle_Model"

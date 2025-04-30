@@ -42,8 +42,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     mesh_directory = os.path.join(model_directory, "Meshes")
 
     # Clear output and mesh folders to avoid residuals from previous runs
-    #reset_folder(model_directory)
-    #reset_folder(mesh_directory)
+    reset_folder(model_directory)
+    reset_folder(mesh_directory)
 
     #%%Initialisation
 
@@ -51,7 +51,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         progress_tracker.progress.emit("Fitting articulated shape model", "black")
 
     # Generate mesh files using ASM
-    #run_asm(static_marker_data, mesh_directory)
+    run_asm(static_marker_data, mesh_directory)
 
     if progress_tracker:
         progress_tracker.progress.emit("Creating OpenSim model", "black")
@@ -63,7 +63,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     scale_marker_data(static_marker_data, 0.001)
 
     # Process and extract meshes from STL files
-    #process_participant_meshes(mesh_directory, mesh_directory)
+    process_participant_meshes(mesh_directory, mesh_directory)
 
     # Initializes muscle linkage directory
     #muscle_linkages = muscle_initialisation(mesh_directory)
@@ -143,6 +143,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
 
     #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
+    #note this runs a preset scale setting file where only the feet are selected to be scaled
     perform_scaling(model_directory, output_file, static_trc)
 
 
@@ -162,7 +163,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     #marker weights used in the IK process
     marker_weights = {
                 "RASI": 5, "LASI": 5, "RTHI": 1, "RTIB": 1,
-                "RANK": 10, "LTHI": 1, "LTIB": 1, "LANK": 10,
+                "RANK": 10, "RMED": 10, "LTHI": 1, "LTIB": 1, "LANK": 10, "LMED": 10,
                 "RPSI": 1, "LPSI": 1, "RHEE": 1, "LHEE": 1,
                 "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5
             }
@@ -187,7 +188,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     results_directory = get_results_dir()
     ik_output = os.path.join(results_directory, "ik_output.mot")
     ik_marker_locations = os.path.join(results_directory, "_ik_model_marker_locations.sto")
-    compute_and_adjust_markers(optimised_knee_model, ik_output, ik_marker_locations, knee_optimisation_marker_dictionary, optimised_knee_moved_marker_model)
+    #compute_and_adjust_markers(optimised_knee_model, ik_output, ik_marker_locations, knee_optimisation_marker_dictionary, optimised_knee_moved_marker_model)
 
 
     # Run the Inverse Kinematics (IK) analysis and print results for the 3 different models
@@ -203,19 +204,19 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     print(ik_result_2)
     print("\n")
 
-    print(
-        f"Following Both Knee Alignment & Marker Adjustment - name of file: {os.path.basename(optimised_knee_moved_marker_model)}")
-    ik_result_3 = perform_IK(optimised_knee_moved_marker_model, knee_optimisation_trc_file, start_time, end_time,
-                             marker_weights)
-    print(ik_result_3)
-    print("\n")
+    #print(
+    #    f"Following Both Knee Alignment & Marker Adjustment - name of file: {os.path.basename(optimised_knee_moved_marker_model)}")
+    #ik_result_3 = perform_IK(optimised_knee_moved_marker_model, knee_optimisation_trc_file, start_time, end_time,
+    #                         marker_weights)
+    #print(ik_result_3)
+    #print("\n")
 
     # Extract Average RMS Errors from the results
     models = {
         source_file_path1: ik_result_1["Average RMS Error"],
-        optimised_knee_model: ik_result_2["Average RMS Error"],
-        optimised_knee_moved_marker_model: ik_result_3["Average RMS Error"]
-    }
+        optimised_knee_model: ik_result_2["Average RMS Error"]}
+        #optimised_knee_moved_marker_model: ik_result_3["Average RMS Error"]
+    #}
 
     # Find the model with the lowest Average RMS Error
     best_model_path = min(models, key=models.get)

@@ -1256,13 +1256,13 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
                      offset_translation=(0, 0, 0))
 
     # Add mocap markers
-    add_markers_to_body(model, "pelvis_b", ["RASI", "LASI", "RPSI", "LPSI"], mocap_static_trc, pelvis_center)
+    #add_markers_to_body(model, "pelvis_b", ["RASI", "LASI", "RPSI", "LPSI"], mocap_static_trc, pelvis_center)
 
     # Add anatomical landmarks
     add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS", "SAC"], left_landmarks, pelvis_center,
-                        ["lms_LASI", "lms_LPSI", "lms_SAC"])
+                        ["LASI", "LPSI", "SAC"])
     add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS"], right_landmarks, pelvis_center,
-                        ["lms_RASI", "lms_RPSI"])
+                        ["RASI", "RPSI"])
 
     return pelvis, pelvis_joint, pelvis_center
 
@@ -1332,15 +1332,15 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     add_mesh_to_body(empty_model, "femur_l_b", relative_path, offset_orientation=(0, 0, 0),
                      offset_translation=(0, 0, 0))
 
-    # Add mocap markers to the femur bodies
-    add_markers_to_body(empty_model, "femur_l_b", ["LTHI", "LPAT", "LKNE"], mocap_static_trc, femur_l_center)
-    add_markers_to_body(empty_model, "femur_r_b", ["RTHI", "RPAT", "RKNE"], mocap_static_trc, femur_r_center)
+    # Add mocap markers to the femur bodies, taken from static trial for tracking markers
+    add_markers_to_body(empty_model, "femur_l_b", ["LTHI"], mocap_static_trc, femur_l_center)
+    add_markers_to_body(empty_model, "femur_r_b", ["RTHI"], mocap_static_trc, femur_r_center)
 
-    # Add anatomical landmarks to the femur bodies with custom marker names
+    # Add anatomical landmarks to the femur bodies with custom marker names, taken from shape model prediction for anatomical markers
     add_markers_to_body(empty_model, "femur_l_b", ["LEC", "MEC"], left_landmarks, femur_l_center,
-                        ["lms_LLEC", "lms_LMEC"])
+                        ["LKNE", "LKNEM"])
     add_markers_to_body(empty_model, "femur_r_b", ["LEC", "MEC"], right_landmarks, femur_r_center,
-                        ["lms_RLEC", "lms_RMEC"])
+                        ["RKNE", "RKNEM"])
 
     # find midpoint of knee
     l_LEC = left_landmarks["LEC"]
@@ -1518,18 +1518,18 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Add mocap markers to the tibfib bodies
     # Add mocap markers for the left tibfib body
-    add_markers_to_body(empty_model, "tibfib_l_b", ["LANK", "LTIB", "LTOE", "LHEE"], mocap_static_trc, tibia_l_center)
+    add_markers_to_body(empty_model, "tibfib_l_b", ["LTIB", "LTOE", "LHEE"], mocap_static_trc, tibia_l_center)
 
     # Add landmark markers for the left tibfib body
     add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,
-                        ["lms_LMMAL", "lms_LLMAL"])
+                        ["LMED", "LANK"])
 
     # Add mocap markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibfib_r_b", ["RANK", "RTIB", "RTOE", "RHEE"], mocap_static_trc, tibia_r_center)
+    add_markers_to_body(empty_model, "tibfib_r_b", ["RTIB", "RTOE", "RHEE"], mocap_static_trc, tibia_r_center)
 
     # Add landmark markers for the right tibfib body
     add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,
-                        ["lms_RMMAL", "lms_RLMAL"])
+                        ["RMED", "RANK"])
 
 
     # Extract the medial and lateral epicondyle landmarks

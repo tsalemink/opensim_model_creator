@@ -42,8 +42,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     mesh_directory = os.path.join(model_directory, "Meshes")
 
     # Clear output and mesh folders to avoid residuals from previous runs
-    reset_folder(model_directory)
-    reset_folder(mesh_directory)
+    #reset_folder(model_directory)
+    #reset_folder(mesh_directory)
 
     #%%Initialisation
 
@@ -51,7 +51,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         progress_tracker.progress.emit("Fitting articulated shape model", "black")
 
     # Generate mesh files using ASM
-    run_asm(static_marker_data, mesh_directory)
+    #run_asm(static_marker_data, mesh_directory)
 
     if progress_tracker:
         progress_tracker.progress.emit("Creating OpenSim model", "black")
@@ -63,9 +63,9 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     scale_marker_data(static_marker_data, 0.001)
 
     # Process and extract meshes from STL files
-    process_participant_meshes(mesh_directory, mesh_directory)
+    #process_participant_meshes(mesh_directory, mesh_directory)
 
-    # Initializes muscle linkage directory
+    # MUSCLES (add in later) Initializes muscle linkage directory
     #muscle_linkages = muscle_initialisation(mesh_directory)
 
     #Splits specific muscles into a number of segments
@@ -98,7 +98,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, tibfib_l_center,
                                             tibfib_r_center, left_tibfib, right_tibfib)
 
-    #Further augment the muscle linkages dictionary and model to contain markers represenitng origins and insertions for all muscles (must be done prior to scaling as unused markers are removed via scaling process)
+    #MUSCLES (add later) Further augment the muscle linkages dictionary and model to contain markers represenitng origins and insertions for all muscles (must be done prior to scaling as unused markers are removed via scaling process)
     #empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
     #    "Pelvis": pelvis_center,
     #    "Femur": [femur_l_center,femur_r_center],
@@ -109,20 +109,22 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model.finalizeConnections()
 
     # Extract the directory name as the model name and replace spaces with underscores
-    model_name = "Bone_Model"
+    model_name_pre = "Bone_Model_pre"
+    model_name = "Bone_model"
 
     # Update the model name
-    empty_model.setName(model_name)
+    empty_model.setName(model_name_pre)
 
     # Ensure the output folder exists
     os.makedirs(model_directory, exist_ok=True)
 
     # Combine the folder path and filename
-    output_path = os.path.join(model_directory, f"{model_name}.osim")
+    output_path = os.path.join(model_directory, f"{model_name_pre}.osim")
 
     # Save the model to output folder
     empty_model.printToXML(output_path)
     print(f"Model saved to: {output_path}")
+    empty_model.setName(model_name)
 
     #%% Perform a long series of updates to the model
     output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,  weight, height, x_opt_left, x_opt_right)
@@ -137,8 +139,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
 
-    #Extract local muscle positions prior to scaling (unused markers, such as those of the muscles, are removed during the scaling process)
-    local_muscle_positions = extract_local_muscle_positions(empty_model)
+    #MUSCLES (add later) Extract local muscle positions prior to scaling (unused markers, such as those of the muscles, are removed during the scaling process)
+    #local_muscle_positions = extract_local_muscle_positions(empty_model)
 
 
 
@@ -165,80 +167,17 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
                 "RASI": 5, "LASI": 5, "RTHI": 1, "RTIB": 1,
                 "RANK": 10, "RMED": 10, "LTHI": 1, "LTIB": 1, "LANK": 10, "LMED": 10,
                 "RPSI": 1, "LPSI": 1, "RHEE": 1, "LHEE": 1,
-                "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5
+                "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5, "RKNEM": 2.5, "LKNEM": 2.5
             }
 
     #itersation count of 5 appears to allow convergence whilst not taking overtly long
     if testing:
-        iteration_count = 1
+        iteration_count = 3
     else:
         iteration_count = 5
 
-
     #This runs the knee joint optimisation
     run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2,marker_weights,optimised_knee_model, iteration_count= iteration_count)
-
-
-
-
-    #%% Run IK, and extract the model marker positions and compare to those of the actual marker positions across the entire time trial, then adjust.
-
-    optimised_knee_moved_marker_model = model_directory+"/Optimised_Knee_Axes_Moved_Markers.osim"
-
-    results_directory = get_results_dir()
-    ik_output = os.path.join(results_directory, "ik_output.mot")
-    ik_marker_locations = os.path.join(results_directory, "_ik_model_marker_locations.sto")
-    #compute_and_adjust_markers(optimised_knee_model, ik_output, ik_marker_locations, knee_optimisation_marker_dictionary, optimised_knee_moved_marker_model)
-
-
-    # Run the Inverse Kinematics (IK) analysis and print results for the 3 different models
-    print("\n")
-    print(f"Prior to Knee Alignment & Marker Movement - name of file: {os.path.basename(source_file_path1)}")
-    ik_result_1 = perform_IK(source_file_path1, knee_optimisation_trc_file, start_time, end_time, marker_weights)
-    print(ik_result_1)
-    print("\n")
-
-    print(
-        f"Following Knee Alignment but Prior to Marker Adjustment - name of file: {os.path.basename(optimised_knee_model)}")
-    ik_result_2 = perform_IK(optimised_knee_model, knee_optimisation_trc_file, start_time, end_time, marker_weights)
-    print(ik_result_2)
-    print("\n")
-
-    #print(
-    #    f"Following Both Knee Alignment & Marker Adjustment - name of file: {os.path.basename(optimised_knee_moved_marker_model)}")
-    #ik_result_3 = perform_IK(optimised_knee_moved_marker_model, knee_optimisation_trc_file, start_time, end_time,
-    #                         marker_weights)
-    #print(ik_result_3)
-    #print("\n")
-
-    # Extract Average RMS Errors from the results
-    models = {
-        source_file_path1: ik_result_1["Average RMS Error"],
-        optimised_knee_model: ik_result_2["Average RMS Error"]}
-        #optimised_knee_moved_marker_model: ik_result_3["Average RMS Error"]
-    #}
-
-    # Find the model with the lowest Average RMS Error
-    best_model_path = min(models, key=models.get)
-    best_model_error = models[best_model_path]
-
-    # Format the participant's name by replacing spaces with underscores
-
-    # Define the output file name
-    final_model_filename = f"Final_Bone_Model.osim"
-    final_model_path = os.path.join(os.path.dirname(best_model_path), final_model_filename)
-
-    # Check if the final model file already exists, and remove it if it does
-    if os.path.exists(final_model_path):
-        os.remove(final_model_path)  # Delete the existing file
-
-    # Now rename (move) the best model to the final filename
-    os.rename(best_model_path, final_model_path)
-
-    print(f"Final model selected: {os.path.basename(best_model_path)} with an Average RMS Error of {best_model_error}")
-    print(f"This model was renamed to: {os.path.basename(final_model_path)}")
-
-
 
     #creation of muscles is optional, work in progress (contains no wrapping or participant specific muscle parameters)
     if create_muscles:
@@ -258,7 +197,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         model.printToXML(muscle_model_file)
 
     # Remove temporary .osim files.
-    for osim_file in [temp_model_path_1, temp_model_path_2, optimised_knee_model, source_file_path1]:
+    for osim_file in [temp_model_path_1, temp_model_path_2, source_file_path1]:
         if os.path.isfile(osim_file):
             os.remove(osim_file)
 

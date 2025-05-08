@@ -29,14 +29,14 @@ def test(input_directory, height, weight):
     for lm in static_marker_data:
         static_marker_data[lm] = np.dot(rotation_matrix, static_marker_data[lm])
 
-    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=False)
+    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=True)
 
 
 if __name__ == "__main__":
     #test("Sydney 01", 1.634, 53.5)
-    test("Brittney 05", 1.591, 40.8),
-    # test("Jinella 01", 1.363, 32.9),
-    # test("Jinella 02", 1.179, 23)
+    #("Brittney 05", 1.591, 40.8),
+    #test("Jinella 01", 1.363, 32.9),
+    test("Jinella 02", 1.179, 23)
 
     # # Define test cases as (directory, height, weight) tuples
     # test_cases = [

@@ -42,8 +42,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     mesh_directory = os.path.join(model_directory, "Meshes")
 
     # Clear output and mesh folders to avoid residuals from previous runs
-    #reset_folder(model_directory)
-    #reset_folder(mesh_directory)
+    reset_folder(model_directory)
+    reset_folder(mesh_directory)
 
     #%%Initialisation
 
@@ -51,7 +51,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         progress_tracker.progress.emit("Fitting articulated shape model", "black")
 
     # Generate mesh files using ASM
-    #run_asm(static_marker_data, mesh_directory)
+    run_asm(static_marker_data, mesh_directory)
 
     if progress_tracker:
         progress_tracker.progress.emit("Creating OpenSim model", "black")
@@ -63,7 +63,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     scale_marker_data(static_marker_data, 0.001)
 
     # Process and extract meshes from STL files
-    #process_participant_meshes(mesh_directory, mesh_directory)
+    process_participant_meshes(mesh_directory, mesh_directory)
 
     # MUSCLES (add in later) Initializes muscle linkage directory
     #muscle_linkages = muscle_initialisation(mesh_directory)

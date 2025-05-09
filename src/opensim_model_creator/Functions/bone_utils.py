@@ -642,7 +642,7 @@ def adjust_joint_orientation(model_path, joint_name, rotation_adjustment, output
         print(f"Error updating joint '{joint_name}': {e}")
 
 
-def zero_joint_orientation(x_opt_left, x_opt_right, l_hip_joint, r_hip_joint, l_knee_joint, r_knee_joint,
+def zero_joint_orientation(model, output_file, x_opt_left, x_opt_right, l_hip_joint, r_hip_joint, l_knee_joint, r_knee_joint,
                            pelvis_joint):
     '''
     Zeros all of the joint orientations so that default values can be set. The joints are zeroed to the articulated
@@ -657,20 +657,23 @@ def zero_joint_orientation(x_opt_left, x_opt_right, l_hip_joint, r_hip_joint, l_
         pelvis_joint:
 
     '''
+
     # Access the child frame for the pelvis ground joint
     child_frame = pelvis_joint.upd_frames(1)
     # Apply rotation adjustments from x_opt
-    new_orientation = osim.Vec3((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3])/2,
-                                (x_opt_left['pelvis_rigid'][4] + x_opt_right['pelvis_rigid'][4])/2,
-                                (x_opt_left['pelvis_rigid'][5] + x_opt_right['pelvis_rigid'][5])/2)
+    new_orientation = osim.Vec3(((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3])/2),
+                                ((x_opt_left['pelvis_rigid'][4] + x_opt_right['pelvis_rigid'][4])/2),
+                                ((x_opt_left['pelvis_rigid'][5] + x_opt_right['pelvis_rigid'][5])/2))
     child_frame.set_orientation(new_orientation)
+    model.finalizeConnections()
 
     # Access the child frame for the left hip joint
     child_frame = l_hip_joint.upd_frames(1)
     # Apply rotation adjustments from x_opt
-    new_orientation = osim.Vec3(x_opt_left['hip_rot'][2]*-1, x_opt_left['hip_rot'][1]*-1,
-                                x_opt_left['hip_rot'][0]*-1)
+    new_orientation = osim.Vec3(x_opt_left['hip_rot'][2], x_opt_left['hip_rot'][1],
+                                x_opt_left['hip_rot'][0])
     child_frame.set_orientation(new_orientation)
+    model.finalizeConnections()
 
     # Access the child frame for the right hip joint
     child_frame = r_hip_joint.upd_frames(1)
@@ -678,18 +681,23 @@ def zero_joint_orientation(x_opt_left, x_opt_right, l_hip_joint, r_hip_joint, l_
     new_orientation = osim.Vec3(x_opt_right['hip_rot'][2], x_opt_right['hip_rot'][1],
                                 x_opt_right['hip_rot'][0])
     child_frame.set_orientation(new_orientation)
+    model.finalizeConnections()
 
     # Access the child frame of the left knee joint
     child_frame = l_knee_joint.upd_frames(1)
     # Apply rotation adjustments from x_opt
-    new_orientation = osim.Vec3(0.0, 0.0, x_opt_left['knee_rot'][0] * -1)
+    new_orientation = osim.Vec3(0.0, 0.0, x_opt_left['knee_rot'][0]*-1)
     child_frame.set_orientation(new_orientation)
+    model.finalizeConnections()
 
     # Access the child frame of the right knee joint
     child_frame = r_knee_joint.upd_frames(1)
     # Apply rotation adjustments from x_opt
-    new_orientation = osim.Vec3(0.0, 0.0, x_opt_right['knee_rot'][0] * -1)
+    new_orientation = osim.Vec3(0.0, 0.0, x_opt_right['knee_rot'][0]*-1)
     child_frame.set_orientation(new_orientation)
+
+    model.finalizeConnections()
+    model.printToXML(output_file)
 
 
 def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1,
@@ -1395,7 +1403,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     pelvis_joint = model.getJointSet().get('pelvis_to_ground')
 
-    zero_joint_orientation(x_opt_left, x_opt_right, l_hip_joint, r_hip_joint, l_knee_joint, r_knee_joint,
+    zero_joint_orientation(model, output_file, x_opt_left, x_opt_right, l_hip_joint, r_hip_joint, l_knee_joint, r_knee_joint,
                            pelvis_joint)
 
     pelvis_obliquity = pelvis_joint.upd_coordinates(0)
@@ -1404,12 +1412,12 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     # rename pelvis rotations and set default values from x_opt
 
     pelvis_obliquity.setName("pelvis_list")
-    pelvis_obliquity.setDefaultValue((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3])/2)
+    pelvis_obliquity.setDefaultValue(((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3])/2))
     pelvis_rotation.setName("pelvis_rotation")
-    pelvis_rotation.setDefaultValue((x_opt_left['pelvis_rigid'][4] + x_opt_right['pelvis_rigid'][4])/2)
+    pelvis_rotation.setDefaultValue(((x_opt_left['pelvis_rigid'][4] + x_opt_right['pelvis_rigid'][4])/2))
     pelvis_tilt.setName("pelvis_tilt")
-    pelvis_tilt.setDefaultValue((x_opt_left['pelvis_rigid'][5] + x_opt_right['pelvis_rigid'][5])/2)
-
+    pelvis_tilt.setDefaultValue(((x_opt_left['pelvis_rigid'][5] + x_opt_right['pelvis_rigid'][5])/2))
+    model.finalizeConnections()
     # Access and rename the translational coordinates
     pelvis_translation_x = pelvis_joint.upd_coordinates(3)  # Translation along x-axis
     pelvis_translation_y = pelvis_joint.upd_coordinates(4)  # Translation along y-axis
@@ -1426,15 +1434,16 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     l_hip_abduction.setRangeMin(-0.8)
     l_hip_abduction.setRangeMax(1.2)
-    l_hip_abduction.setDefaultValue(x_opt_left['hip_rot'][2]*-1)
+    l_hip_abduction.setDefaultValue(x_opt_left['hip_rot'][2])
 
     l_hip_rotation.setRangeMin(-0.8)
     l_hip_rotation.setRangeMax(0.8)
-    l_hip_rotation.setDefaultValue(x_opt_left['hip_rot'][1]*-1)
+    l_hip_rotation.setDefaultValue(x_opt_left['hip_rot'][1])
 
     l_hip_flexion.setRangeMin(-1.5)
     l_hip_flexion.setRangeMax(1.8)
-    l_hip_flexion.setDefaultValue(x_opt_left['hip_rot'][0]*-1)
+    l_hip_flexion.setDefaultValue(x_opt_left['hip_rot'][0])
+    model.finalizeConnections()
 
     # Set coordinates range for right hip joint
     r_hip_flexion = r_hip_joint.upd_coordinates(0)
@@ -1452,20 +1461,24 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_hip_flexion.setRangeMin(-1.5)
     r_hip_flexion.setRangeMax(1.8)
     r_hip_flexion.setDefaultValue(x_opt_right['hip_rot'][0])
+    model.finalizeConnections()
 
     # Set coordinates range and names for left knee joint
     l_knee_flexion = l_knee_joint.upd_coordinates(0)
     l_knee_flexion.setName("knee_angle_l")
     l_knee_flexion.setRangeMin(-2.2)
     l_knee_flexion.setRangeMax(1.0)
-    l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0] * -1)
+    l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0]*-1)
+    model.finalizeConnections()
+
 
     # Set coordinates range and names for right knee joint
     r_knee_flexion = r_knee_joint.upd_coordinates(0)
     r_knee_flexion.setName("knee_angle_r")
     r_knee_flexion.setRangeMin(-2.2)
     r_knee_flexion.setRangeMax(1.0)
-    r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0] * -1)
+    r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0]*-1)
+    model.finalizeConnections()
 
     # Set coordinates range and names for right ankle joint
     r_ankle_flexion = r_ankle_joint.upd_coordinates(0)
@@ -1517,7 +1530,6 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     # Finalise the initial iteration of model
     model.finalizeConnections()
     model.printToXML(output_file)
-    input()
 
     input_file = output_file
 

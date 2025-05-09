@@ -34,8 +34,8 @@ def test(input_directory, height, weight):
 
 if __name__ == "__main__":
     #test("Sydney 01", 1.634, 53.5)
-    #("Brittney 05", 1.591, 40.8),
-    #test("Jinella 01", 1.363, 32.9),
+    test("Brittney 05", 1.591, 40.8),
+    test("Jinella 01", 1.363, 32.9),
     test("Jinella 02", 1.179, 23)
 
     # # Define test cases as (directory, height, weight) tuples

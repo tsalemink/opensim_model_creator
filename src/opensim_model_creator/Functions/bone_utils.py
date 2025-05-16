@@ -686,14 +686,14 @@ def zero_joint_orientation(model, output_file, x_opt_left, x_opt_right, l_hip_jo
     # Access the child frame of the left knee joint
     child_frame = l_knee_joint.upd_frames(1)
     # Apply rotation adjustments from x_opt
-    new_orientation = osim.Vec3(0.0, 0.0, x_opt_left['knee_rot'][0]*-1)
+    new_orientation = osim.Vec3(x_opt_left['knee_rot'][1]*-1, 0.0, x_opt_left['knee_rot'][0]*-1)
     child_frame.set_orientation(new_orientation)
     model.finalizeConnections()
 
     # Access the child frame of the right knee joint
     child_frame = r_knee_joint.upd_frames(1)
     # Apply rotation adjustments from x_opt
-    new_orientation = osim.Vec3(0.0, 0.0, x_opt_right['knee_rot'][0]*-1)
+    new_orientation = osim.Vec3(x_opt_right['knee_rot'][1], 0.0, x_opt_right['knee_rot'][0]*-1)
     child_frame.set_orientation(new_orientation)
 
     model.finalizeConnections()
@@ -1111,17 +1111,37 @@ def create_tibfib_bodies_and_knee_joints(
     l_EC_midpoint = midpoint_3d(l_lec, l_mec)
 
     # %% Define the left knee joint
+    # Create the spatial transform for the custom knee joint
+    spatial_transform = osim.SpatialTransform()
+
+    # First rotation (Flexion/Extension) along X-axis
+    flexion_axis = spatial_transform.updTransformAxis(0)
+    flexion_axis.setCoordinateNames(osim.ArrayStr("knee_flexion_l", 1))
+    flexion_axis.setAxis(osim.Vec3(0, 0, 1))  # X-axis
+    flexion_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Second rotation (Adduction/Abduction) along Z-axis
+    adduction_axis = spatial_transform.updTransformAxis(1)
+    adduction_axis.setCoordinateNames(osim.ArrayStr("knee_adduction_l", 1))
+    adduction_axis.setAxis(osim.Vec3(1, 0, 0))  # Z-axis
+    adduction_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Third rotation (Internal/External Rotation) along Y-axis
+    rotation_axis = spatial_transform.updTransformAxis(2)
+    rotation_axis.setCoordinateNames(osim.ArrayStr("knee_rotation_l", 1))
+    rotation_axis.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
+    rotation_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
 
     # Define the knee joint connecting the left tibfib to the left femur
-    # A PinJoint allows rotation about a single axis (flexion/extension in this case)
-    left_knee_joint = osim.PinJoint(
+    left_knee_joint = osim.CustomJoint(
         "tibfib_l_to_femur_l",  # Name of the joint
         left_femur,  # Parent body (femur)
         osim.Vec3(l_EC_midpoint),  # Location of the joint in the femur frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
         left_tibfib,  # Child body (tibfib)
         osim.Vec3(l_EC_midpoint),  # Location of the joint in the tibfib frame
-        osim.Vec3(0, 0, 0)
+        osim.Vec3(0, 0, 0),
+        spatial_transform
         # Orientation of the joint in the tibfib frame
     )
 
@@ -1135,17 +1155,37 @@ def create_tibfib_bodies_and_knee_joints(
     r_EC_midpoint = midpoint_3d(r_lec, r_mec)
 
     # %% Define the right knee joint
+    # Create the spatial transform for the custom knee joint
+    spatial_transform = osim.SpatialTransform()
+
+    # First rotation (Flexion/Extension) along X-axis
+    flexion_axis = spatial_transform.updTransformAxis(0)
+    flexion_axis.setCoordinateNames(osim.ArrayStr("knee_flexion_r", 1))
+    flexion_axis.setAxis(osim.Vec3(0, 0, 1))  # X-axis
+    flexion_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Second rotation (Adduction/Abduction) along Z-axis
+    adduction_axis = spatial_transform.updTransformAxis(1)
+    adduction_axis.setCoordinateNames(osim.ArrayStr("knee_adduction_r", 1))
+    adduction_axis.setAxis(osim.Vec3(1, 0, 0))  # Z-axis
+    adduction_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Third rotation (Internal/External Rotation) along Y-axis
+    rotation_axis = spatial_transform.updTransformAxis(2)
+    rotation_axis.setCoordinateNames(osim.ArrayStr("knee_rotation_r", 1))
+    rotation_axis.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
+    rotation_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
 
     # Define the knee joint connecting the right tibfib to the right femur
-    # A PinJoint allows rotation about a single axis (flexion/extension in this case)
-    right_knee_joint = osim.PinJoint(
+    right_knee_joint = osim.CustomJoint(
         "tibfib_r_to_femur_r",  # Name of the joint
         right_femur,  # Parent body (femur)
         osim.Vec3(r_EC_midpoint),  # Location of the joint in the femur frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
         right_tibfib,  # Child body (tibfib)
         osim.Vec3(r_EC_midpoint),  # Location of the joint in the tibfib frame
-        osim.Vec3(0, 0, 0)
+        osim.Vec3(0, 0, 0),
+        spatial_transform
         # Orientation of the joint in the tibfib frame
     )
 
@@ -1465,19 +1505,50 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     # Set coordinates range and names for left knee joint
     l_knee_flexion = l_knee_joint.upd_coordinates(0)
-    l_knee_flexion.setName("knee_angle_l")
+    l_knee_flexion.setName("knee_flexion_l")
     l_knee_flexion.setRangeMin(-2.2)
     l_knee_flexion.setRangeMax(1.0)
     l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0]*-1)
     model.finalizeConnections()
 
+    l_knee_add = l_knee_joint.upd_coordinates(1)
+    l_knee_add.setName("knee_adduction_l")
+    l_knee_add.setRangeMin(-1.0)
+    l_knee_add.setRangeMax(1.0)
+    l_knee_add.setDefaultValue(x_opt_left['knee_rot'][1]*-1)
+    l_knee_add.setDefaultLocked(True)
+    model.finalizeConnections()
+
+    l_knee_rot = l_knee_joint.upd_coordinates(2)
+    l_knee_rot.setName("knee_rotation_l")
+    l_knee_rot.setRangeMin(-1.0)
+    l_knee_rot.setRangeMax(1.0)
+    l_knee_rot.setDefaultValue(0.0)
+    l_knee_rot.setDefaultLocked(True)
+    model.finalizeConnections()
 
     # Set coordinates range and names for right knee joint
     r_knee_flexion = r_knee_joint.upd_coordinates(0)
-    r_knee_flexion.setName("knee_angle_r")
+    r_knee_flexion.setName("knee_flexion_r")
     r_knee_flexion.setRangeMin(-2.2)
     r_knee_flexion.setRangeMax(1.0)
     r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0]*-1)
+    model.finalizeConnections()
+
+    r_knee_add = r_knee_joint.upd_coordinates(1)
+    r_knee_add.setName("knee_adduction_r")
+    r_knee_add.setRangeMin(-1.0)
+    r_knee_add.setRangeMax(1.0)
+    r_knee_add.setDefaultValue(x_opt_right['knee_rot'][1])
+    r_knee_add.setDefaultLocked(True)
+    model.finalizeConnections()
+
+    r_knee_rot = r_knee_joint.upd_coordinates(2)
+    r_knee_rot.setName("knee_rotation_r")
+    r_knee_rot.setRangeMin(-1.0)
+    r_knee_rot.setRangeMax(1.0)
+    r_knee_rot.setDefaultValue(0.0)
+    r_knee_rot.setDefaultLocked(True)
     model.finalizeConnections()
 
     # Set coordinates range and names for right ankle joint

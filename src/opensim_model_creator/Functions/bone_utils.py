@@ -501,8 +501,8 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
 
     # Sets bounds for knee joint optimisation
     bounds = [(-0.001, 0.001)] * 4
-    result = minimize(objective, np.array(initial_params), method="L-BFGS-B", bounds=bounds,
-                      options={"disp": True, "maxiter": iteration_count})
+    result = minimize(objective, np.array(initial_params), method="L-BFGS-B", bounds=bounds, tol=0.0001,
+                      options={"disp": True, "maxiter": 3})
     model = osim.Model(temp_model_path_2)
     model_name_here = os.path.basename(final_output_model)
     model.setName(model_name_here)
@@ -725,7 +725,7 @@ def zero_joint_orientation(model, output_file, x_opt_left, x_opt_right, l_hip_jo
 
 def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1,
                                 temp_model_path_2, marker_weights, final_output_model_path, initial_params=None,
-                                iteration_count=5):
+                                iteration_count=3):
     """
     Run knee joint optimization for an OpenSim model.
 
@@ -1153,7 +1153,39 @@ def create_tibfib_bodies_and_knee_joints(
     rotation_axis = spatial_transform.updTransformAxis(2)
     rotation_axis.setCoordinateNames(osim.ArrayStr("knee_rotation_l", 1))
     rotation_axis.setAxis(osim.Vec3(0, -1, 0))  # Y-axis
-    rotation_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+    rotation_axis.set_function(osim.Constant(0))  # Ensures movement
+
+    #add spline to knee movement for translation1
+    translation1 = spatial_transform.updTransformAxis(3)
+    translation1.setCoordinateNames(osim.ArrayStr("knee_flexion_l", 1))
+    translation1.setAxis(osim.Vec3(1, 0, 0))  # X-axis
+    # Create SimmSpline for translation1
+    x1 = [-2.0944, -1.74533, -1.39626, -1.0472, -0.698132, -0.349066, -0.174533, 0.197344, 0.337395, 0.490178, 1.52146,
+          2.0944]
+    y1 = [-0.0032, 0.00179, 0.00411, 0.0041, 0.00212, -0.001, -0.0031, -0.005227, -0.005435, -0.005574, -0.005435,
+          -0.00525]
+    offset1 = np.interp(0.0, x1, y1)  # Linear interpolation to find y at x=0
+    spline1_offset = osim.SimmSpline()
+    for xi, yi in zip(x1, y1):
+        spline1_offset.addPoint(xi, yi - offset1)
+    translation1.set_function(spline1_offset)
+
+    # add spline to knee movement for translation2
+    translation2 = spatial_transform.updTransformAxis(4)
+    translation2.setCoordinateNames(osim.ArrayStr("knee_flexion_l", 1))
+    translation2.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
+    x2 = [-2.0944, -1.22173, -0.523599, -0.349066, -0.174533, 0.159149, 2.0944]
+    y2 = [-0.4226, -0.4082, -0.399, -0.3976, -0.3966, -0.395264, -0.396]
+    offset2 = np.interp(0.0, x2, y2)
+    spline2_offset = osim.SimmSpline()
+    for xi, yi in zip(x2, y2):
+        spline2_offset.addPoint(xi, yi - offset2)
+    translation2.set_function(spline2_offset)
+
+    # Create TransformAxis translation3
+    translation3 = spatial_transform.updTransformAxis(5)
+    translation3.setAxis(osim.Vec3(0, 0, 1))  # Z-axis
+    translation3.set_function(osim.Constant(0))
 
     # Define the knee joint connecting the left tibfib to the left femur
     left_knee_joint = osim.CustomJoint(
@@ -1197,7 +1229,39 @@ def create_tibfib_bodies_and_knee_joints(
     rotation_axis = spatial_transform.updTransformAxis(2)
     rotation_axis.setCoordinateNames(osim.ArrayStr("knee_rotation_r", 1))
     rotation_axis.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
-    rotation_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+    rotation_axis.set_function(osim.Constant(0))  # Ensures movement
+
+    # add spline to knee movement for translation1
+    translation1 = spatial_transform.updTransformAxis(3)
+    translation1.setCoordinateNames(osim.ArrayStr("knee_flexion_r", 1))
+    translation1.setAxis(osim.Vec3(1, 0, 0))  # X-axis
+    # Create SimmSpline for translation1
+    x1 = [-2.0944, -1.74533, -1.39626, -1.0472, -0.698132, -0.349066, -0.174533, 0.197344, 0.337395, 0.490178, 1.52146,
+          2.0944]
+    y1 = [-0.0032, 0.00179, 0.00411, 0.0041, 0.00212, -0.001, -0.0031, -0.005227, -0.005435, -0.005574, -0.005435,
+          -0.00525]
+    offset1 = np.interp(0.0, x1, y1)  # Linear interpolation to find y at x=0
+    spline1_offset = osim.SimmSpline()
+    for xi, yi in zip(x1, y1):
+        spline1_offset.addPoint(xi, yi - offset1)
+    translation1.set_function(spline1_offset)
+
+    # add spline to knee movement for translation2
+    translation2 = spatial_transform.updTransformAxis(4)
+    translation2.setCoordinateNames(osim.ArrayStr("knee_flexion_r", 1))
+    translation2.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
+    x2 = [-2.0944, -1.22173, -0.523599, -0.349066, -0.174533, 0.159149, 2.0944]
+    y2 = [-0.4226, -0.4082, -0.399, -0.3976, -0.3966, -0.395264, -0.396]
+    offset2 = np.interp(0.0, x2, y2)
+    spline2_offset = osim.SimmSpline()
+    for xi, yi in zip(x2, y2):
+        spline2_offset.addPoint(xi, yi - offset2)
+    translation2.set_function(spline2_offset)
+
+    # Create TransformAxis translation3
+    translation3 = spatial_transform.updTransformAxis(5)
+    translation3.setAxis(osim.Vec3(0, 0, 1))  # Z-axis
+    translation3.set_function(osim.Constant(0))
 
     # Define the knee joint connecting the right tibfib to the right femur
     right_knee_joint = osim.CustomJoint(
@@ -1535,23 +1599,23 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     l_knee_flexion = l_knee_joint.upd_coordinates(0)
     l_knee_flexion.setName("knee_flexion_l")
-    l_knee_flexion.setRangeMin(-1.0)
+    l_knee_flexion.setRangeMin(-0.2)
     l_knee_flexion.setRangeMax(2.2)
     l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0])
     model.finalizeConnections()
 
     l_knee_add = l_knee_joint.upd_coordinates(1)
     l_knee_add.setName("knee_adduction_l")
-    l_knee_add.setRangeMin(-1.0)
-    l_knee_add.setRangeMax(1.0)
+    l_knee_add.setRangeMin(x_opt_left['knee_rot'][1])
+    l_knee_add.setRangeMax(x_opt_left['knee_rot'][1])
     l_knee_add.setDefaultValue(x_opt_left['knee_rot'][1])
     l_knee_add.setDefaultLocked(True)
     model.finalizeConnections()
 
     l_knee_rot = l_knee_joint.upd_coordinates(2)
     l_knee_rot.setName("knee_rotation_l")
-    l_knee_rot.setRangeMin(-1.0)
-    l_knee_rot.setRangeMax(1.0)
+    l_knee_rot.setRangeMin(0.0)
+    l_knee_rot.setRangeMax(0.0)
     l_knee_rot.setDefaultValue(0.0)
     l_knee_rot.setDefaultLocked(True)
     model.finalizeConnections()
@@ -1559,23 +1623,23 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     # Set coordinates range and names for right knee joint
     r_knee_flexion = r_knee_joint.upd_coordinates(0)
     r_knee_flexion.setName("knee_flexion_r")
-    r_knee_flexion.setRangeMin(-1.0)
+    r_knee_flexion.setRangeMin(-0.2)
     r_knee_flexion.setRangeMax(2.2)
     r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0])
     model.finalizeConnections()
 
     r_knee_add = r_knee_joint.upd_coordinates(1)
     r_knee_add.setName("knee_adduction_r")
-    r_knee_add.setRangeMin(-1.0)
-    r_knee_add.setRangeMax(1.0)
+    r_knee_add.setRangeMin(x_opt_right['knee_rot'][1])
+    r_knee_add.setRangeMax(x_opt_right['knee_rot'][1])
     r_knee_add.setDefaultValue(x_opt_right['knee_rot'][1])
     r_knee_add.setDefaultLocked(True)
     model.finalizeConnections()
 
     r_knee_rot = r_knee_joint.upd_coordinates(2)
     r_knee_rot.setName("knee_rotation_r")
-    r_knee_rot.setRangeMin(-1.0)
-    r_knee_rot.setRangeMax(1.0)
+    r_knee_rot.setRangeMin(0.0)
+    r_knee_rot.setRangeMax(0.0)
     r_knee_rot.setDefaultValue(0.0)
     r_knee_rot.setDefaultLocked(True)
     model.finalizeConnections()

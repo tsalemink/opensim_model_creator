@@ -6,7 +6,7 @@ import numpy as np
 
 from opensim_model_creator.Create_Model import create_model
 from opensim_model_creator.Functions.general_utils import rotate_coordinate_x
-
+import time
 def test(input_directory, height, weight):
     script_directory = os.path.dirname(os.path.abspath(__file__))
     data_directory = os.path.join(script_directory, "data", input_directory)
@@ -33,10 +33,14 @@ def test(input_directory, height, weight):
 
 
 if __name__ == "__main__":
+    start_time = time.time()
     #test("Sydney 01", 1.634, 53.5)
-    test("Brittney 05", 1.591, 40.8),
+    #test("Brittney 05", 1.591, 40.8),
     test("Jinella 01", 1.363, 32.9),
-    test("Jinella 02", 1.179, 23)
+    #test("Jinella 02", 1.179, 23)
+    end_time = time.time()
+    runtime_seconds = end_time - start_time
+    print(f"Optimization completed in {runtime_seconds:.2f} seconds.")
 
     # # Define test cases as (directory, height, weight) tuples
     # test_cases = [

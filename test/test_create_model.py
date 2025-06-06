@@ -35,7 +35,7 @@ def test(input_directory, height, weight):
 if __name__ == "__main__":
     start_time = time.time()
     #test("Sydney 01", 1.634, 53.5)
-    #test("Brittney 05", 1.591, 40.8),
+    test("Brittney 05", 1.591, 40.8),
     test("Jinella 01", 1.363, 32.9),
     #test("Jinella 02", 1.179, 23)
     end_time = time.time()

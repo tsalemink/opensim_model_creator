@@ -87,12 +87,12 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     # %% Creation of femur bodies and attachment of meshes, markers, and landmarks
     (l_LEC, l_MEC, l_HJC, l_EC_midpoint, left_femur, femur_l_center, r_LEC, r_MEC, r_HJC, r_EC_midpoint, right_femur,
      femur_r_center) = create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, mesh_directory,
-                                                          mocap_static_trc, pelvis)
+                                                          mocap_static_trc, pelvis, x_opt_left['hip_rot'], x_opt_right['hip_rot'])
 
     # %% Creation of the Tibia/Fibula (TibFib) Bodies
     tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = (
         create_tibfib_bodies_and_knee_joints(empty_model, left_landmarks, right_landmarks, mesh_directory,
-                                             mocap_static_trc, left_femur, right_femur))
+                                             mocap_static_trc, left_femur, right_femur, x_opt_left['knee_rot'], x_opt_right['knee_rot']))
 
     #%% Create feet bodies
     repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, tibfib_l_center,
@@ -127,7 +127,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model.setName(model_name)
 
     #%% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,  weight, height, x_opt_left, x_opt_right)
+    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,  weight, height, x_opt_left, x_opt_right, left_landmarks, right_landmarks)
 
     # Reload the model
     empty_model = osim.Model(output_file)

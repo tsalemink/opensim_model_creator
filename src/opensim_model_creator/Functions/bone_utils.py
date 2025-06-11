@@ -1201,7 +1201,7 @@ def create_tibfib_bodies_and_knee_joints(
     rotation_axis = spatial_transform.updTransformAxis(2)
     rotation_axis.setCoordinateNames(osim.ArrayStr("knee_rotation_l", 1))
     rotation_axis.setAxis(osim.Vec3(0, -1, 0))  # Y-axis
-    rotation_axis.set_function(osim.Constant(0))  # Ensures movement
+    rotation_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
 
     # add spline to knee movement for translation1
     translation1 = spatial_transform.updTransformAxis(3)
@@ -1277,7 +1277,7 @@ def create_tibfib_bodies_and_knee_joints(
     rotation_axis = spatial_transform.updTransformAxis(2)
     rotation_axis.setCoordinateNames(osim.ArrayStr("knee_rotation_r", 1))
     rotation_axis.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
-    rotation_axis.set_function(osim.Constant(0))  # Ensures movement
+    rotation_axis.set_function(osim.LinearFunction(1, 0))  # Ensures movement
 
     # add spline to knee movement for translation1
     translation1 = spatial_transform.updTransformAxis(3)

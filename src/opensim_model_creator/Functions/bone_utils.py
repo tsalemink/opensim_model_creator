@@ -714,6 +714,15 @@ def initialize_model_and_extract_landmarks(asm_directory):
     x_opt_left = load_x_opt(x_opt_left_file)
     x_opt_right = load_x_opt(x_opt_right_file)
 
+    # initialise units and gravity
+    empty_model.set_gravity(osim.Vec3(0, -9.8066499999999994, 0))
+    empty_model.set_length_units('meters')
+    empty_model.set_force_units('N')
+
+    # placeholders for publications and credits
+    empty_model.set_credits('Carman et. al., 2025')
+    empty_model.set_publications('Carman et. al., 2025')
+
     return empty_model, state, left_landmarks, right_landmarks, x_opt_left, x_opt_right
 
 

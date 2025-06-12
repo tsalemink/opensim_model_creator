@@ -1,22 +1,21 @@
-
 import os
 import numpy as np
 import opensim as osim
 
 from articulated_ssm_both_sides.MainASM import run_asm
 
-#%%Import functions from folders
+# %%Import functions from folders
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
 from opensim_model_creator.Functions.file_utils import reset_folder, get_results_dir
 
-
 root_directory = os.path.dirname(os.path.abspath(__file__))
 high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
 
 
-def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=False,
+def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False,
+                 testing=False,
                  progress_tracker=None):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
@@ -36,7 +35,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         None
     """
 
-    #%% Setup of folders
+    # %% Setup of folders
     # Define paths for inputs and outputs
     model_directory = os.path.join(output_directory, "Models")
     mesh_directory = os.path.join(model_directory, "Meshes")
@@ -45,7 +44,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     reset_folder(model_directory)
     reset_folder(mesh_directory)
 
-    #%%Initialisation
+    # %%Initialisation
 
     if progress_tracker:
         progress_tracker.progress.emit("Fitting articulated shape model", "black")
@@ -66,44 +65,52 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     process_participant_meshes(mesh_directory, mesh_directory)
 
     # MUSCLES (add in later) Initializes muscle linkage directory
-    #muscle_linkages = muscle_initialisation(mesh_directory)
+    # muscle_linkages = muscle_initialisation(mesh_directory)
 
-    #Splits specific muscles into a number of segments
-    #segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
-    #segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
-    #segment_muscle_origins_insertions(muscle_linkages, "Add mag", pair_to_segment=0, num_segments=2)
+    # Splits specific muscles into a number of segments
+    # segment_muscle_origins_insertions(muscle_linkages, "Glut med", num_segments=3)
+    # segment_muscle_origins_insertions(muscle_linkages, "Glut min", num_segments=3)
+    # segment_muscle_origins_insertions(muscle_linkages, "Add mag", pair_to_segment=0, num_segments=2)
 
     # Apply a swap for Adductor Magnus origins to have better anatomical consistency
-    #swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
+    # swap_muscle_attachments(muscle_linkages, "Add mag", 0, 2, attachment_type="ori")
 
-    #Initialises model, trc files, and landmarks
-    empty_model, state, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(mesh_directory)
+    # Initialises model, trc files, and landmarks
+    empty_model, state, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(
+        mesh_directory)
     mocap_static_trc = static_marker_data
 
     # %% Creation of the pelvis body and pelvis joint
-    pelvis, pelvis_joint, pelvis_center = create_pelvis_body_and_joint(
+    pelvis, pelvis_center = create_pelvis_body_and_joint(
         empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc)
 
     # %% Creation of femur bodies and attachment of meshes, markers, and landmarks
-    (l_LEC, l_MEC, l_HJC, l_EC_midpoint, left_femur, femur_l_center, r_LEC, r_MEC, r_HJC, r_EC_midpoint, right_femur,
-     femur_r_center) = create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, mesh_directory,
-                                                          mocap_static_trc, pelvis, x_opt_left['hip_rot'], x_opt_right['hip_rot'])
+    (left_femur, femur_l_center, right_femur, femur_r_center) = create_femur_bodies_and_hip_joints(empty_model,
+                                                                                                   left_landmarks,
+                                                                                                   right_landmarks,
+                                                                                                   mesh_directory,
+                                                                                                   mocap_static_trc,
+                                                                                                   pelvis, x_opt_left[
+                                                                                                       'hip_rot'],
+                                                                                                   x_opt_right[
+                                                                                                       'hip_rot'])
 
     # %% Creation of the Tibia/Fibula (TibFib) Bodies
     tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = (
         create_tibfib_bodies_and_knee_joints(empty_model, left_landmarks, right_landmarks, mesh_directory,
-                                             mocap_static_trc, left_femur, right_femur, x_opt_left['knee_rot'], x_opt_right['knee_rot']))
+                                             mocap_static_trc, left_femur, right_femur, x_opt_left['knee_rot'],
+                                             x_opt_right['knee_rot']))
 
-    #%% Create feet bodies
-    repurpose_feet_bodies_and_create_joints(empty_model, left_landmarks, right_landmarks, tibfib_l_center,
+    # %% Create feet bodies
+    repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
                                             tibfib_r_center, left_tibfib, right_tibfib)
 
-    #MUSCLES (add later) Further augment the muscle linkages dictionary and model to contain markers represenitng origins and insertions for all muscles (must be done prior to scaling as unused markers are removed via scaling process)
-    #empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
+    # MUSCLES (add later) Further augment the muscle linkages dictionary and model to contain markers represenitng origins and insertions for all muscles (must be done prior to scaling as unused markers are removed via scaling process)
+    # empty_model, muscle_linkages = add_all_muscle_attachment_markers(empty_model,muscle_linkages,{
     #    "Pelvis": pelvis_center,
     #    "Femur": [femur_l_center,femur_r_center],
     #    "Tibfib": [tibfib_l_center,tibfib_r_center],
-    #})
+    # })
 
     # Finalise the connections of the model
     empty_model.finalizeConnections()
@@ -126,70 +133,61 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     print(f"Model saved to: {output_path}")
     empty_model.setName(model_name)
 
-    #%% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,  weight, height, x_opt_left, x_opt_right, left_landmarks, right_landmarks)
+    # %% Perform a long series of updates to the model
+    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name, weight, height, x_opt_left,
+                                  x_opt_right)
 
     # Reload the model
     empty_model = osim.Model(output_file)
 
-    #%% Reinitialise the model for further feet adjustments (aligning with static trc as gait2392 feet are perfectly straight whilst participants may have their feet angled when neutral)
-    feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet= True)
+    # %% Reinitialise the model for further feet adjustments (aligning with static trc as gait2392 feet are perfectly straight whilst participants may have their feet angled when neutral)
+    feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=True)
 
     # Finalise the non-scaled foot
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
 
-    #MUSCLES (add later) Extract local muscle positions prior to scaling (unused markers, such as those of the muscles, are removed during the scaling process)
-    #local_muscle_positions = extract_local_muscle_positions(empty_model)
+    # MUSCLES (add later) Extract local muscle positions prior to scaling (unused markers, such as those of the muscles, are removed during the scaling process)
+    # local_muscle_positions = extract_local_muscle_positions(empty_model)
 
-
-
-    #%% Look to scale the size of the feet automatically and move the markers to appropriate positions
-    #note this runs a preset scale setting file where only the feet are selected to be scaled
+    # %% Look to scale the size of the feet automatically and move the markers to appropriate positions
+    # note this runs a preset scale setting file where only the feet are selected to be scaled
     perform_scaling(model_directory, output_file, static_trc)
 
-
-    #%% Create variables required by knee joint optimisation
+    # %% Create variables required by knee joint optimisation
     source_file_path1 = os.path.join(model_directory, "scaled_foot.osim")  # Source path
     knee_optimisation_trc_file = dynamic_trc
-    ignore,(start_time, end_time),knee_optimisation_marker_dictionary = read_trc_file_as_dict(knee_optimisation_trc_file,True)
+    ignore, (start_time, end_time), knee_optimisation_marker_dictionary = read_trc_file_as_dict(
+        knee_optimisation_trc_file, True)
 
-
-    #%%Adjusting & Optimising the Knee Joint Orientations
+    # %%Adjusting & Optimising the Knee Joint Orientations
 
     # Default temporary model paths
     temp_model_path_1 = model_directory + "/temp1.osim"
     temp_model_path_2 = model_directory + "/temp2.osim"
     optimised_knee_model = model_directory + "/Optimised_Knee_Axes.osim"
 
-    #marker weights used in the IK process
+    # marker weights used in the IK process
     marker_weights = {
-                "RASI": 5, "LASI": 5, "RTHI": 1, "RTIB": 1,
-                "RANK": 10, "RMED": 10, "LTHI": 1, "LTIB": 1, "LANK": 10, "LMED": 10,
-                "RPSI": 1, "LPSI": 1, "RHEE": 1, "LHEE": 1,
-                "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5, "RKNEM": 2.5, "LKNEM": 2.5
-            }
+        "RASI": 5, "LASI": 5, "RTHI": 1, "RTIB": 1,
+        "RANK": 10, "RMED": 10, "LTHI": 1, "LTIB": 1, "LANK": 10, "LMED": 10,
+        "RPSI": 1, "LPSI": 1, "RHEE": 1, "LHEE": 1,
+        "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5, "RKNEM": 2.5, "LKNEM": 2.5
+    }
 
-    #itersation count of 5 appears to allow convergence whilst not taking overtly long
-    if testing:
-        iteration_count = 3
-    else:
-        iteration_count = 5
+    # This runs the knee joint optimisation
+    run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1,
+                                temp_model_path_2, marker_weights, optimised_knee_model)
 
-    #This runs the knee joint optimisation
-    run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1, temp_model_path_2,marker_weights,optimised_knee_model, iteration_count= iteration_count)
-
-    #creation of muscles is optional, work in progress (contains no wrapping or participant specific muscle parameters)
+    # creation of muscles is optional, work in progress (contains no wrapping or participant specific muscle parameters)
     if create_muscles:
-
-
-        #Load the model
+        # Load the model
         model = osim.Model(final_model_path)
 
-        #Adds muscles to the model
-        #add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
+        # Adds muscles to the model
+        # add_all_muscles_to_model_with_simple_names(model, local_muscle_positions,muscle_linkages)
 
-        #Saves the model
+        # Saves the model
         muscle_model_name = "Muscle_Model"
         muscle_model_file = os.path.join(model_directory, f"{muscle_model_name}.osim")
         model.setName(muscle_model_name)
@@ -201,13 +199,12 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         if os.path.isfile(osim_file):
             os.remove(osim_file)
 
+        # END##############################################################################################################
 
-        #END##############################################################################################################
+        # begin attempt at adding wrapping objects to muscles
 
-        #begin attempt at adding wrapping objects to muscles
-
-        #get the marker set of the model and find some markers
-        #compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
+        # get the marker set of the model and find some markers
+        # compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
 
 
 '''

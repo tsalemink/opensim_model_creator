@@ -8,7 +8,7 @@ from articulated_ssm_both_sides.MainASM import run_asm
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.muscle_utils import *
-from opensim_model_creator.Functions.file_utils import reset_folder, get_results_dir
+from opensim_model_creator.Functions.file_utils import clear_directory
 
 root_directory = os.path.dirname(os.path.abspath(__file__))
 high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
@@ -41,8 +41,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     mesh_directory = os.path.join(model_directory, "Meshes")
 
     # Clear output and mesh folders to avoid residuals from previous runs
-    reset_folder(model_directory)
-    reset_folder(mesh_directory)
+    clear_directory(model_directory)
+    clear_directory(mesh_directory)
 
     # %%Initialisation
 

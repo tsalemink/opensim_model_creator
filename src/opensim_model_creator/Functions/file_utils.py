@@ -34,16 +34,18 @@ def search_files_by_keywords(folder_path, keywords):
     return matching_files
 
 
-def reset_folder(folder_path):
+def clear_directory(folder_path):
     """
-    Deletes the folder if it exists and recreates it as an empty directory.
-
-    Parameters:
-    - folder_path (str): Path to the folder to reset.
+    `shutil.rmtree` fails for OneDrive directories.
     """
-    if os.path.exists(folder_path):  # Check if folder exists
-        shutil.rmtree(folder_path)  # Delete the entire folder
-    os.makedirs(folder_path, exist_ok=True)  # Recreate the empty folder
+    if not os.path.exists(folder_path):
+        return
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            try:
+                os.remove(os.path.join(root, file))
+            except PermissionError as e:
+                print(f"Error: {e}")
 
 
 def get_results_dir():

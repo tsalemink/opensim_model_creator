@@ -15,8 +15,7 @@ high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
 
 
 def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False,
-                 testing=False,
-                 progress_tracker=None):
+                 testing=False, optimise_knee_axis=True, progress_tracker=None):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
 
@@ -25,10 +24,11 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         dynamic_trc (str): Path to the dynamic TRC file.
         output_directory (str): Path to the directory where the models should be produced.
         static_marker_data (dict): Static marker data coordinates.
-        create_muscles (bool): Whether to add muscles to the model.
-        testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
         weight (float): Participant's weight in kg.
         height (float): Participant's height in meters.
+        create_muscles (bool): Whether to add muscles to the model.
+        testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
+        optimise_knee_axis (bool): Set as False to disable knee-axis optimisation.
         progress_tracker (ProgressTracker, optional): Progress-tracker for emitting progress signals.
 
     Returns:
@@ -175,9 +175,9 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5, "RKNEM": 2.5, "LKNEM": 2.5
     }
 
-    # This runs the knee joint optimisation
-    run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time, temp_model_path_1,
-                                temp_model_path_2, marker_weights, optimised_knee_model)
+    if optimise_knee_axis:
+        run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time,
+                                    temp_model_path_1, temp_model_path_2, marker_weights, optimised_knee_model)
 
     # creation of muscles is optional, work in progress (contains no wrapping or participant specific muscle parameters)
     if create_muscles:

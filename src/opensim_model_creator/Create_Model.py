@@ -195,7 +195,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         model.printToXML(muscle_model_file)
 
     # Remove temporary .osim files.
-    for osim_file in [temp_model_path_1, temp_model_path_2, source_file_path1]:
+    for osim_file in [temp_model_path_1, temp_model_path_2]:
         if os.path.isfile(osim_file):
             os.remove(osim_file)
 

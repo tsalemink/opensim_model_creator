@@ -154,7 +154,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     perform_scaling(model_directory, output_file, static_trc)
 
     # %% Create variables required by knee joint optimisation
-    source_file_path1 = os.path.join(model_directory, "scaled_foot.osim")  # Source path
+    model_path = os.path.join(model_directory, "Lower_Limb.osim")  # Source path
     knee_optimisation_trc_file = dynamic_trc
     ignore, (start_time, end_time), knee_optimisation_marker_dictionary = read_trc_file_as_dict(
         knee_optimisation_trc_file, True)
@@ -175,8 +175,9 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     }
 
     if optimise_knee_axis:
-        run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, start_time, end_time,
+        run_knee_joint_optimisation(model_path, knee_optimisation_trc_file, start_time, end_time,
                                     temp_model_path_1, temp_model_path_2, marker_weights, optimised_knee_model)
+        model_path = optimised_knee_model
 
     # creation of muscles is optional, work in progress (contains no wrapping or participant specific muscle parameters)
     if create_muscles:
@@ -204,8 +205,6 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
         # get the marker set of the model and find some markers
         # compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
-
-    model_path = optimised_knee_model if optimise_knee_axis else source_file_path1
 
     return model_path
 

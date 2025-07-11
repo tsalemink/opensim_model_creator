@@ -206,6 +206,10 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         # get the marker set of the model and find some markers
         # compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
 
+    model_path = optimised_knee_model if optimise_knee_axis else source_file_path1
+
+    return model_path
+
 
 '''
 

@@ -4,7 +4,6 @@ import opensim as osim
 
 from articulated_ssm_both_sides.MainASM import run_asm
 
-# %%Import functions from folders
 from opensim_model_creator.Functions.general_utils import *
 from opensim_model_creator.Functions.bone_utils import *
 from opensim_model_creator.Functions.file_utils import clear_directory
@@ -32,67 +31,34 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         None
     """
 
-    # %% Setup of folders
-    # Define paths for inputs and outputs
+    # Setup input and output directories.
     model_directory = os.path.join(output_directory, "Models")
     mesh_directory = os.path.join(model_directory, "Meshes")
-
-    # Clear output and mesh folders to avoid residuals from previous runs
     clear_directory(model_directory)
     clear_directory(mesh_directory)
-
-    # %%Initialisation
 
     if progress_tracker:
         progress_tracker.progress.emit("Fitting articulated shape model", "black")
 
-    # Generate mesh files using ASM
+    # Generate mesh files using ASM.
     run_asm(static_marker_data, mesh_directory)
 
     if progress_tracker:
         progress_tracker.progress.emit("Creating OpenSim model", "black")
 
+    # Scale marker data from millimeters to meters.
+    scale_marker_data(static_marker_data, 0.001)
+
     # Move foot mesh files into the meshes directory.
     copy_mesh_files(high_level_inputs, mesh_directory)
 
-    # Scale marker data from millimeters to meters (variable currently unused)
-    scale_marker_data(static_marker_data, 0.001)
-
-    # Process and extract meshes from STL files
+    # Process mesh files.
     process_participant_meshes(mesh_directory, mesh_directory)
-
-    # Initialises model, trc files, and landmarks
-    empty_model, state, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(
+    empty_model, _, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(
         mesh_directory)
-    mocap_static_trc = static_marker_data
 
-    # %% Creation of the pelvis body and pelvis joint
-    pelvis, pelvis_center = create_pelvis_body_and_joint(
-        empty_model, left_landmarks, right_landmarks, mesh_directory, mocap_static_trc)
-
-    # %% Creation of femur bodies and attachment of meshes, markers, and landmarks
-    (left_femur, femur_l_center, right_femur, femur_r_center) = create_femur_bodies_and_hip_joints(empty_model,
-                                                                                                   left_landmarks,
-                                                                                                   right_landmarks,
-                                                                                                   mesh_directory,
-                                                                                                   mocap_static_trc,
-                                                                                                   pelvis, x_opt_left[
-                                                                                                       'hip_rot'],
-                                                                                                   x_opt_right[
-                                                                                                       'hip_rot'])
-
-    # %% Creation of the Tibia/Fibula (TibFib) Bodies
-    tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = (
-        create_tibfib_bodies_and_knee_joints(empty_model, left_landmarks, right_landmarks, mesh_directory,
-                                             mocap_static_trc, left_femur, right_femur, x_opt_left['knee_rot'],
-                                             x_opt_right['knee_rot']))
-
-    # %% Create feet bodies
-    repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
-                                            tibfib_r_center, left_tibfib, right_tibfib)
-
-    # Finalise the connections of the model
-    empty_model.finalizeConnections()
+    create_model_bodies(mesh_directory, static_marker_data, empty_model, left_landmarks, right_landmarks,
+                        x_opt_left, x_opt_right)
 
     # Extract the directory name as the model name and replace spaces with underscores
     model_name_pre = "Bone_Model_pre"
@@ -120,7 +86,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model = osim.Model(output_file)
 
     # %% Reinitialise the model for further feet adjustments (aligning with static trc as gait2392 feet are perfectly straight whilst participants may have their feet angled when neutral)
-    feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=True)
+    feet_adjustments(output_file, empty_model, static_marker_data, realign_feet=True)
 
     # Finalise the non-scaled foot
     empty_model.finalizeConnections()
@@ -135,6 +101,23 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         model_path = optimise_knee_joint(model_path, model_directory, dynamic_trc)
 
     return model_path
+
+
+def create_model_bodies(mesh_directory, static_marker_data, empty_model, left_lms, right_lms, x_opt_left, x_opt_right):
+    pelvis, pelvis_center = create_pelvis_body_and_joint(
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data)
+
+    left_femur, femur_l_center, right_femur, femur_r_center = create_femur_bodies_and_hip_joints(
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, pelvis,
+        x_opt_left['hip_rot'], x_opt_right['hip_rot'])
+
+    tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = create_tibfib_bodies_and_knee_joints(
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, left_femur, right_femur,
+        x_opt_left['knee_rot'], x_opt_right['knee_rot'])
+
+    repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib)
+
+    empty_model.finalizeConnections()
 
 
 def optimise_knee_joint(model_path, model_directory, dynamic_trc):

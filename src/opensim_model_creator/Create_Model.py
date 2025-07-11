@@ -153,31 +153,9 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     # note this runs a preset scale setting file where only the feet are selected to be scaled
     perform_scaling(model_directory, output_file, static_trc)
 
-    # %% Create variables required by knee joint optimisation
-    model_path = os.path.join(model_directory, "Lower_Limb.osim")  # Source path
-    knee_optimisation_trc_file = dynamic_trc
-    ignore, (start_time, end_time), knee_optimisation_marker_dictionary = read_trc_file_as_dict(
-        knee_optimisation_trc_file, True)
-
-    # %%Adjusting & Optimising the Knee Joint Orientations
-
-    # Default temporary model paths
-    temp_model_path_1 = model_directory + "/temp1.osim"
-    temp_model_path_2 = model_directory + "/temp2.osim"
-    optimised_knee_model = model_directory + "/Optimised_Knee_Axes.osim"
-
-    # marker weights used in the IK process
-    marker_weights = {
-        "RASI": 5, "LASI": 5, "RTHI": 1, "RTIB": 1,
-        "RANK": 10, "RMED": 10, "LTHI": 1, "LTIB": 1, "LANK": 10, "LMED": 10,
-        "RPSI": 1, "LPSI": 1, "RHEE": 1, "LHEE": 1,
-        "RTOE": 1, "LTOE": 1, "RKNE": 2.5, "LKNE": 2.5, "RKNEM": 2.5, "LKNEM": 2.5
-    }
-
+    model_path = os.path.join(model_directory, "Lower_Limb.osim")
     if optimise_knee_axis:
-        run_knee_joint_optimisation(model_path, knee_optimisation_trc_file, start_time, end_time,
-                                    temp_model_path_1, temp_model_path_2, marker_weights, optimised_knee_model)
-        model_path = optimised_knee_model
+        model_path = optimise_knee_joint(model_path, model_directory, dynamic_trc)
 
     # creation of muscles is optional, work in progress (contains no wrapping or participant specific muscle parameters)
     if create_muscles:
@@ -194,11 +172,6 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         model.finalizeConnections()
         model.printToXML(muscle_model_file)
 
-    # Remove temporary .osim files.
-    for osim_file in [temp_model_path_1, temp_model_path_2]:
-        if os.path.isfile(osim_file):
-            os.remove(osim_file)
-
         # END##############################################################################################################
 
         # begin attempt at adding wrapping objects to muscles
@@ -207,6 +180,30 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         # compute the midpoint between the LASI and LPSI markers using the midpoint_3d function
 
     return model_path
+
+
+def optimise_knee_joint(model_path, model_directory, dynamic_trc):
+    _, (start_time, end_time), _ = read_trc_file_as_dict(dynamic_trc, True)
+
+    temp_model_path_1 = model_directory + "/temp1.osim"
+    temp_model_path_2 = model_directory + "/temp2.osim"
+    optimised_knee_model = model_directory + "/Optimised_Knee_Axes.osim"
+
+    ik_marker_weights = {
+        "LASI": 5, "RASI": 5, "LPSI": 1, "RPSI": 1, "LTHI": 1, "RTHI": 1,
+        "LKNE": 2.5, "RKNE": 2.5, "LKNEM": 2.5, "RKNEM": 2.5, "LTIB": 1, "RTIB": 1,
+        "LANK": 10, "RANK": 10, "LMED": 10, "RMED": 10, "LHEE": 1, "RHEE": 1, "LTOE": 1, "RTOE": 1,
+    }
+
+    run_knee_joint_optimisation(model_path, dynamic_trc, start_time, end_time,
+                                temp_model_path_1, temp_model_path_2, ik_marker_weights, optimised_knee_model)
+
+    # Delete temporary .osim files.
+    for osim_file in [temp_model_path_1, temp_model_path_2]:
+        if os.path.isfile(osim_file):
+            os.remove(osim_file)
+
+    return optimised_knee_model
 
 
 '''

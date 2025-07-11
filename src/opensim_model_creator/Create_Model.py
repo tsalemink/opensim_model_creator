@@ -15,7 +15,7 @@ high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
 
 
 def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False,
-                 testing=False, optimise_knee_axis=True, progress_tracker=None):
+                 optimise_knee_axis=True, progress_tracker=None):
     """
     Creates an OpenSim model for a given participant, optionally adding muscles.
 
@@ -27,7 +27,6 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         weight (float): Participant's weight in kg.
         height (float): Participant's height in meters.
         create_muscles (bool): Whether to add muscles to the model.
-        testing (bool): If True, runs in test mode - reduces knee optimisation iteration count for computational speed
         optimise_knee_axis (bool): Set as False to disable knee-axis optimisation.
         progress_tracker (ProgressTracker, optional): Progress-tracker for emitting progress signals.
 

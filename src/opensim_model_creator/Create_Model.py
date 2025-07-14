@@ -49,10 +49,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     # Scale marker data from millimeters to meters.
     scale_marker_data(static_marker_data, 0.001)
 
-    # Move foot mesh files into the meshes directory.
+    # Copy and process mesh files.
     copy_mesh_files(high_level_inputs, mesh_directory)
-
-    # Process mesh files.
     process_participant_meshes(mesh_directory, mesh_directory)
     empty_model, _, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(
         mesh_directory)
@@ -60,40 +58,17 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     create_model_bodies(mesh_directory, static_marker_data, empty_model, left_landmarks, right_landmarks,
                         x_opt_left, x_opt_right)
 
-    # Extract the directory name as the model name and replace spaces with underscores
-    model_name_pre = "Bone_Model_pre"
-    model_name = "Bone_model"
-
-    # Update the model name
-    empty_model.setName(model_name_pre)
-
-    # Ensure the output folder exists
-    os.makedirs(model_directory, exist_ok=True)
-
-    # Combine the folder path and filename
-    output_path = os.path.join(model_directory, f"{model_name_pre}.osim")
-
-    # Save the model to output folder
-    empty_model.printToXML(output_path)
-    print(f"Model saved to: {output_path}")
+    # Create initial OpenSim model.
+    model_name = "Bone_Model"
     empty_model.setName(model_name)
+    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,
+                                  weight, height, x_opt_left, x_opt_right)
 
-    # %% Perform a long series of updates to the model
-    output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name, weight, height, x_opt_left,
-                                  x_opt_right)
-
-    # Reload the model
+    # Adjust foot bone orientation and scaling.
     empty_model = osim.Model(output_file)
-
-    # %% Reinitialise the model for further feet adjustments (aligning with static trc as gait2392 feet are perfectly straight whilst participants may have their feet angled when neutral)
     feet_adjustments(output_file, empty_model, static_marker_data, realign_feet=True)
-
-    # Finalise the non-scaled foot
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
-
-    # %% Look to scale the size of the feet automatically and move the markers to appropriate positions
-    # note this runs a preset scale setting file where only the feet are selected to be scaled
     perform_scaling(model_directory, output_file, static_trc)
 
     model_path = os.path.join(model_directory, "Lower_Limb.osim")

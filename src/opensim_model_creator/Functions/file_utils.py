@@ -39,7 +39,8 @@ def clear_directory(folder_path):
     `shutil.rmtree` fails for OneDrive directories.
     """
     if not os.path.exists(folder_path):
-        return
+        os.makedirs(folder_path)
+
     for root, dirs, files in os.walk(folder_path):
         for file in files:
             try:

@@ -37,14 +37,12 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     clear_directory(model_directory)
     clear_directory(mesh_directory)
 
-    if progress_tracker:
-        progress_tracker.progress.emit("Fitting articulated shape model", "black")
+    log_progress(progress_tracker, "Fitting articulated shape model")
 
     # Generate mesh files using ASM.
     run_asm(static_marker_data, mesh_directory)
 
-    if progress_tracker:
-        progress_tracker.progress.emit("Creating OpenSim model", "black")
+    log_progress(progress_tracker, "Creating OpenSim model")
 
     # Scale marker data from millimeters to meters.
     scale_marker_data(static_marker_data, 0.001)
@@ -117,3 +115,8 @@ def optimise_knee_joint(model_path, model_directory, dynamic_trc):
             os.remove(osim_file)
 
     return optimised_knee_model
+
+
+def log_progress(progress_tracker, message, text_colour="black"):
+    if progress_tracker:
+        progress_tracker.progress.emit(message, text_colour)

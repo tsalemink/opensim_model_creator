@@ -1967,11 +1967,11 @@ def perform_scaling(output_directory, output_file, static_trc_file):
     relative_path = os.path.relpath(static_trc_file, output_directory)
 
     scale_tool.getMarkerPlacer().setApply(True)
-    scale_tool.getMarkerPlacer().setOutputModelFileName("scaled_foot.osim")
+    scale_tool.getMarkerPlacer().setOutputModelFileName("Lower_Limb.osim")
     scale_tool.getMarkerPlacer().setMarkerFileName(relative_path)
     scale_tool.getMarkerPlacer().setTimeRange(time_range)
 
-    scale_tool.getModelScaler().setOutputModelFileName("scaled_foot.osim")
+    scale_tool.getModelScaler().setOutputModelFileName("Lower_Limb.osim")
     scale_tool.getModelScaler().setMarkerFileName(relative_path)
     scale_tool.getModelScaler().setTimeRange(time_range)
 

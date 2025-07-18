@@ -29,7 +29,7 @@ def test(input_directory, height, weight):
     for lm in static_marker_data:
         static_marker_data[lm] = np.dot(rotation_matrix, static_marker_data[lm])
 
-    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height, create_muscles=False, testing=True)
+    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height)
 
 
 if __name__ == "__main__":

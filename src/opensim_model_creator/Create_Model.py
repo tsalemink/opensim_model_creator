@@ -12,7 +12,7 @@ root_directory = os.path.dirname(os.path.abspath(__file__))
 high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
 
 
-def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, weight, height,
+def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, subject_info, marker_radius,
                  optimise_knee_axis=True, progress_tracker=None):
     """
     Creates an OpenSim model for the specified TRC inputs.
@@ -22,8 +22,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         dynamic_trc (str): Path to the dynamic TRC file.
         output_directory (str): Path to the directory where the models should be produced.
         static_marker_data (dict): Static marker data coordinates.
-        weight (float): Participant's weight in kg.
-        height (float): Participant's height in meters.
+        subject_info (DataFrame): Subject measurements and demographic information.
+        marker_radius (float): Radius of motion capture markers.
         optimise_knee_axis (bool): Set as False to disable knee-axis optimisation.
         progress_tracker (ProgressTracker, optional): Progress-tracker for emitting progress signals.
 
@@ -40,9 +40,12 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     log_progress(progress_tracker, "Fitting articulated shape model")
 
     # Generate mesh files using ASM.
-    run_asm(static_marker_data, mesh_directory)
+    run_asm(static_marker_data, mesh_directory, subject_info, marker_radius)
 
     log_progress(progress_tracker, "Creating OpenSim model")
+
+    height = subject_info['Height'].iloc[0] / 100
+    weight = subject_info['Mass'].iloc[0]
 
     # Scale marker data from millimeters to meters.
     scale_marker_data(static_marker_data, 0.001)

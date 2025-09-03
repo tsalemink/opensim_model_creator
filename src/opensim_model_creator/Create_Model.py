@@ -84,11 +84,11 @@ def create_model_bodies(mesh_directory, static_marker_data, empty_model, left_lm
         empty_model, left_lms, right_lms, mesh_directory, static_marker_data)
 
     left_femur, femur_l_center, right_femur, femur_r_center = create_femur_bodies_and_hip_joints(
-        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, pelvis,
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, pelvis, pelvis_center,
         x_opt_left['hip_rot'], x_opt_right['hip_rot'])
 
     tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = create_tibfib_bodies_and_knee_joints(
-        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, left_femur, right_femur,
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, left_femur, right_femur, femur_l_center, femur_r_center,
         x_opt_left['knee_rot'], x_opt_right['knee_rot'])
 
     repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib)

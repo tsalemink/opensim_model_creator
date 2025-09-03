@@ -397,7 +397,7 @@ def add_markers_to_body(model, body_name, marker_names, mocap_file, center, cust
             location = mocap_file[marker_name]
             landmark_position = vector_between_points(center, location)
             # landmark_position = rotate_coordinate_x(landmark_position, 90)
-            marker_location = osim.Vec3(*location)
+            marker_location = osim.Vec3(*landmark_position)
 
             # Determine the marker's name
             final_name = custom_names[i] if custom_names else marker_name
@@ -790,7 +790,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
         osim.Vec3(0, 0, 0),
         osim.Vec3(0, 0, 0),
         pelvis,
-        pelvis_translation,
+        osim.Vec3(-pelvis_origin),
         pelvis_rotation_osim.convertRotationToBodyFixedXYZ()
     )
     model.addJoint(pelvis_joint)
@@ -800,7 +800,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     add_mesh_to_body(model, "pelvis_b", relative_path, offset_orientation=(0, 0, 0),
-                     offset_translation=(0, 0, 0))
+                     offset_translation=-pelvis_origin)
 
     # Add mocap markers
     add_markers_to_body(model, "pelvis_b", ["RASI", "LASI", "RPSI", "LPSI"], mocap_static_trc, pelvis_origin)
@@ -811,10 +811,10 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS"], right_landmarks, pelvis_origin,
                         ["RASI_ssm", "RPSI_ssm"])
 
-    return pelvis, pelvis_center
+    return pelvis, pelvis_origin
 
 
-def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, pelvis,
+def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, pelvis, pelvis_centre,
                                        x_opt_left, x_opt_right):
     """
     Creates the left and right femur bodies and attaches custom hip joints to the OpenSim model.
@@ -858,14 +858,14 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_r_center = r_hjc  # Extract center of the right femur
     add_mesh_to_body(empty_model, "femur_r_b", relative_path, offset_orientation=(0, 0, 0),
-                     offset_translation=(0, 0, 0))
+                     offset_translation=-femur_r_center)
 
     # Attach the mesh for the left femur
     mesh_path = os.path.join(meshes, "predicted_mesh_left_femur.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_l_center = l_hjc  # Extract center of the right femur
     add_mesh_to_body(empty_model, "femur_l_b", relative_path, offset_orientation=(0, 0, 0),
-                     offset_translation=(0, 0, 0))
+                     offset_translation=-femur_l_center)
 
     # Add mocap markers to the femur bodies, taken from static trial for tracking markers
     add_markers_to_body(empty_model, "femur_l_b", ["LTHI", "LKNE", "LKNEM"], mocap_static_trc, femur_l_center)
@@ -902,10 +902,10 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     left_hip_joint = osim.CustomJoint(
         "femur_l_to_pelvis",  # Joint name
         pelvis,  # Parent frame (Pelvis)
-        osim.Vec3(l_hjc),  # Location in parent frame
+        osim.Vec3(l_hjc - pelvis_centre),  # Location in parent frame
         osim.Vec3(0, 0, 0),  # Orientation in parent frame
         left_femur,  # Child frame (Femur)
-        osim.Vec3(l_hjc),  # Location in child frame
+        osim.Vec3(0, 0, 0),  # Location in child frame
         osim.Vec3(x_opt_left[2] * -0.1, x_opt_left[1] * -0.1, x_opt_left[0]),  # Adjusted orientation in child frame
         spatial_transform_left  # The defined spatial transform
     )
@@ -937,10 +937,10 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     right_hip_joint = osim.CustomJoint(
         "femur_r_to_pelvis",  # Joint name
         pelvis,  # Parent frame (Pelvis)
-        osim.Vec3(r_hjc),  # Location in parent frame
+        osim.Vec3(r_hjc - pelvis_centre),  # Location in parent frame
         osim.Vec3(0, 0, 0),  # Orientation in parent frame
         right_femur,  # Child frame (Femur)
-        osim.Vec3(r_hjc),  # Location in child frame
+        osim.Vec3(0, 0, 0),  # Location in child frame
         osim.Vec3(x_opt_right[2] * 0.1, x_opt_right[1] * 0.1, x_opt_right[0]),  # Adjusted orientation in child frame
         spatial_transform  # The defined spatial transform
     )
@@ -953,9 +953,10 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
     return left_femur, femur_l_center, right_femur, femur_r_center
 
+
 def create_tibfib_bodies_and_knee_joints(
         empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc,
-        left_femur, right_femur, x_opt_left, x_opt_right):
+        left_femur, right_femur, femur_l_center, femur_r_center, x_opt_left, x_opt_right):
     """
     Creates tibia and fibula (tibfib) bodies and defines the knee joints within an OpenSim model.
 
@@ -1002,7 +1003,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Add the mesh to the right tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(0, 0, 0))
+                     offset_translation=-tibia_r_center)
 
     # Attach the mesh for the right fibula body
     # Search for the mesh file corresponding to the right fibula
@@ -1012,7 +1013,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Add the mesh to the right tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(0, 0, 0))
+                     offset_translation=-tibia_r_center)
 
     # Attach the mesh for the left tibia body
     # Search for the mesh file corresponding to the left tibfib
@@ -1026,7 +1027,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(0, 0, 0))
+                     offset_translation=-tibia_l_center)
 
     # Attach the mesh for the left fibula body
     # Search for the mesh file corresponding to the left tibfib
@@ -1036,7 +1037,7 @@ def create_tibfib_bodies_and_knee_joints(
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
-                     offset_translation=(0, 0, 0))
+                     offset_translation=-tibia_l_center)
 
     # Add mocap markers to the tibfib bodies
     # Add mocap markers for the left tibfib body
@@ -1120,10 +1121,10 @@ def create_tibfib_bodies_and_knee_joints(
     left_knee_joint = osim.CustomJoint(
         "tibfib_l_to_femur_l",  # Name of the joint
         left_femur,  # Parent body (femur)
-        osim.Vec3(l_EC_midpoint),  # Location of the joint in the femur frame
+        osim.Vec3(l_EC_midpoint - femur_l_center),  # Location of the joint in the femur frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
         left_tibfib,  # Child body (tibfib)
-        osim.Vec3(l_EC_midpoint),  # Location of the joint in the tibfib frame
+        osim.Vec3(l_EC_midpoint - tibia_l_center),  # Location of the joint in the tibfib frame
         osim.Vec3(x_opt_left[1] * -0.1, 0, x_opt_left[0] * -1), # default orientation of tibia wrt femur
         spatial_transform
     )
@@ -1195,10 +1196,10 @@ def create_tibfib_bodies_and_knee_joints(
     right_knee_joint = osim.CustomJoint(
         "tibfib_r_to_femur_r",  # Name of the joint
         right_femur,  # Parent body (femur)
-        osim.Vec3(r_EC_midpoint),  # Location of the joint in the femur frame
+        osim.Vec3(r_EC_midpoint - femur_r_center),  # Location of the joint in the femur frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
         right_tibfib,  # Child body (tibfib)
-        osim.Vec3(r_EC_midpoint),  # Location of the joint in the tibfib frame
+        osim.Vec3(r_EC_midpoint - tibia_r_center),  # Location of the joint in the tibfib frame
         osim.Vec3(x_opt_right[1] * 0.1, 0, x_opt_right[0] * -1), # orientation on tibia wrt femur
         spatial_transform
     )
@@ -1263,7 +1264,7 @@ def repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
     left_ankle_joint = osim.PinJoint(
         "talus_l_to_tibfib_l",  # Name of the joint
         left_tibfib,  # Parent body (tibfib)
-        osim.Vec3(tibfib_l_center),  # Location of the joint in the tibfib frame
+        osim.Vec3(0, 0, 0),  # Location of the joint in the tibfib frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the tibfib frame
         left_talus,  # Child body (talus)
         osim.Vec3(manual__l_talus_positioning_child),  # Manually adjusted location of the joint in the talus frame
@@ -1275,7 +1276,7 @@ def repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
     right_ankle_joint = osim.PinJoint(
         "talus_r_to_tibfib_r",  # Name of the joint
         right_tibfib,  # Parent body (tibfib)
-        osim.Vec3(tibfib_r_center),  # Location of the joint in the tibfib frame
+        osim.Vec3(0, 0, 0),  # Location of the joint in the tibfib frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the tibfib frame
         right_talus,  # Child body (talus)
         osim.Vec3(manual_r_talus_positioning_child),  # Manually adjusted location of the joint in the talus frame
@@ -1370,6 +1371,14 @@ def estimate_body_segment_parameters(height, weight):
     # Estimate segment lengths
     segment_lengths = {key: height * value for key, value in segment_length_percentages.items()}
 
+    # set centre of mass based on segment length
+    segment_coms = {
+        "pelvis": [-segment_lengths["pelvis"]/2, 0, 0],
+        "femur": [0, -segment_lengths["femur"]/2, 0],
+        "tibfib": [0, segment_lengths["tibfib"]/2, 0],
+    }
+    print(segment_coms)
+
     # Estimate segment radii
     segment_radii = {key: segment_lengths[key] * segment_radii_percentages[key] for key in segment_radii_percentages}
 
@@ -1405,7 +1414,8 @@ def estimate_body_segment_parameters(height, weight):
 
     return {
         "masses": masses,
-        "inertias": inertias
+        "inertias": inertias,
+        "coms": segment_coms
     }
 
 
@@ -1592,9 +1602,10 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     params = estimate_body_segment_parameters(height, weight)
     masses = params["masses"]
     inertias = params["inertias"]
+    coms = params["coms"]
 
     # Set all COMs at [0,0,0] (assuming mesh centroids)
-    coms = {key: [0, 0, 0] for key in masses.keys()}
+    #coms = {key: [0, 0, 0] for key in masses.keys()}
 
     # Apply mass, center of mass, and inertia
     set_mass_com_inertia(pelvis, masses["pelvis"], coms["pelvis"], inertias["pelvis"])

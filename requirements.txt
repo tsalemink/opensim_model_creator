@@ -4,4 +4,4 @@ pandas
 trimesh
 pyvista
 plotly
-articulated-ssm
+articulated-ssm>=0.1.5

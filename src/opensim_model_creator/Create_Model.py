@@ -46,6 +46,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
     height = subject_info['Height'].iloc[0] / 100
     weight = subject_info['Mass'].iloc[0]
+    age = subject_info['Age'].iloc[0]
+    sex = subject_info['Sex'].iloc[0]
 
     # Scale marker data from millimeters to meters.
     scale_marker_data(static_marker_data, 0.001)
@@ -56,14 +58,15 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model, _, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(
         mesh_directory)
 
-    create_model_bodies(mesh_directory, static_marker_data, empty_model, left_landmarks, right_landmarks,
-                        x_opt_left, x_opt_right)
+    segment_lengths, segment_centres, joint_centres = create_model_bodies(
+        mesh_directory, static_marker_data, empty_model, left_landmarks, right_landmarks,
+        x_opt_left, x_opt_right)
 
     # Create initial OpenSim model.
     model_name = "Bone_Model"
     empty_model.setName(model_name)
     output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,
-                                  weight, height, x_opt_left, x_opt_right)
+                                  weight, height, x_opt_left, x_opt_right, age, sex, segment_lengths, segment_centres, joint_centres)
 
     # Adjust foot bone orientation and scaling.
     empty_model = osim.Model(output_file)
@@ -80,20 +83,43 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
 
 def create_model_bodies(mesh_directory, static_marker_data, empty_model, left_lms, right_lms, x_opt_left, x_opt_right):
-    pelvis, pelvis_center = create_pelvis_body_and_joint(
+    pelvis, pelvis_centre, pelvis_length, lumbar_joint_centre = create_pelvis_body_and_joint(
         empty_model, left_lms, right_lms, mesh_directory, static_marker_data)
 
-    left_femur, femur_l_center, right_femur, femur_r_center = create_femur_bodies_and_hip_joints(
-        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, pelvis, pelvis_center,
+    left_femur, femur_l_centre, right_femur, femur_r_centre, l_femur_length, r_femur_length = create_femur_bodies_and_hip_joints(
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, pelvis, pelvis_centre,
         x_opt_left['hip_rot'], x_opt_right['hip_rot'])
 
-    tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib = create_tibfib_bodies_and_knee_joints(
-        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, left_femur, right_femur, femur_l_center, femur_r_center,
+    tibfib_l_centre, tibfib_r_centre, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint = create_tibfib_bodies_and_knee_joints(
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, left_femur, right_femur, femur_l_centre,
+        femur_r_centre,
         x_opt_left['knee_rot'], x_opt_right['knee_rot'])
 
-    repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center, tibfib_r_center, left_tibfib, right_tibfib)
+    repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_centre, tibfib_r_centre, left_tibfib, right_tibfib)
 
     empty_model.finalizeConnections()
+
+    segment_lengths = {
+        'pelvis': pelvis_length,
+        'l_femur': l_femur_length,
+        'r_femur': r_femur_length,
+        'l_tibfib': l_tibfib_length,
+        'r_tibfib': r_tibfib_length
+    }
+
+    segment_centres = {
+        'pelvis': lumbar_joint_centre,
+        'l_tibfib': l_EC_midpoint,
+        'r_tibfib': r_EC_midpoint
+    }
+
+    joint_centres = {
+        'pelvis': pelvis_centre,
+        'l_tibfib': tibfib_l_centre,
+        'r_tibfib': tibfib_r_centre
+    }
+
+    return segment_lengths, segment_centres, joint_centres
 
 
 def optimise_knee_joint(model_path, model_directory, dynamic_trc):

@@ -47,13 +47,3 @@ def clear_directory(folder_path):
                 os.remove(os.path.join(root, file))
             except PermissionError as e:
                 print(f"Error: {e}")
-
-
-def get_results_dir():
-    if getattr(sys, 'frozen', False):
-        results_directory = os.path.join(os.getenv("LOCALAPPDATA"), "MusculoSkeletal", "C3D-Parser")
-    else:
-        results_directory = os.path.join(os.getcwd(), "opensim_results")
-    os.makedirs(results_directory, exist_ok=True)
-
-    return results_directory

@@ -7,7 +7,7 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation as R
 
-from opensim_model_creator.Functions.file_utils import search_files_by_keywords, get_results_dir
+from opensim_model_creator.Functions.file_utils import search_files_by_keywords
 # Import required functions
 from opensim_model_creator.Functions.general_utils import rotate_coordinate_x, vector_between_points, \
     read_trc_file_as_dict, midpoint_3d
@@ -475,6 +475,8 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
     Returns:
         OptimizeResult: Results of the optimization process.
     """
+    output_directory = os.path.dirname(final_output_model)
+    osim_results_directory = os.path.join(output_directory, "opensim_results")
 
     def objective(params):
         left_knee_x, right_knee_x, left_knee_y, right_knee_y = params
@@ -496,7 +498,7 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
         )
         print([left_knee_x, left_knee_y, right_knee_x, right_knee_y])
         # Perform IK and compute error
-        errors = perform_IK(temp_model_path_2, trc_file, start_time, end_time, marker_weights)
+        errors = perform_IK(temp_model_path_2, trc_file, osim_results_directory, start_time, end_time, marker_weights)
         print(errors["Average RMS Error"])
         return errors["Average RMS Error"] if errors else float("inf")
 
@@ -511,13 +513,14 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
     return result
 
 
-def perform_IK(model_file, trc_file, start_time, end_time, marker_weights):
+def perform_IK(model_file, trc_file, results_directory, start_time, end_time, marker_weights):
     """
     Perform Inverse Kinematics analysis using OpenSim.
 
     Args:
         model_file (str): Path to the OpenSim model file.
         trc_file (str): Path to the TRC file.
+        results_directory (str): Path to output OpenSim processing results to.
         start_time (float): Start time for IK.
         end_time (float): End time for IK.
         marker_weights (dict): Marker weights for IK analysis.
@@ -526,7 +529,6 @@ def perform_IK(model_file, trc_file, start_time, end_time, marker_weights):
         dict: Dictionary containing average RMS error and max error.
     """
     try:
-        results_directory = get_results_dir()
         model = osim.Model(model_file)
         ik_tool = osim.InverseKinematicsTool()
         ik_tool.setModel(model)

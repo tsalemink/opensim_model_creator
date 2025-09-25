@@ -66,7 +66,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     model_name = "Bone_Model"
     empty_model.setName(model_name)
     output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,
-                                  weight, height, x_opt_left, x_opt_right, age, sex, segment_lengths, segment_centres, joint_centres)
+                                  weight, x_opt_left, x_opt_right, age, sex, segment_lengths, segment_centres, joint_centres)
 
     # Adjust foot bone orientation and scaling.
     empty_model = osim.Model(output_file)

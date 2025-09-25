@@ -1353,16 +1353,20 @@ def update_mesh_file_paths(input_osim, output_osim, mesh_directory, foot_mesh_fi
         print("No matching <mesh_file> elements found to update.")
 
 
-def estimate_body_segment_parameters(height, weight, age, sex, segment_lengths, segment_centres, joint_centres):
+def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_centres, joint_centres):
     """
     Estimates the segment masses and inertial properties of the body based on height and weight.
 
     Args:
-        height (float): Height of the participant in meters.
         weight (float): Weight of the participant in kg.
+        age (float): age of participant in years
+        sex: 1 = Female, 2 = Male
+        segment_lengths (dict): lengths of each segment in metres
+        segment_centres (dict): location of the segment centres required for com calculation
+        joint_centres (dict): the segment joint centres as defined by the osim model
 
     Returns:
-        dict: A dictionary containing segment masses and inertial properties.
+        dict: A dictionary containing segment masses, segment coms, and inertial properties.
     """
 
     # calculate offset for pelvis and tibfib
@@ -1377,15 +1381,18 @@ def estimate_body_segment_parameters(height, weight, age, sex, segment_lengths, 
     l_tib_l = segment_lengths['l_tibfib']
     r_tib_l = segment_lengths['r_tibfib']
 
-    if age < 14:
+    if age < 19:
         # use coefficients for children (Lahkar et al., 2025) ages 3 - 13 years
         if sex == 1:
             # female coefficients
             masses = {
                 "pelvis": 0.1562 * weight,  # 15.62% of body mass
-                "femur": (0.0875 + 0.0036 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
-                "tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
-                "foot": 0.0133 * weight  # 1.33% of body mass
+                "l_femur": (0.0875 + 0.0036 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_femur": (0.0875 + 0.0036 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "l_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "l_foot": 0.0133 * weight,  # 1.33% of body mass
+                "r_foot": 0.0133 * weight  # 1.33% of body mass
             }
 
             segment_coms = {
@@ -1396,20 +1403,24 @@ def estimate_body_segment_parameters(height, weight, age, sex, segment_lengths, 
                 "r_tibfib": np.array([-0.0293 * r_tib_l, (-0.4358 + 0.022 * age) * r_tib_l, (0.0436 + -0.001 * age) * r_tib_l]) - r_knee_c_to_ankle_c
             }
 
-            # Approximate segment radii (based on height & segment length)
             segment_radii_percentages = {
-                "pelvis": 0.14,  # Pelvis is wider
-                "femur": 0.12,  # Femur is narrower
-                "tibfib": 0.09,  # Tibia/Fibula is thinnest
+                "pelvis": [0.9116, 0.9453, 0.9193],
+                "l_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "r_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "l_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age],
+                "r_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age]
             }
         else:
             # male coefficients
             masses = {
                 "pelvis": 0.1515 * weight,  # 15.15% of body mass
-                "femur": (0.0779 + 0.0041 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
-                "tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "l_femur": (0.0779 + 0.0041 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_femur": (0.0779 + 0.0041 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "l_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "foot": 0.0144 * weight  # 1.33% of body mass
             }
+
             segment_coms = {
                 "pelvis": np.array([-0.0128 * pel_l, (-0.5079 + -0.0126 * age) * pel_l, -0.0046 * pel_l]) - ljc_to_asis_mid,
                 "l_femur": np.array([(-0.0843 + 0.0027 * age) * l_fem_l, -0.4446 * l_fem_l, -0.0184 * l_fem_l]),
@@ -1417,57 +1428,84 @@ def estimate_body_segment_parameters(height, weight, age, sex, segment_lengths, 
                 "l_tibfib": np.array([-0.0267 * l_tib_l, (-0.4397 + 0.023 * age) * l_tib_l, -(0.0462 + -0.0011 * age) * l_tib_l]) - l_knee_c_to_ankle_c,
                 "r_tibfib": np.array([-0.0267 * r_tib_l, (-0.4397 + 0.023 * age) * r_tib_l, (0.0462 + -0.0011 * age) * r_tib_l]) - r_knee_c_to_ankle_c
             }
-            # Approximate segment radii (based on height & segment length)
+
             segment_radii_percentages = {
-                "pelvis": 0.14,  # Pelvis is wider
-                "femur": 0.12,  # Femur is narrower
-                "tibfib": 0.09,  # Tibia/Fibula is thinnest
+                "pelvis": [0.9673, 0.9903, 0.9787],
+                "l_femur": [0.2972 + -0.0015 * age, 0.1626 + - 0.0024 * age, 0.3042 + -0.0016 * age],
+                "r_femur": [0.2972 + -0.0015 * age, 0.1626 + - 0.0024 * age, 0.3042 + -0.0016 * age],
+                "l_tibfib": [0.3020 + -0.0011 * age, 0.1222 + -0.0022 * age, 0.3018 + -0.0011 * age],
+                "r_tibfib": [0.3020 + -0.0011 * age, 0.1222 + -0.0022 * age, 0.3018 + -0.0011 * age]
             }
     else:
-        segment_mass_percentages = {
-            "pelvis": 0.111,  # 11.1% of body mass
-            "femur": 0.146,  # 14.6% of body mass (each)
-            "tibfib": 0.0465,  # 4.65% of body mass (each)
-        }
-        # Approximate segment radii (based on height & segment length)
-        segment_radii_percentages = {
-            "pelvis": 0.14,  # Pelvis is wider
-            "femur": 0.12,  # Femur is narrower
-            "tibfib": 0.09,  # Tibia/Fibula is thinnest
-        }
+        # use coefficients for adults (Dumas et al., 2018, 2007)
+        if sex == 1:
+            #female coefficients
+            masses = {
+                "pelvis": 0.147 * weight,  # 15.62% of body mass
+                "l_femur": 0.146 * weight,
+                "r_femur": 0.146 * weight,
+                "l_tibfib": 0.045 * weight,
+                "r_tibfib": 0.045 * weight,
+                "l_foot": 0.01 * weight,  # 1.33% of body mass
+                "r_foot": 0.01 * weight  # 1.33% of body mass
+            }
 
-    # Estimate segment radii
-    segment_radii = {key: segment_lengths[key] * segment_radii_percentages[key] for key in segment_radii_percentages}
+            segment_coms = {
+                "pelvis": np.array([0.0209 * pel_l, (-0.6194 + -0.0154 * age) * pel_l, 0.0029 * pel_l]) - ljc_to_asis_mid,
+                "l_femur": np.array([(-0.0694 + 0.0024 * age) * l_fem_l, -0.4454 * l_fem_l, -0.0157 * l_fem_l]),
+                "r_femur": np.array([(-0.0694 + 0.0024 * age) * r_fem_l, -0.4454*r_fem_l, 0.0157*r_fem_l]),
+                "l_tibfib": np.array([-0.0293*l_tib_l, (-0.4358+0.022*age)*l_tib_l, -(0.0436+-0.001*age)*l_tib_l]) - l_knee_c_to_ankle_c,
+                "r_tibfib": np.array([-0.0293 * r_tib_l, (-0.4358 + 0.022 * age) * r_tib_l, (0.0436 + -0.001 * age) * r_tib_l]) - r_knee_c_to_ankle_c
+            }
 
-    # Compute inertia using appropriate models
-    inertias = {}
-
-    for segment in segment_mass_percentages.keys():
-        mass = masses[segment]
-
-        if segment == "pelvis":
-            # Pelvis modeled as an ellipsoid
-            a = 0.20 * height / 2  # Half of pelvic width
-            b = 0.14 * height / 2  # Half of pelvic depth
-            c = 0.24 * height / 2  # Half of pelvic height
-
-            I_x = (1 / 5) * mass * (b ** 2 + c ** 2)  # Rotation around X (Forward-Backward)
-            I_y = (1 / 5) * mass * (a ** 2 + c ** 2)  # Rotation around Y (Vertical)
-            I_z = (1 / 5) * mass * (a ** 2 + b ** 2)  # Rotation around Z (Left-Right)
-
-            inertias[segment] = [I_x, I_y, I_z, 0, 0, 0]  # OpenSim inertia format
-
+            segment_radii_percentages = {
+                "pelvis": [0.9116, 0.9453, 0.9193],
+                "l_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "r_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "l_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age],
+                "r_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age]
+            }
         else:
-            # Long bones modeled as cylinders
-            length = segment_lengths[segment]
-            radius = segment_radii[segment]
+            # male coefficients
+            masses = {
+                "pelvis": 0.147 * weight,  # 15.62% of body mass
+                "l_femur": 0.146 * weight,
+                "r_femur": 0.146 * weight,
+                "l_tibfib": 0.045 * weight,
+                "r_tibfib": 0.045 * weight,
+                "l_foot": 0.01 * weight,  # 1.33% of body mass
+                "r_foot": 0.01 * weight  # 1.33% of body mass
+            }
 
-            I1 = (1 / 12) * mass * (3 * radius ** 2 + length ** 2)  # Transverse moment (X)
-            I2 = (1 / 12) * mass * (3 * radius ** 2 + length ** 2)  # Transverse moment (Z)
-            I3 = (1 / 2) * mass * radius ** 2  # Longitudinal moment (Y)
+            segment_coms = {
+                "pelvis": np.array(
+                    [0.0209 * pel_l, (-0.6194 + -0.0154 * age) * pel_l, 0.0029 * pel_l]) - ljc_to_asis_mid,
+                "l_femur": np.array([(-0.0694 + 0.0024 * age) * l_fem_l, -0.4454 * l_fem_l, -0.0157 * l_fem_l]),
+                "r_femur": np.array([(-0.0694 + 0.0024 * age) * r_fem_l, -0.4454 * r_fem_l, 0.0157 * r_fem_l]),
+                "l_tibfib": np.array([-0.0293 * l_tib_l, (-0.4358 + 0.022 * age) * l_tib_l,
+                                      -(0.0436 + -0.001 * age) * l_tib_l]) - l_knee_c_to_ankle_c,
+                "r_tibfib": np.array([-0.0293 * r_tib_l, (-0.4358 + 0.022 * age) * r_tib_l,
+                                      (0.0436 + -0.001 * age) * r_tib_l]) - r_knee_c_to_ankle_c
+            }
 
-            # Assign inertia with correct OpenSim axes
-            inertias[segment] = [I1, I3, I2, 0, 0, 0]  # Y-axis gets I3 (smallest)
+            segment_radii_percentages = {
+                "pelvis": [0.9116, 0.9453, 0.9193],
+                "l_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "r_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "l_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age],
+                "r_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age]
+            }
+
+    # Compute inertia using radius of gyration
+    inertias = {}
+    def compute_principal_inertia(m, L, r_percent):
+        r = np.array(r_percent)
+        rg_m = r * L  # radii in metres
+        I = m * (rg_m ** 2)  # gives [Ixx, Iyy, Izz]
+        return [I, 0, 0, 0]  # array [Ixx, Iyy, Izz]
+
+    for segment in segment_radii_percentages.keys():
+        inertias[segment] = compute_principal_inertia(masses[segment], segment_coms[segment], segment_radii_percentages[segment])
 
     return {
         "masses": masses,
@@ -1476,8 +1514,8 @@ def estimate_body_segment_parameters(height, weight, age, sex, segment_lengths, 
     }
 
 
-def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, height, x_opt_left, x_opt_right,
-                    age, segment_lengths, segment_centres, joint_centres):
+def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, x_opt_left, x_opt_right,
+                    age, sex, segment_lengths, segment_centres, joint_centres):
     """
     Performs a series of updates on an OpenSim model including setting joint ranges, default values,
     renaming coordinates, updating body segment properties, modifying joint rotation axes,
@@ -1657,20 +1695,17 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
         body.setInertia(osim.Inertia(*inertia))
 
     # Compute body segment parameters
-    params = estimate_body_segment_parameters(height, weight, age, segment_lengths, segment_centres, joint_centres)
+    params = estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_centres, joint_centres)
     masses = params["masses"]
     inertias = params["inertias"]
     coms = params["coms"]
 
-    # Set all COMs at [0,0,0] (assuming mesh centroids)
-    # coms = {key: [0, 0, 0] for key in masses.keys()}
-
     # Apply mass, center of mass, and inertia
     set_mass_com_inertia(pelvis, masses["pelvis"], coms["pelvis"], inertias["pelvis"])
-    set_mass_com_inertia(femur_l, masses["femur"], coms["femur"], inertias["femur"])
-    set_mass_com_inertia(femur_r, masses["femur"], coms["femur"], inertias["femur"])
-    set_mass_com_inertia(tibfib_l, masses["tibfib"], coms["tibfib"], inertias["tibfib"])
-    set_mass_com_inertia(tibfib_r, masses["tibfib"], coms["tibfib"], inertias["tibfib"])
+    set_mass_com_inertia(femur_l, masses["l_femur"], coms["l_femur"], inertias["l_femur"])
+    set_mass_com_inertia(femur_r, masses["r_femur"], coms["r_femur"], inertias["r_femur"])
+    set_mass_com_inertia(tibfib_l, masses["l_tibfib"], coms["l_tibfib"], inertias["l_tibfib"])
+    set_mass_com_inertia(tibfib_r, masses["r_tibfib"], coms["r_tibfib"], inertias["r_tibfib"])
 
     # Finalise the initial iteration of model
     model.finalizeConnections()

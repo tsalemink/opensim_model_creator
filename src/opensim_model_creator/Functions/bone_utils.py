@@ -1381,7 +1381,7 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
     l_tib_l = segment_lengths['l_tibfib']
     r_tib_l = segment_lengths['r_tibfib']
 
-    if age < 19:
+    if age < 14:
         # use coefficients for children (Lahkar et al., 2025) ages 3 - 13 years
         if sex == 1:
             # female coefficients
@@ -1446,54 +1446,51 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": 0.146 * weight,
                 "l_tibfib": 0.045 * weight,
                 "r_tibfib": 0.045 * weight,
-                "l_foot": 0.01 * weight,  # 1.33% of body mass
-                "r_foot": 0.01 * weight  # 1.33% of body mass
+                "l_foot": 0.01 * weight,
+                "r_foot": 0.01 * weight
             }
 
             segment_coms = {
-                "pelvis": np.array([0.0209 * pel_l, (-0.6194 + -0.0154 * age) * pel_l, 0.0029 * pel_l]) - ljc_to_asis_mid,
-                "l_femur": np.array([(-0.0694 + 0.0024 * age) * l_fem_l, -0.4454 * l_fem_l, -0.0157 * l_fem_l]),
-                "r_femur": np.array([(-0.0694 + 0.0024 * age) * r_fem_l, -0.4454*r_fem_l, 0.0157*r_fem_l]),
-                "l_tibfib": np.array([-0.0293*l_tib_l, (-0.4358+0.022*age)*l_tib_l, -(0.0436+-0.001*age)*l_tib_l]) - l_knee_c_to_ankle_c,
-                "r_tibfib": np.array([-0.0293 * r_tib_l, (-0.4358 + 0.022 * age) * r_tib_l, (0.0436 + -0.001 * age) * r_tib_l]) - r_knee_c_to_ankle_c
+                "pelvis": np.array([-0.072 * pel_l, -0.228 * pel_l, -0.002 * pel_l]) - ljc_to_asis_mid,
+                "l_femur": np.array([-0.077 * l_fem_l, -0.377 * l_fem_l, -0.008 * l_fem_l]),
+                "r_femur": np.array([-0.077 * r_fem_l, -0.377 * r_fem_l, 0.008 * r_fem_l]),
+                "l_tibfib": np.array([-0.049 * l_tib_l, -0.404 * l_tib_l, -0.031 * l_tib_l]) - l_knee_c_to_ankle_c,
+                "r_tibfib": np.array([-0.049 * r_tib_l, -0.404 * r_tib_l, 0.031 * r_tib_l]) - r_knee_c_to_ankle_c
             }
 
             segment_radii_percentages = {
-                "pelvis": [0.9116, 0.9453, 0.9193],
-                "l_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
-                "r_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
-                "l_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age],
-                "r_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age]
+                "pelvis": [0.95, 1.05, 0.82],
+                "l_femur": [0.31, 0.19, 0.32],
+                "r_femur": [0.31, 0.19, 0.32],
+                "l_tibfib": [0.28, 0.1, 0.28],
+                "r_tibfib": [0.28, 0.1, 0.28]
             }
         else:
             # male coefficients
             masses = {
-                "pelvis": 0.147 * weight,  # 15.62% of body mass
-                "l_femur": 0.146 * weight,
-                "r_femur": 0.146 * weight,
-                "l_tibfib": 0.045 * weight,
-                "r_tibfib": 0.045 * weight,
-                "l_foot": 0.01 * weight,  # 1.33% of body mass
-                "r_foot": 0.01 * weight  # 1.33% of body mass
+                "pelvis": 0.142 * weight,
+                "l_femur": 0.123 * weight,
+                "r_femur": 0.123 * weight,
+                "l_tibfib": 0.048 * weight,
+                "r_tibfib": 0.048 * weight,
+                "l_foot": 0.012 * weight,
+                "r_foot": 0.012 * weight
             }
 
             segment_coms = {
-                "pelvis": np.array(
-                    [0.0209 * pel_l, (-0.6194 + -0.0154 * age) * pel_l, 0.0029 * pel_l]) - ljc_to_asis_mid,
-                "l_femur": np.array([(-0.0694 + 0.0024 * age) * l_fem_l, -0.4454 * l_fem_l, -0.0157 * l_fem_l]),
-                "r_femur": np.array([(-0.0694 + 0.0024 * age) * r_fem_l, -0.4454 * r_fem_l, 0.0157 * r_fem_l]),
-                "l_tibfib": np.array([-0.0293 * l_tib_l, (-0.4358 + 0.022 * age) * l_tib_l,
-                                      -(0.0436 + -0.001 * age) * l_tib_l]) - l_knee_c_to_ankle_c,
-                "r_tibfib": np.array([-0.0293 * r_tib_l, (-0.4358 + 0.022 * age) * r_tib_l,
-                                      (0.0436 + -0.001 * age) * r_tib_l]) - r_knee_c_to_ankle_c
+                "pelvis": np.array([-0.002 * pel_l, -0.282 * pel_l, -0.006 * pel_l]) - ljc_to_asis_mid,
+                "l_femur": np.array([-0.041 * l_fem_l, -0.429 * l_fem_l, -0.033 * l_fem_l]),
+                "r_femur": np.array([-0.041 * r_fem_l, -0.429 * r_fem_l, 0.033 * r_fem_l]),
+                "l_tibfib": np.array([-0.048 * l_tib_l, -0.41 * l_tib_l, -0.007 * l_tib_l]) - l_knee_c_to_ankle_c,
+                "r_tibfib": np.array([-0.048 * r_tib_l, -0.41 * r_tib_l, 0.007 * r_tib_l]) - r_knee_c_to_ankle_c
             }
 
             segment_radii_percentages = {
-                "pelvis": [0.9116, 0.9453, 0.9193],
-                "l_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
-                "r_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
-                "l_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age],
-                "r_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age]
+                "pelvis": [1.02, 1.06, 0.96],
+                "l_femur": [0.29, 0.15, 0.3],
+                "r_femur": [0.29, 0.15, 0.3],
+                "l_tibfib": [0.28, 0.1, 0.28],
+                "r_tibfib": [0.28, 0.1, 0.28]
             }
 
     # Compute inertia using radius of gyration

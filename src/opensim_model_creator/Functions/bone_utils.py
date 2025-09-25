@@ -1410,7 +1410,7 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "l_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age],
                 "r_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age]
             }
-        else:
+        elif sex == 2:
             # male coefficients
             masses = {
                 "pelvis": 0.1515 * weight,  # 15.15% of body mass
@@ -1436,7 +1436,7 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "l_tibfib": [0.3020 + -0.0011 * age, 0.1222 + -0.0022 * age, 0.3018 + -0.0011 * age],
                 "r_tibfib": [0.3020 + -0.0011 * age, 0.1222 + -0.0022 * age, 0.3018 + -0.0011 * age]
             }
-    else:
+    elif age > 13:
         # use coefficients for adults (Dumas et al., 2018, 2007)
         if sex == 1:
             #female coefficients
@@ -1465,7 +1465,7 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "l_tibfib": [0.28, 0.1, 0.28],
                 "r_tibfib": [0.28, 0.1, 0.28]
             }
-        else:
+        elif sex == 2:
             # male coefficients
             masses = {
                 "pelvis": 0.142 * weight,
@@ -1499,7 +1499,7 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
         r = np.array(r_percent)
         rg_m = r * L  # radii in metres
         I = m * (rg_m ** 2)  # gives [Ixx, Iyy, Izz]
-        return [I, 0, 0, 0]  # array [Ixx, Iyy, Izz]
+        return np.append(I, [0, 0, 0])  # array [Ixx, Iyy, Izz]
 
     for segment in segment_radii_percentages.keys():
         inertias[segment] = compute_principal_inertia(masses[segment], segment_coms[segment], segment_radii_percentages[segment])

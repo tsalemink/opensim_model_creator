@@ -60,7 +60,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
     segment_lengths, segment_centres, joint_centres = create_model_bodies(
         mesh_directory, static_marker_data, empty_model, left_landmarks, right_landmarks,
-        x_opt_left, x_opt_right)
+        x_opt_left, x_opt_right, sex)
 
     # Create initial OpenSim model.
     model_name = "Bone_Model"
@@ -82,9 +82,9 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     return model_path
 
 
-def create_model_bodies(mesh_directory, static_marker_data, empty_model, left_lms, right_lms, x_opt_left, x_opt_right):
+def create_model_bodies(mesh_directory, static_marker_data, empty_model, left_lms, right_lms, x_opt_left, x_opt_right, sex):
     pelvis, pelvis_centre, pelvis_length, lumbar_joint_centre = create_pelvis_body_and_joint(
-        empty_model, left_lms, right_lms, mesh_directory, static_marker_data)
+        empty_model, left_lms, right_lms, mesh_directory, static_marker_data, sex)
 
     left_femur, femur_l_centre, right_femur, femur_r_centre, l_femur_length, r_femur_length = create_femur_bodies_and_hip_joints(
         empty_model, left_lms, right_lms, mesh_directory, static_marker_data, pelvis, pelvis_centre,

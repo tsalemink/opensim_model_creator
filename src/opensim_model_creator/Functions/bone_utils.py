@@ -496,10 +496,8 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
             rotation_adjustment=osim.Vec3(right_knee_x, right_knee_y, 0.0),
             output_model_path=temp_model_path_2
         )
-        print([left_knee_x, left_knee_y, right_knee_x, right_knee_y])
         # Perform IK and compute error
         errors = perform_IK(temp_model_path_2, trc_file, osim_results_directory, start_time, end_time, marker_weights)
-        print(errors["Average RMS Error"])
         return errors["Average RMS Error"] if errors else float("inf")
 
     # Sets bounds for knee joint optimisation
@@ -728,7 +726,7 @@ def initialize_model_and_extract_landmarks(asm_directory):
     return empty_model, state, left_landmarks, right_landmarks, x_opt_left, x_opt_right
 
 
-def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc):
+def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes, mocap_static_trc, sex):
     """
     Creates the pelvis body, attaches it to the ground with a FreeJoint, and adds a mesh and markers.
 
@@ -753,6 +751,20 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     RASIS = right_landmarks["ASIS"]
     LPSIS = np.array(left_landmarks["PSIS"])
     RPSIS = np.array(right_landmarks["PSIS"])
+    r_hjc = right_landmarks["hjc"]
+    l_hjc = left_landmarks["hjc"]
+
+    # define the length of the pelvis (for centre of mass calculations)
+    asis_mid = (RASIS + LASIS) / 2
+    asis_width = np.sqrt(np.sum((RASIS - LASIS) ** 2, axis=0))
+    if sex == 1:
+        # find lumbar joint centre based on regression equations of (Dumas et al., 2018, 2007)
+        lumbar_joint_centre = asis_mid + np.array([-0.34 * asis_width, 0.049 * asis_width, 0])
+    elif sex == 2:
+        lumbar_joint_centre = asis_mid + np.array([-0.335 * asis_width, -0.032 * asis_width, 0])
+
+    centre_of_hjc = (r_hjc + l_hjc) / 2
+    pelvis_length = np.sqrt(np.sum((lumbar_joint_centre - centre_of_hjc) ** 2, axis=0))
 
     # Define the pelvis anatomical coordinate system from the articulated shape model (this needs to be aligned with
     # the opensim global coordinate system)
@@ -813,10 +825,11 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS"], right_landmarks, pelvis_origin,
                         ["RASI_ssm", "RPSI_ssm"])
 
-    return pelvis, pelvis_origin
+    return pelvis, pelvis_origin, pelvis_length, lumbar_joint_centre
 
 
-def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, pelvis, pelvis_centre,
+def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, pelvis,
+                                       pelvis_centre,
                                        x_opt_left, x_opt_right):
     """
     Creates the left and right femur bodies and attaches custom hip joints to the OpenSim model.
@@ -854,6 +867,12 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     # Extract landmarks required to position the joint coordinate systems of the left hip joint
     r_hjc = right_landmarks["hjc"]
     l_hjc = left_landmarks["hjc"]
+    l_ecc = (left_landmarks["LEC"] + left_landmarks["MEC"]) / 2  # left epicondylar centre
+    r_ecc = (right_landmarks["LEC"] + right_landmarks["MEC"]) / 2  # right epicondylar centre
+
+    # calculate femur length (needed for centre of mass calculation
+    l_femur_length = np.sqrt(np.sum((l_hjc - l_ecc) ** 2, axis=0))
+    r_femur_length = np.sqrt(np.sum((r_hjc - r_ecc) ** 2, axis=0))
 
     # Attach the mesh for the right femur
     mesh_path = os.path.join(meshes, "predicted_mesh_right_femur.stl")
@@ -953,7 +972,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     empty_model.addJoint(left_hip_joint)
     empty_model.addJoint(right_hip_joint)
 
-    return left_femur, femur_l_center, right_femur, femur_r_center
+    return left_femur, femur_l_center, right_femur, femur_r_center, l_femur_length, r_femur_length
 
 
 def create_tibfib_bodies_and_knee_joints(
@@ -1065,6 +1084,9 @@ def create_tibfib_bodies_and_knee_joints(
     # Compute the midpoint between the lateral and medial epicondyles
     l_EC_midpoint = midpoint_3d(l_lec, l_mec)
 
+    # calculate tibfib length (needed for CoM calculations)
+    l_tibfib_length = np.sqrt(np.sum((l_EC_midpoint - tibia_l_center) ** 2, axis=0))
+
     # %% Define the left knee joint
     # Create the spatial transform for the custom knee joint
     spatial_transform = osim.SpatialTransform()
@@ -1127,7 +1149,7 @@ def create_tibfib_bodies_and_knee_joints(
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
         left_tibfib,  # Child body (tibfib)
         osim.Vec3(l_EC_midpoint - tibia_l_center),  # Location of the joint in the tibfib frame
-        osim.Vec3(x_opt_left[1] * -0.1, 0, x_opt_left[0] * -1), # default orientation of tibia wrt femur
+        osim.Vec3(x_opt_left[1] * -0.1, 0, x_opt_left[0] * -1),  # default orientation of tibia wrt femur
         spatial_transform
     )
 
@@ -1139,6 +1161,9 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Compute the midpoint between the lateral and medial epicondyles
     r_EC_midpoint = midpoint_3d(r_lec, r_mec)
+
+    # calculate tibfib length (needed for CoM calculations)
+    r_tibfib_length = np.sqrt(np.sum((r_EC_midpoint - tibia_r_center) ** 2, axis=0))
 
     # %% Define the right knee joint
     # Create the spatial transform for the custom knee joint
@@ -1202,7 +1227,7 @@ def create_tibfib_bodies_and_knee_joints(
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
         right_tibfib,  # Child body (tibfib)
         osim.Vec3(r_EC_midpoint - tibia_r_center),  # Location of the joint in the tibfib frame
-        osim.Vec3(x_opt_right[1] * 0.1, 0, x_opt_right[0] * -1), # orientation on tibia wrt femur
+        osim.Vec3(x_opt_right[1] * 0.1, 0, x_opt_right[0] * -1),  # orientation on tibia wrt femur
         spatial_transform
     )
 
@@ -1216,7 +1241,7 @@ def create_tibfib_bodies_and_knee_joints(
     # This connects the right tibfib to the right femur, allowing flexion/extension motion
     empty_model.addJoint(right_knee_joint)
 
-    return tibia_l_center, tibia_r_center, left_tibfib, right_tibfib
+    return tibia_l_center, tibia_r_center, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint
 
 
 def repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
@@ -1335,84 +1360,167 @@ def update_mesh_file_paths(input_osim, output_osim, mesh_directory, foot_mesh_fi
         print("No matching <mesh_file> elements found to update.")
 
 
-def estimate_body_segment_parameters(height, weight):
+def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_centres, joint_centres):
     """
     Estimates the segment masses and inertial properties of the body based on height and weight.
 
     Args:
-        height (float): Height of the participant in meters.
         weight (float): Weight of the participant in kg.
+        age (float): age of participant in years
+        sex: 1 = Female, 2 = Male
+        segment_lengths (dict): lengths of each segment in metres
+        segment_centres (dict): location of the segment centres required for com calculation
+        joint_centres (dict): the segment joint centres as defined by the osim model
 
     Returns:
-        dict: A dictionary containing segment masses and inertial properties.
+        dict: A dictionary containing segment masses, segment coms, and inertial properties.
     """
-    # Segment mass as percentage of body mass (Winter, 2009 Biomechanics & ASCM)
-    segment_mass_percentages = {
-        "pelvis": 0.111,  # 11.1% of body mass
-        "femur": 0.146,  # 14.6% of body mass (each)
-        "tibfib": 0.0465,  # 4.65% of body mass (each)
-    }
 
-    # Estimated segment lengths as a percentage of body height (Winter, 2009)
-    segment_length_percentages = {
-        "pelvis": 0.24,  # 24% of height
-        "femur": 0.245,  # 24.5% of height
-        "tibfib": 0.246,  # 24.6% of height
-    }
+    # calculate offset for pelvis and tibfib
+    ljc = segment_centres['pelvis']
+    asis_mid = joint_centres['pelvis']
+    l_knee_c = segment_centres['l_tibfib']
+    l_ankle_c = joint_centres['l_tibfib']
+    r_knee_c = segment_centres['r_tibfib']
+    r_ankle_c = joint_centres['r_tibfib']
 
-    # Approximate segment radii (based on height & segment length)
-    segment_radii_percentages = {
-        "pelvis": 0.14,  # Pelvis is wider
-        "femur": 0.12,  # Femur is narrower
-        "tibfib": 0.09,  # Tibia/Fibula is thinnest
-    }
+    # extract bone lengths
+    pel_l = segment_lengths['pelvis']
+    l_fem_l = segment_lengths['l_femur']
+    r_fem_l = segment_lengths['r_femur']
+    l_tib_l = segment_lengths['l_tibfib']
+    r_tib_l = segment_lengths['r_tibfib']
 
-    # Compute segment masses
-    masses = {key: weight * value for key, value in segment_mass_percentages.items()}
+    if age < 14:
+        # use coefficients for children (Lahkar et al., 2025) ages 3 - 13 years
+        if sex == 1:
+            # female coefficients
+            masses = {
+                "pelvis": 0.1562 * weight,  # 15.62% of body mass
+                "l_femur": (0.0875 + 0.0036 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_femur": (0.0875 + 0.0036 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "l_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "l_foot": 0.0133 * weight,  # 1.33% of body mass
+                "r_foot": 0.0133 * weight  # 1.33% of body mass
+            }
 
-    # Estimate segment lengths
-    segment_lengths = {key: height * value for key, value in segment_length_percentages.items()}
+            segment_coms = {
+                "pelvis": (ljc + np.array(
+                    [0.0209 * pel_l, (-0.6194 + -0.0154 * age) * pel_l, 0.0029 * pel_l])) - asis_mid,
+                "l_femur": np.array([(-0.0694 + 0.0024 * age) * l_fem_l, -0.4454 * l_fem_l, -0.0157 * l_fem_l]),
+                "r_femur": np.array([(-0.0694 + 0.0024 * age) * r_fem_l, -0.4454 * r_fem_l, 0.0157 * r_fem_l]),
+                "l_tibfib": (l_knee_c + np.array([-0.0293 * l_tib_l, (-0.4358 + 0.0022 * age) * l_tib_l,
+                                                  -(0.0436 + -0.001 * age) * l_tib_l])) - l_ankle_c,
+                "r_tibfib": (r_knee_c + np.array([-0.0293 * r_tib_l, (-0.4358 + 0.0022 * age) * r_tib_l,
+                                                  (0.0436 + -0.001 * age) * r_tib_l])) - r_ankle_c
+            }
 
-    # set centre of mass based on segment length
-    segment_coms = {
-        "pelvis": [-segment_lengths["pelvis"]/2, 0, 0],
-        "femur": [0, -segment_lengths["femur"]/2, 0],
-        "tibfib": [0, segment_lengths["tibfib"]/2, 0],
-    }
-    print(segment_coms)
+            segment_radii_percentages = {
+                "pelvis": [0.9116, 0.9453, 0.9193],
+                "l_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "r_femur": [0.2926 + -0.0014 * age, 0.1672 + - 0.0032 * age, 0.3004 + -0.0016 * age],
+                "l_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age],
+                "r_tibfib": [0.2981 + -0.0009 * age, 0.1268 + -0.0028 * age, 0.2992 + -0.001 * age]
+            }
+        elif sex == 2:
+            # male coefficients
+            masses = {
+                "pelvis": 0.1515 * weight,  # 15.15% of body mass
+                "l_femur": (0.0779 + 0.0041 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_femur": (0.0779 + 0.0041 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "l_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "r_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
+                "foot": 0.0144 * weight  # 1.33% of body mass
+            }
 
-    # Estimate segment radii
-    segment_radii = {key: segment_lengths[key] * segment_radii_percentages[key] for key in segment_radii_percentages}
+            segment_coms = {
+                "pelvis": (ljc + np.array(
+                    [-0.0128 * pel_l, (-0.5079 + -0.0126 * age) * pel_l, -0.0046 * pel_l])) - asis_mid,
+                "l_femur": np.array([(-0.0843 + 0.0027 * age) * l_fem_l, -0.4446 * l_fem_l, -0.0184 * l_fem_l]),
+                "r_femur": np.array([(-0.0843 + 0.0027 * age) * r_fem_l, -0.4446 * r_fem_l, 0.0184 * r_fem_l]),
+                "l_tibfib": (l_knee_c + np.array([-0.0267 * l_tib_l, (-0.4397 + 0.0023 * age) * l_tib_l,
+                                                  -(0.0462 + -0.0011 * age) * l_tib_l])) - l_ankle_c,
+                "r_tibfib": (r_knee_c + np.array([-0.0267 * r_tib_l, (-0.4397 + 0.0023 * age) * r_tib_l,
+                                      (0.0462 + -0.0011 * age) * r_tib_l])) - r_ankle_c
+            }
 
-    # Compute inertia using appropriate models
+            segment_radii_percentages = {
+                "pelvis": [0.9673, 0.9903, 0.9787],
+                "l_femur": [0.2972 + -0.0015 * age, 0.1626 + - 0.0024 * age, 0.3042 + -0.0016 * age],
+                "r_femur": [0.2972 + -0.0015 * age, 0.1626 + - 0.0024 * age, 0.3042 + -0.0016 * age],
+                "l_tibfib": [0.3020 + -0.0011 * age, 0.1222 + -0.0022 * age, 0.3018 + -0.0011 * age],
+                "r_tibfib": [0.3020 + -0.0011 * age, 0.1222 + -0.0022 * age, 0.3018 + -0.0011 * age]
+            }
+    elif age > 13:
+        # use coefficients for adults (Dumas et al., 2018, 2007)
+        if sex == 1:
+            # female coefficients
+            masses = {
+                "pelvis": 0.147 * weight,  # 15.62% of body mass
+                "l_femur": 0.146 * weight,
+                "r_femur": 0.146 * weight,
+                "l_tibfib": 0.045 * weight,
+                "r_tibfib": 0.045 * weight,
+                "l_foot": 0.01 * weight,
+                "r_foot": 0.01 * weight
+            }
+
+            segment_coms = {
+                "pelvis": (ljc + np.array([-0.072 * pel_l, -0.228 * pel_l, 0.002 * pel_l])) - asis_mid,
+                "l_femur": np.array([-0.077 * l_fem_l, -0.377 * l_fem_l, -0.008 * l_fem_l]),
+                "r_femur": np.array([-0.077 * r_fem_l, -0.377 * r_fem_l, 0.008 * r_fem_l]),
+                "l_tibfib": (l_knee_c + np.array([-0.049 * l_tib_l, -0.404 * l_tib_l, -0.031 * l_tib_l])) - l_ankle_c,
+                "r_tibfib": (r_knee_c + np.array([-0.049 * r_tib_l, -0.404 * r_tib_l, 0.031 * r_tib_l])) - r_ankle_c
+            }
+
+            segment_radii_percentages = {
+                "pelvis": [0.95, 1.05, 0.82],
+                "l_femur": [0.31, 0.19, 0.32],
+                "r_femur": [0.31, 0.19, 0.32],
+                "l_tibfib": [0.28, 0.1, 0.28],
+                "r_tibfib": [0.28, 0.1, 0.28]
+            }
+        elif sex == 2:
+            # male coefficients
+            masses = {
+                "pelvis": 0.142 * weight,
+                "l_femur": 0.123 * weight,
+                "r_femur": 0.123 * weight,
+                "l_tibfib": 0.048 * weight,
+                "r_tibfib": 0.048 * weight,
+                "l_foot": 0.012 * weight,
+                "r_foot": 0.012 * weight
+            }
+
+            segment_coms = {
+                "pelvis": ljc + np.array([-0.002 * pel_l, -0.282 * pel_l, -0.006 * pel_l]) - asis_mid,
+                "l_femur": np.array([-0.041 * l_fem_l, -0.429 * l_fem_l, -0.033 * l_fem_l]),
+                "r_femur": np.array([-0.041 * r_fem_l, -0.429 * r_fem_l, 0.033 * r_fem_l]),
+                "l_tibfib": (l_knee_c + np.array([-0.048 * l_tib_l, -0.41 * l_tib_l, -0.007 * l_tib_l])) - l_ankle_c,
+                "r_tibfib": (r_knee_c + np.array([-0.048 * r_tib_l, -0.41 * r_tib_l, 0.007 * r_tib_l])) - r_ankle_c
+            }
+
+            segment_radii_percentages = {
+                "pelvis": [1.02, 1.06, 0.96],
+                "l_femur": [0.29, 0.15, 0.3],
+                "r_femur": [0.29, 0.15, 0.3],
+                "l_tibfib": [0.28, 0.1, 0.28],
+                "r_tibfib": [0.28, 0.1, 0.28]
+            }
+
+    # Compute inertia using radius of gyration
     inertias = {}
 
-    for segment in segment_mass_percentages.keys():
-        mass = masses[segment]
+    def compute_principal_inertia(m, L, r_percent):
+        r = np.array(r_percent)
+        rg_m = r * L  # radii in metres
+        I = m * (rg_m ** 2)  # gives [Ixx, Iyy, Izz]
+        return np.append(I, [0, 0, 0])  # array [Ixx, Iyy, Izz]
 
-        if segment == "pelvis":
-            # Pelvis modeled as an ellipsoid
-            a = 0.20 * height / 2  # Half of pelvic width
-            b = 0.14 * height / 2  # Half of pelvic depth
-            c = 0.24 * height / 2  # Half of pelvic height
-
-            I_x = (1 / 5) * mass * (b ** 2 + c ** 2)  # Rotation around X (Forward-Backward)
-            I_y = (1 / 5) * mass * (a ** 2 + c ** 2)  # Rotation around Y (Vertical)
-            I_z = (1 / 5) * mass * (a ** 2 + b ** 2)  # Rotation around Z (Left-Right)
-
-            inertias[segment] = [I_x, I_y, I_z, 0, 0, 0]  # OpenSim inertia format
-
-        else:
-            # Long bones modeled as cylinders
-            length = segment_lengths[segment]
-            radius = segment_radii[segment]
-
-            I1 = (1 / 12) * mass * (3 * radius ** 2 + length ** 2)  # Transverse moment (X)
-            I2 = (1 / 12) * mass * (3 * radius ** 2 + length ** 2)  # Transverse moment (Z)
-            I3 = (1 / 2) * mass * radius ** 2  # Longitudinal moment (Y)
-
-            # Assign inertia with correct OpenSim axes
-            inertias[segment] = [I1, I3, I2, 0, 0, 0]  # Y-axis gets I3 (smallest)
+    for segment in segment_radii_percentages.keys():
+        inertias[segment] = compute_principal_inertia(masses[segment], segment_coms[segment],
+                                                      segment_radii_percentages[segment])
 
     return {
         "masses": masses,
@@ -1421,7 +1529,8 @@ def estimate_body_segment_parameters(height, weight):
     }
 
 
-def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, height, x_opt_left, x_opt_right):
+def perform_updates(empty_model, output_folder, mesh_directory, model_name, weight, x_opt_left, x_opt_right,
+                    age, sex, segment_lengths, segment_centres, joint_centres):
     """
     Performs a series of updates on an OpenSim model including setting joint ranges, default values,
     renaming coordinates, updating body segment properties, modifying joint rotation axes,
@@ -1601,20 +1710,17 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
         body.setInertia(osim.Inertia(*inertia))
 
     # Compute body segment parameters
-    params = estimate_body_segment_parameters(height, weight)
+    params = estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_centres, joint_centres)
     masses = params["masses"]
     inertias = params["inertias"]
     coms = params["coms"]
 
-    # Set all COMs at [0,0,0] (assuming mesh centroids)
-    #coms = {key: [0, 0, 0] for key in masses.keys()}
-
     # Apply mass, center of mass, and inertia
     set_mass_com_inertia(pelvis, masses["pelvis"], coms["pelvis"], inertias["pelvis"])
-    set_mass_com_inertia(femur_l, masses["femur"], coms["femur"], inertias["femur"])
-    set_mass_com_inertia(femur_r, masses["femur"], coms["femur"], inertias["femur"])
-    set_mass_com_inertia(tibfib_l, masses["tibfib"], coms["tibfib"], inertias["tibfib"])
-    set_mass_com_inertia(tibfib_r, masses["tibfib"], coms["tibfib"], inertias["tibfib"])
+    set_mass_com_inertia(femur_l, masses["l_femur"], coms["l_femur"], inertias["l_femur"])
+    set_mass_com_inertia(femur_r, masses["r_femur"], coms["r_femur"], inertias["r_femur"])
+    set_mass_com_inertia(tibfib_l, masses["l_tibfib"], coms["l_tibfib"], inertias["l_tibfib"])
+    set_mass_com_inertia(tibfib_r, masses["r_tibfib"], coms["r_tibfib"], inertias["r_tibfib"])
 
     # Finalise the initial iteration of model
     model.finalizeConnections()

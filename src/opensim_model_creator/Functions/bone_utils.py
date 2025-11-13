@@ -2051,7 +2051,7 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=Tr
     right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
 
-def perform_scaling(output_directory, output_file, static_trc_file):
+def perform_scaling(output_directory, output_file, static_trc_file, weight):
     """
     Performs scaling of an OpenSim model using a scaling tool with marker-based calibration.
 
@@ -2071,6 +2071,7 @@ def perform_scaling(output_directory, output_file, static_trc_file):
     scaling_file = os.path.join(high_level_inputs, "ScaleSettings.xml")
     scale_tool = osim.ScaleTool(scaling_file)
     scale_tool.setPathToSubject(os.path.join(output_directory, ""))
+    scale_tool.setSubjectMass(float(weight))
 
     # Set the model file
     scale_tool.getGenericModelMaker().setModelFileName(output_file)  # Replace with your model file

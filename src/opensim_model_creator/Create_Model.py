@@ -73,7 +73,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     feet_adjustments(output_file, empty_model, static_marker_data, realign_feet=True)
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
-    perform_scaling(model_directory, output_file, static_trc)
+    perform_scaling(model_directory, output_file, static_trc, weight)
 
     model_path = os.path.join(model_directory, "Lower_Limb.osim")
     if optimise_knee_axis:

@@ -1401,8 +1401,12 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": (0.0875 + 0.0036 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "l_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "r_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
-                "l_foot": 0.0133 * weight,  # 1.33% of body mass
-                "r_foot": 0.0133 * weight  # 1.33% of body mass
+                "l_talus": 0.064 * 0.0133 * weight,  # foot is 1.33% of body mass, need to distribute across talus, calcaneus, and toes
+                "r_talus": 0.064 * 0.0133 * weight,
+                "l_calcn": 0.796 * 0.0133 * weight,
+                "r_calcn": 0.796 * 0.0133 * weight,
+                "l_toes": 0.14 * 0.0133 * weight,
+                "r_toes": 0.14 * 0.0133 * weight
             }
 
             segment_coms = {
@@ -1431,7 +1435,12 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": (0.0779 + 0.0041 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "l_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "r_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
-                "foot": 0.0144 * weight  # 1.33% of body mass
+                "l_talus": 0.064 * 0.0144 * weight, # foot is 1.44% of body mass, need to distribute across talus, calcaneus, and toes
+                "r_talus": 0.064 * 0.0144 * weight,
+                "l_calcn": 0.796 * 0.0144 * weight,
+                "r_calcn": 0.796 * 0.0144 * weight,
+                "l_toes": 0.14 * 0.0144 * weight,
+                "r_toes": 0.14 * 0.0144 * weight
             }
 
             segment_coms = {
@@ -1462,8 +1471,13 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": 0.146 * weight,
                 "l_tibfib": 0.045 * weight,
                 "r_tibfib": 0.045 * weight,
-                "l_foot": 0.01 * weight,
-                "r_foot": 0.01 * weight
+                "l_talus": 0.064 * 0.01 * weight, # foot is 1% of body mass, need to distribute across talus, calcaneus, and toes
+                "r_talus": 0.064 * 0.01 * weight,
+                "l_calcn": 0.796 * 0.01 * weight,
+                "r_calcn": 0.796 * 0.01 * weight,
+                "l_toes": 0.14 * 0.01 * weight,
+                "r_toes": 0.14 * 0.01 * weight
+
             }
 
             segment_coms = {
@@ -1489,8 +1503,12 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": 0.123 * weight,
                 "l_tibfib": 0.048 * weight,
                 "r_tibfib": 0.048 * weight,
-                "l_foot": 0.012 * weight,
-                "r_foot": 0.012 * weight
+                "l_talus": 0.064 * 0.012 * weight, # foot is 1% of body mass, need to distribute across talus, calcaneus, and toes
+                "r_talus": 0.064 * 0.012 * weight,
+                "l_calcn": 0.796 * 0.012 * weight,
+                "r_calcn": 0.796 * 0.012 * weight,
+                "l_toes": 0.14 * 0.012 * weight,
+                "r_toes": 0.14 * 0.012 * weight
             }
 
             segment_coms = {
@@ -1694,6 +1712,12 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     femur_r = model.getBodySet().get('femur_r_b')
     tibfib_l = model.getBodySet().get('tibfib_l_b')
     tibfib_r = model.getBodySet().get('tibfib_r_b')
+    calcn_l = model.getBodySet().get('calcn_l_b')
+    calcn_r = model.getBodySet().get('calcn_r_b')
+    talus_l = model.getBodySet().get('talus_l_b')
+    talus_r = model.getBodySet().get('talus_r_b')
+    toes_l = model.getBodySet().get('toes_l_b')
+    toes_r = model.getBodySet().get('toes_r_b')
 
     def set_mass_com_inertia(body, mass, com, inertia):
         """
@@ -1721,6 +1745,14 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     set_mass_com_inertia(femur_r, masses["r_femur"], coms["r_femur"], inertias["r_femur"])
     set_mass_com_inertia(tibfib_l, masses["l_tibfib"], coms["l_tibfib"], inertias["l_tibfib"])
     set_mass_com_inertia(tibfib_r, masses["r_tibfib"], coms["r_tibfib"], inertias["r_tibfib"])
+
+    # update masses of the foot bones
+    calcn_l.setMass(masses['l_calcn'])
+    calcn_r.setMass(masses['r_calcn'])
+    talus_l.setMass(masses['l_talus'])
+    talus_r.setMass(masses['r_talus'])
+    toes_l.setMass(masses['l_toes'])
+    toes_r.setMass(masses['r_toes'])
 
     # Finalise the initial iteration of model
     model.finalizeConnections()

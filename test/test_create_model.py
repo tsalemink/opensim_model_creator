@@ -38,17 +38,28 @@ if __name__ == "__main__":
     start_time = time.time()
     #test("Sydney 01", 1.634, 53.5)
     #test("Brittney 05", 159.1, 40.8),
-    test("RCH000010", subject_info=pd.DataFrame({
-        "Age": [18],
-        "Height": [175.8],
-        "Mass": [79],
+    test("ID_problems", subject_info=pd.DataFrame({
+        "Age": [12],
+        "Height": [109.8],
+        "Mass": [16.2],
         "Sex": [1],
-        "ASIS_width": [240],
-        "left_epicon_width": [101],
-        "left_malleolar_width": [65],
-        "right_epicon_width": [101],
-        "right_malleolar_width": [65],
+        "ASIS_width": [146.8],
+        "left_epicon_width": [64.2],
+        "left_malleolar_width": [47.8],
+        "right_epicon_width": [65.4],
+        "right_malleolar_width": [47.0],
     }))
+    #test("RCH000010", subject_info=pd.DataFrame({
+    #    "Age": [18],
+    #    "Height": [175.8],
+    #    "Mass": [79],
+    #    "Sex": [1],
+    #   "ASIS_width": [240],
+    #    "left_epicon_width": [101],
+    #    "left_malleolar_width": [65],
+    #    "right_epicon_width": [101],
+    #    "right_malleolar_width": [65],
+    #}))
     #test("Jinella 01", 1.363, 32.9),
     #test("Jinella 02", 1.179, 23)
     end_time = time.time()

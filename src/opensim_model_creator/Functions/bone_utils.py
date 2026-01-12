@@ -749,8 +749,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     # Compute pelvis alignment, this is to align the bone meshes to the opensim global coordinate frame
     LASIS = left_landmarks["ASIS"]
     RASIS = right_landmarks["ASIS"]
-    LPSIS = np.array(left_landmarks["PSIS"])
-    RPSIS = np.array(right_landmarks["PSIS"])
+    SACR = (left_landmarks['SAC'] + right_landmarks['SAC']) / 2
     r_hjc = right_landmarks["hjc"]
     l_hjc = left_landmarks["hjc"]
 
@@ -768,7 +767,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
 
     # Define the pelvis anatomical coordinate system from the articulated shape model (this needs to be aligned with
     # the opensim global coordinate system)
-    pelvis_origin, x_axis, y_axis, z_axis = model_alignment.createPelvisACSISB(LASIS, RASIS, LPSIS, RPSIS)
+    pelvis_origin, x_axis, y_axis, z_axis = model_alignment.createPelvisACSISB_sacr(LASIS, RASIS, SACR)
 
     # Create an OpenSim Rotation from pelvis axes
     rot = osim.Mat33()

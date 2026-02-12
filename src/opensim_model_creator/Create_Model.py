@@ -75,6 +75,10 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model.printToXML(output_file)
     perform_scaling(model_directory, output_file, static_trc)
 
+    landmark_files = ["original_lms_left.txt", "original_lms_right.txt",
+                      "predicted_lms_left.txt", "predicted_lms_right.txt"]
+    scale_landmark_files(mesh_directory, landmark_files)
+
     model_path = os.path.join(model_directory, "Lower_Limb.osim")
     if optimise_knee_axis:
         model_path = optimise_knee_joint(model_path, model_directory, dynamic_trc)

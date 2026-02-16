@@ -209,6 +209,19 @@ def scale_marker_data(marker_data, scale_factor) -> None:
             values[i] *= scale_factor
 
 
+def scale_landmark_files(mesh_directory, landmark_files, scale_factor=0.001):
+    for filename in landmark_files:
+        filepath = os.path.join(mesh_directory, filename)
+        if os.path.exists(filepath):
+            scale_landmarks(filepath, scale_factor)
+
+
+def scale_landmarks(landmark_file, scale_factor=0.001):
+    data = np.loadtxt(landmark_file, dtype=str)
+    data[:, 1:] = (data[:, 1:].astype(float) * scale_factor).astype(str)
+    np.savetxt(landmark_file, data, fmt='%s')
+
+
 def scale_stl_mesh(input_stl, output_stl, scale_factor=1000):
     """
     Scales an STL mesh by a given factor and saves it.

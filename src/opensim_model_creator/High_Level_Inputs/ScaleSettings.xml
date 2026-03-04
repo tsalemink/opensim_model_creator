@@ -100,11 +100,11 @@
 							<objects>
 								<MarkerPair>
 									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RHEE RTOE</markers>
+									<markers> RASI RANK</markers>
 								</MarkerPair>
 								<MarkerPair>
 									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LHEE LTOE</markers>
+									<markers> LASI LANK</markers>
 								</MarkerPair>
 							</objects>
 							<groups />
@@ -112,27 +112,27 @@
 						<!--Set of bodies to be scaled by this measurement.-->
 						<BodyScaleSet>
 							<objects>
-								<BodyScale name="talus_l_b">
+								<BodyScale name="talus_l">
 									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
-								<BodyScale name="talus_r_b">
+								<BodyScale name="talus_r">
 									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
-								<BodyScale name="calcn_l_b">
+								<BodyScale name="calcn_l">
 									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
-								<BodyScale name="toes_l_b">
+								<BodyScale name="toes_l">
 									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
-								<BodyScale name="calcn_r_b">
+								<BodyScale name="calcn_r">
 									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
-								<BodyScale name="toes_r_b">
+								<BodyScale name="toes_r">
 									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
@@ -153,7 +153,7 @@
 			<!--Time range over which to average marker-pair distances in the marker file (.trc) for measurement-based scaling.-->
 			<time_range> 0.34000000000000002442 0.63000000000000000444</time_range>
 			<!--Flag (true or false) indicating whether or not to preserve relative mass between segments.-->
-			<preserve_mass_distribution>false</preserve_mass_distribution>
+			<preserve_mass_distribution>true</preserve_mass_distribution>
 			<!--Name of OpenSim model file (.osim) to write when done scaling.-->
 			<output_model_file>Unassigned</output_model_file>
 			<!--Name of file to write containing the scale factors that were applied to the unscaled model (optional).-->

@@ -55,31 +55,40 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     # Copy and process mesh files.
     copy_mesh_files(high_level_inputs, mesh_directory)
     process_participant_meshes(mesh_directory, mesh_directory)
+    # scale feet
+    scale_foot = os.path.join(high_level_inputs, "Feet.osim")
+    perform_scaling(model_directory, scale_foot, static_trc)
     empty_model, _, left_landmarks, right_landmarks, x_opt_left, x_opt_right = initialize_model_and_extract_landmarks(
-        mesh_directory)
+        mesh_directory, model_directory)
 
     segment_lengths, segment_centres, joint_centres = create_model_bodies(
         mesh_directory, static_marker_data, empty_model, left_landmarks, right_landmarks,
         x_opt_left, x_opt_right, sex)
 
     # Create initial OpenSim model.
-    model_name = "Bone_Model"
+    model_name = "Lower_limb"
     empty_model.setName(model_name)
     output_file = perform_updates(empty_model, model_directory, mesh_directory, model_name,
                                   weight, x_opt_left, x_opt_right, age, sex, segment_lengths, segment_centres, joint_centres)
 
     # Adjust foot bone orientation and scaling.
     empty_model = osim.Model(output_file)
-    feet_adjustments(output_file, empty_model, static_marker_data, realign_feet=True)
+    feet_adjustments(empty_model, static_marker_data, realign_feet=True, align_foot_to_ground=False)
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
-    perform_scaling(model_directory, output_file, static_trc)
+
+
 
     landmark_files = ["original_lms_left.txt", "original_lms_right.txt",
                       "predicted_lms_left.txt", "predicted_lms_right.txt"]
     scale_landmark_files(mesh_directory, landmark_files)
 
-    model_path = os.path.join(model_directory, "Lower_Limb.osim")
+    #remove the scaled foot model from directory
+    feet_scaled_model = os.path.join(model_directory, "Feet_scaled.osim")
+    if os.path.isfile(feet_scaled_model):
+        os.remove(feet_scaled_model)
+
+    model_path = os.path.join(model_directory, "Lower_limb.osim")
     if optimise_knee_axis:
         model_path = optimise_knee_joint(model_path, model_directory, dynamic_trc)
 
@@ -99,7 +108,7 @@ def create_model_bodies(mesh_directory, static_marker_data, empty_model, left_lm
         femur_r_centre,
         x_opt_left['knee_rot'], x_opt_right['knee_rot'])
 
-    repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_centre, tibfib_r_centre, left_tibfib, right_tibfib)
+    repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibfib)
 
     empty_model.finalizeConnections()
 

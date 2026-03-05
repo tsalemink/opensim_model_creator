@@ -546,16 +546,56 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     # compute pelvis translation as an osim vector
     pelvis_translation = osim.Vec3(pelvis_origin - height_offset)
 
+    # Create the spatial transform for the custom pelvis to ground joint
+    spatial_transform_pelvis = osim.SpatialTransform()
+
+    # First rotation (pelvis rotation) along Y-axis
+    pelvis_rotation = spatial_transform_pelvis.updTransformAxis(0)
+    pelvis_rotation.setCoordinateNames(osim.ArrayStr("pelvis_rotation", 1))
+    pelvis_rotation.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
+    pelvis_rotation.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Second rotation (pelvis list/obliquity) along X-axis
+    pelvis_list = spatial_transform_pelvis.updTransformAxis(1)
+    pelvis_list.setCoordinateNames(osim.ArrayStr("pelvis_list", 1))
+    pelvis_list.setAxis(osim.Vec3(1, 0, 0))  # Z-axis
+    pelvis_list.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Third rotation (pelvis tilt) along Z-axis
+    pelvis_tilt = spatial_transform_pelvis.updTransformAxis(2)
+    pelvis_tilt.setCoordinateNames(osim.ArrayStr("pelvis_tilt", 1))
+    pelvis_tilt.setAxis(osim.Vec3(0, 0, 1))  # X-axis
+    pelvis_tilt.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Fourth transform (pelvis tx) along X-axis
+    pelvis_tx = spatial_transform_pelvis.updTransformAxis(3)
+    pelvis_tx.setCoordinateNames(osim.ArrayStr("pelvis_tx", 1))
+    pelvis_tx.setAxis(osim.Vec3(1, 0, 0))  # X-axis
+    pelvis_tx.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Fifth transform (pelvis ty) along Y-axis
+    pelvis_ty = spatial_transform_pelvis.updTransformAxis(4)
+    pelvis_ty.setCoordinateNames(osim.ArrayStr("pelvis_ty", 1))
+    pelvis_ty.setAxis(osim.Vec3(0, 1, 0))  # Z-axis
+    pelvis_ty.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Fourth transform (pelvis tz) along Z-axis
+    pelvis_tz = spatial_transform_pelvis.updTransformAxis(5)
+    pelvis_tz.setCoordinateNames(osim.ArrayStr("pelvis_tz", 1))
+    pelvis_tz.setAxis(osim.Vec3(0, 0, 1))  # Y-axis
+    pelvis_tz.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
     # Attach the pelvis body to the ground using a FreeJoint, set the rotation and translation for the pelvis relative
     # to the global CS
-    pelvis_joint = osim.FreeJoint(
+    pelvis_joint = osim.CustomJoint(
         "pelvis_to_ground",
         model.getGround(),
         osim.Vec3(0, 0, 0),
         osim.Vec3(0, 0, 0),
         pelvis,
         osim.Vec3(-pelvis_origin),
-        pelvis_rotation_osim.convertRotationToBodyFixedXYZ()
+        pelvis_rotation_osim.convertRotationToBodyFixedXYZ(),
+        spatial_transform_pelvis
     )
     model.addJoint(pelvis_joint)
 
@@ -1342,26 +1382,49 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     # Locate pelvis joint
     pelvis_joint = model.getJointSet().get('pelvis_to_ground')
 
-    pelvis_obliquity = pelvis_joint.upd_coordinates(0)
-    pelvis_rotation = pelvis_joint.upd_coordinates(1)
+    pelvis_rotation = pelvis_joint.upd_coordinates(0)
+    pelvis_list = pelvis_joint.upd_coordinates(1)
     pelvis_tilt = pelvis_joint.upd_coordinates(2)
+    pelvis_tx = pelvis_joint.upd_coordinates(3)
+    pelvis_ty = pelvis_joint.upd_coordinates(4)
+    pelvis_tz = pelvis_joint.upd_coordinates(5)
 
     # rename pelvis rotations and set default values from x_opt as an average value from the left and right side
-    pelvis_obliquity.setName("pelvis_list")
-    pelvis_obliquity.setDefaultValue(((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3]) / 2))
-    pelvis_rotation.setName("pelvis_rotation")
+    pelvis_rotation.setRangeMin(-6.2831853071795862)
+    pelvis_rotation.setRangeMax(6.2831853071795862)
     pelvis_rotation.setDefaultValue(((x_opt_left['pelvis_rigid'][4] + x_opt_right['pelvis_rigid'][4]) / 2))
-    pelvis_tilt.setName("pelvis_tilt")
+    pelvis_rotation.setDefaultClamped(True)
+    pelvis_rotation.setDefaultLocked(False)
+
+    pelvis_list.setRangeMin(-1.5707963300000001)
+    pelvis_list.setRangeMax(1.5707963300000001)
+    pelvis_list.setDefaultValue(((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3]) / 2))
+    pelvis_list.setDefaultClamped(True)
+    pelvis_list.setDefaultLocked(False)
+
+    pelvis_tilt.setRangeMin(-1.5707963300000001)
+    pelvis_tilt.setRangeMax(1.5707963300000001)
     pelvis_tilt.setDefaultValue(((x_opt_left['pelvis_rigid'][5] + x_opt_right['pelvis_rigid'][5]) / 2))
+    pelvis_tilt.setDefaultClamped(True)
+    pelvis_tilt.setDefaultLocked(False)
 
-    # Access and rename the translational coordinates
-    pelvis_translation_x = pelvis_joint.upd_coordinates(3)  # Translation along x-axis
-    pelvis_translation_y = pelvis_joint.upd_coordinates(4)  # Translation along y-axis
-    pelvis_translation_z = pelvis_joint.upd_coordinates(5)  # Translation along z-axis
+    pelvis_tx.setRangeMin(-50)
+    pelvis_tx.setRangeMax(50)
+    pelvis_tx.setDefaultValue(0.0)
+    pelvis_tx.setDefaultClamped(True)
+    pelvis_tx.setDefaultLocked(False)
 
-    pelvis_translation_x.setName("pelvis_tx")
-    pelvis_translation_y.setName("pelvis_ty")
-    pelvis_translation_z.setName("pelvis_tz")
+    pelvis_ty.setRangeMin(-50)
+    pelvis_ty.setRangeMax(50)
+    pelvis_ty.setDefaultValue(0.0)
+    pelvis_ty.setDefaultClamped(True)
+    pelvis_ty.setDefaultLocked(False)
+
+    pelvis_tz.setRangeMin(-3)
+    pelvis_tz.setRangeMax(3)
+    pelvis_tz.setDefaultValue(0.0)
+    pelvis_tz.setDefaultClamped(True)
+    pelvis_tz.setDefaultLocked(False)
 
     # Set coordinates ranges and default values for left hip joint
     l_hip_flexion = l_hip_joint.upd_coordinates(0)
@@ -1371,14 +1434,20 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_hip_flexion.setRangeMin(-1.5)
     l_hip_flexion.setRangeMax(1.8)
     l_hip_flexion.setDefaultValue(x_opt_left['hip_rot'][0])
+    l_hip_flexion.setDefaultClamped(True)
+    l_hip_flexion.setDefaultLocked(False)
 
     l_hip_rotation.setRangeMin(-0.8)
     l_hip_rotation.setRangeMax(0.8)
     l_hip_rotation.setDefaultValue(x_opt_left['hip_rot'][1] * -0.1)
+    l_hip_rotation.setDefaultClamped(True)
+    l_hip_rotation.setDefaultLocked(False)
 
     l_hip_abduction.setRangeMin(-0.8)
     l_hip_abduction.setRangeMax(1.2)
     l_hip_abduction.setDefaultValue(x_opt_left['hip_rot'][2] * -0.1)
+    l_hip_abduction.setDefaultClamped(True)
+    l_hip_abduction.setDefaultLocked(False)
 
     # Set coordinates ranges and default values for right hip joint
     r_hip_flexion = r_hip_joint.upd_coordinates(0)
@@ -1388,14 +1457,20 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_hip_flexion.setRangeMin(-1.5)
     r_hip_flexion.setRangeMax(1.8)
     r_hip_flexion.setDefaultValue(x_opt_right['hip_rot'][0])
+    r_hip_flexion.setDefaultClamped(True)
+    r_hip_flexion.setDefaultLocked(False)
 
     r_hip_rotation.setRangeMin(-0.8)
     r_hip_rotation.setRangeMax(0.8)
     r_hip_rotation.setDefaultValue(x_opt_right['hip_rot'][1] * 0.1)
+    r_hip_rotation.setDefaultClamped(True)
+    r_hip_rotation.setDefaultLocked(False)
 
     r_hip_abduction.setRangeMin(-1.2)
     r_hip_abduction.setRangeMax(0.8)
     r_hip_abduction.setDefaultValue(x_opt_right['hip_rot'][2] * 0.1)
+    r_hip_abduction.setDefaultClamped(True)
+    r_hip_abduction.setDefaultLocked(False)
 
     # Set coordinates ranges, default values, and names for left knee joint
     l_knee_flexion = l_knee_joint.upd_coordinates(0)
@@ -1403,6 +1478,8 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_knee_flexion.setRangeMin(-0.2)
     l_knee_flexion.setRangeMax(2.2)
     l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0])
+    l_knee_flexion.setDefaultClamped(True)
+    l_knee_flexion.setDefaultLocked(False)
 
     l_knee_add = l_knee_joint.upd_coordinates(1)
     l_knee_add.setName("knee_adduction_l")
@@ -1410,6 +1487,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_knee_add.setRangeMax(x_opt_left['knee_rot'][1] * -0.1)
     l_knee_add.setDefaultValue(x_opt_left['knee_rot'][1] * -0.1)
     l_knee_add.setDefaultLocked(True)  # lock add/abduction in the knee joint
+    l_knee_add.setDefaultClamped(True)
 
     l_knee_rot = l_knee_joint.upd_coordinates(2)
     l_knee_rot.setName("knee_rotation_l")
@@ -1417,6 +1495,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_knee_rot.setRangeMax(0.0)
     l_knee_rot.setDefaultValue(0.0)
     l_knee_rot.setDefaultLocked(True)  # lock i/e rotation in the knee joint
+    l_knee_rot.setDefaultClamped(True)
 
     # Set coordinates ranges, default values, and names for right knee joint
     r_knee_flexion = r_knee_joint.upd_coordinates(0)
@@ -1424,7 +1503,8 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_knee_flexion.setRangeMin(-0.2)
     r_knee_flexion.setRangeMax(2.2)
     r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0])
-    model.finalizeConnections()
+    r_knee_flexion.setDefaultClamped(True)
+    r_knee_flexion.setDefaultLocked(False)
 
     r_knee_add = r_knee_joint.upd_coordinates(1)
     r_knee_add.setName("knee_adduction_r")
@@ -1432,6 +1512,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_knee_add.setRangeMax(x_opt_right['knee_rot'][1] * 0.1)
     r_knee_add.setDefaultValue(x_opt_right['knee_rot'][1] * 0.1)
     r_knee_add.setDefaultLocked(True)  # lock add/abduction in the knee joint
+    r_knee_add.setDefaultClamped(True)
 
     r_knee_rot = r_knee_joint.upd_coordinates(2)
     r_knee_rot.setName("knee_rotation_r")
@@ -1439,17 +1520,24 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_knee_rot.setRangeMax(0.0)
     r_knee_rot.setDefaultValue(0.0)
     r_knee_rot.setDefaultLocked(True)  # lock i/e rotation in the knee joint
+    r_knee_rot.setDefaultClamped(True)
 
     # Set coordinates range and names for right ankle joint
     r_ankle_flexion = r_ankle_joint.upd_coordinates(0)
     r_ankle_flexion.setName("ankle_angle_r")
     r_ankle_flexion.setRangeMin(-0.87266462599716477)
     r_ankle_flexion.setRangeMax(0.87266462599716477)
+    r_ankle_flexion.setDefaultValue(0.0)
+    r_ankle_flexion.setDefaultClamped(True)
+    r_ankle_flexion.setDefaultLocked(False)
     # Set coordinates range and names for right ankle joint
     l_ankle_flexion = l_ankle_joint.upd_coordinates(0)
     l_ankle_flexion.setName("ankle_angle_l")
     l_ankle_flexion.setRangeMin(-0.87266462599716477)
     l_ankle_flexion.setRangeMax(0.87266462599716477)
+    l_ankle_flexion.setDefaultValue(0.0)
+    r_ankle_flexion.setDefaultClamped(True)
+    l_ankle_flexion.setDefaultLocked(False)
 
     # Locate body segments based on printed names
     pelvis = model.getBodySet().get('pelvis_b')

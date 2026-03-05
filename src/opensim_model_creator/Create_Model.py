@@ -73,7 +73,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
     # Adjust foot bone orientation and scaling.
     empty_model = osim.Model(output_file)
-    feet_adjustments(empty_model, static_marker_data, realign_feet=True, align_foot_to_ground=False)
+    feet_adjustments(empty_model, static_marker_data, realign_feet=True, align_foot_to_ground=True)
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
 

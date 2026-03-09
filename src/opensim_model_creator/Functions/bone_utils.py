@@ -466,7 +466,7 @@ def initialize_model_and_extract_landmarks(asm_directory, model_directory):
     x_opt_right = load_x_opt(x_opt_right_file)
 
     # initialise units and gravity
-    empty_model.set_gravity(osim.Vec3(0, 0, -9.80665))
+    empty_model.set_gravity(osim.Vec3(0, -9.80665, 0))
     empty_model.set_length_units('meters')
     empty_model.set_force_units('N')
 

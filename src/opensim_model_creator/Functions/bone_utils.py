@@ -109,263 +109,6 @@ def load_x_opt(file_path):
                 x_opt[name] = np.array(coordinates)
     return x_opt
 
-
-def update_subtalar_joint_range(input_file, output_file, joint_name, range_min, range_max):
-    """
-    Updates the range of the subtalar joint's coordinate in an OpenSim .osim file.
-
-    Parameters:
-    - input_file (str): Path to the input .osim file.
-    - output_file (str): Path to save the updated .osim file.
-    - joint_name (str): Name of the subtalar joint (e.g., "calcn_l_to_talus_l").
-    - range_min (float): New minimum range value.
-    - range_max (float): New maximum range value.
-
-    Returns:
-    - None
-    """
-    # Parse the .osim file
-    tree = ET.parse(input_file)
-    root = tree.getroot()
-
-    # Update <Coordinate> section
-    coordinate_updated = False
-    for coordinate in root.findall(".//Coordinate"):
-        if coordinate.get("name") == joint_name:
-            range_element = coordinate.find("range")
-            if range_element is not None:
-                range_element.text = f"{range_min} {range_max}"
-                coordinate_updated = True
-                print(f"Updated range for {joint_name} to [{range_min}, {range_max}].")
-            else:
-                print(f"No <range> element found for {joint_name}.")
-                return
-
-    if not coordinate_updated:
-        print(f"Coordinate '{joint_name}' not found in the .osim file.")
-        return
-
-    # Save the updated .osim file
-    tree.write(output_file)
-    print(f"Updated .osim file saved to: {output_file}")
-
-
-def update_rx_coordinates(input_file, output_file, updates):
-    """
-    Updates 'rx' coordinate names in both <Coordinate> and <SpatialTransform> sections.
-
-    Parameters:
-    - input_file (str): Path to the input .osim file.
-    - output_file (str): Path to save the updated .osim file.
-    - updates (list of tuples): List of (joint_name, new_name) tuples specifying the updates.
-
-    Returns:
-    - None
-    """
-    # Parse the .osim file
-    tree = ET.parse(input_file)
-    root = tree.getroot()
-
-    # Update <Coordinate> section
-    for joint_name, new_name in updates:
-        coordinate = root.find(f".//Coordinate[@name='rx']")
-        if coordinate is not None:
-            coordinate.set("name", new_name)
-            print(f"Updated <Coordinate> name to '{new_name}' for joint '{joint_name}'.")
-        else:
-            print(f"<Coordinate> 'rx' not found for joint '{joint_name}'.")
-
-    # Update <SpatialTransform> section
-    for joint_name, new_name in updates:
-        custom_joint = root.find(f".//CustomJoint[@name='{joint_name}']")
-        if custom_joint is not None:
-            spatial_transform = custom_joint.find("SpatialTransform")
-            if spatial_transform is not None:
-                for transform_axis in spatial_transform.findall("TransformAxis"):
-                    coordinates = transform_axis.find("coordinates")
-                    if coordinates is not None and coordinates.text and "rx" in coordinates.text:
-                        coordinates.text = coordinates.text.replace("rx", new_name)
-                        print(f"Updated 'rx' to '{new_name}' in <SpatialTransform> for joint '{joint_name}'.")
-            else:
-                print(f"<SpatialTransform> not found for joint '{joint_name}'.")
-        else:
-            print(f"CustomJoint '{joint_name}' not found.")
-
-    # Save the updated .osim file
-    tree.write(output_file)
-    print(f"Updated .osim file saved to: {output_file}")
-
-
-def update_rotation_axes(file_path, output_path, joint_names, new_axes):
-    """
-    Updates the rotation axes of specified CustomJoints in an OpenSim .osim file.
-
-    Parameters:
-    - file_path (str): Path to the input .osim file.
-    - output_path (str): Path to save the updated .osim file.
-    - joint_names (list of str): List of joint names to modify.
-    - new_axes (list of tuple): New rotation axes for each TransformAxis.
-
-    Returns:
-    - None
-    """
-    # Load and parse the .osim file
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    # Function to modify a specific joint
-    def modify_joint(joint_name):
-        # Locate the joint
-        custom_joint = root.find(f".//CustomJoint[@name='{joint_name}']")
-        if custom_joint is not None:
-            print(f"Found CustomJoint: {joint_name}")
-            spatial_transform = custom_joint.find("SpatialTransform")
-
-            # Update the rotation axes
-            for i, axis_values in enumerate(new_axes):  # new_axes is a list of (x, y, z) tuples
-                transform_axis = spatial_transform.find(f"TransformAxis[@name='rotation{i + 1}']")
-                if transform_axis is not None:
-                    axis_element = transform_axis.find("axis")
-                    axis_element.text = f"{axis_values[0]} {axis_values[1]} {axis_values[2]}"
-                    print(f"Updated {joint_name} rotation{i + 1} axis to: {axis_element.text}")
-                else:
-                    print(f"TransformAxis rotation{i + 1} not found for {joint_name}.")
-        else:
-            print(f"CustomJoint '{joint_name}' not found.")
-
-    # Modify each joint
-    for joint_name in joint_names:
-        modify_joint(joint_name)
-
-    # Save the updated .osim file
-    tree.write(output_path)
-    print(f"Updated .osim file saved to: {output_path}")
-
-
-def move_rx_to_first_rotation(file_path, output_path, joint_names):
-    """
-    Moves the 'rx' coordinate from the third rotation (rotation3) to the first rotation (rotation1)
-    for specified CustomJoints in an OpenSim .osim file.
-
-    Parameters:
-    - file_path (str): Path to the input .osim file.
-    - output_path (str): Path to save the updated .osim file.
-    - joint_names (list of str): List of joint names to modify.
-
-    Returns:
-    - None
-    """
-    # Load and parse the .osim file
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    # Function to modify a specific joint
-    def modify_joint(joint_name):
-        # Locate the joint
-        custom_joint = root.find(f".//CustomJoint[@name='{joint_name}']")
-        if custom_joint is not None:
-            print(f"Found CustomJoint: {joint_name}")
-            spatial_transform = custom_joint.find("SpatialTransform")
-
-            # Get the current coordinates for rotation3
-            rotation3 = spatial_transform.find("TransformAxis[@name='rotation3']")
-            rotation1 = spatial_transform.find("TransformAxis[@name='rotation1']")
-            if rotation3 is not None and rotation1 is not None:
-                coordinates_element = rotation3.find("coordinates")
-                if coordinates_element is not None and "rx" in coordinates_element.text:
-                    # Move 'rx' from rotation3 to rotation1
-                    coordinates_element.text = coordinates_element.text.replace("rx", "").strip()
-                    rotation1_coordinates = rotation1.find("coordinates")
-                    if rotation1_coordinates is None:
-                        rotation1_coordinates = ET.SubElement(rotation1, "coordinates")
-                    rotation1_coordinates.text = "rx"
-                    print(f"Moved 'rx' from rotation3 to rotation1 for {joint_name}.")
-                else:
-                    print(f"'rx' not found in rotation3 for {joint_name}.")
-            else:
-                print(f"Missing TransformAxis for {joint_name}.")
-        else:
-            print(f"CustomJoint '{joint_name}' not found.")
-
-    # Modify each joint
-    for joint_name in joint_names:
-        modify_joint(joint_name)
-
-    # Save the updated .osim file
-    tree.write(output_path)
-    print(f"Updated .osim file saved to: {output_path}")
-
-
-def update_subtalar_joint(file_path, output_path, joint_name):
-    """
-    Updates the SpatialTransform of the left subtalar joint:
-    - Ensures 'rx' controls rotation1 with a LinearFunction.
-    - Removes the LinearFunction from rotation3.
-
-    Parameters:
-    - file_path (str): Path to the input .osim file.
-    - output_path (str): Path to save the updated .osim file.
-    - joint_name (str): Name of the left subtalar joint.
-
-    Returns:
-    - None
-    """
-    # Load and parse the .osim file
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    # Locate the CustomJoint
-    custom_joint = root.find(f".//CustomJoint[@name='{joint_name}']")
-    if custom_joint is None:
-        print(f"CustomJoint '{joint_name}' not found.")
-        return
-
-    print(f"Updating SpatialTransform for CustomJoint: {joint_name}")
-    spatial_transform = custom_joint.find("SpatialTransform")
-    if spatial_transform is None:
-        print(f"SpatialTransform not found for CustomJoint: {joint_name}")
-        return
-
-    # Update rotation1 to include rx with a LinearFunction
-    rotation1 = spatial_transform.find("TransformAxis[@name='rotation1']")
-    if rotation1 is not None:
-        # Ensure 'rx' is the coordinate for rotation1
-        coordinates = rotation1.find("coordinates")
-        if coordinates is None:
-            coordinates = ET.SubElement(rotation1, "coordinates")
-        coordinates.text = "rx"
-
-        # Add a LinearFunction with coefficients 1 0
-        linear_function = rotation1.find("LinearFunction")
-        if linear_function is None:
-            linear_function = ET.SubElement(rotation1, "LinearFunction", name="function")
-        coefficients = linear_function.find("coefficients")
-        if coefficients is None:
-            coefficients = ET.SubElement(linear_function, "coefficients")
-        coefficients.text = "1 0"
-
-        print(f"Updated rotation1: coordinate='rx', function='1 0'")
-
-    else:
-        print(f"TransformAxis rotation1 not found for CustomJoint: {joint_name}")
-
-    # Remove the LinearFunction from rotation3
-    rotation3 = spatial_transform.find("TransformAxis[@name='rotation3']")
-    if rotation3 is not None:
-        linear_function = rotation3.find("LinearFunction")
-        if linear_function is not None:
-            rotation3.remove(linear_function)
-            print("Removed LinearFunction from rotation3.")
-        else:
-            print("No LinearFunction found for rotation3.")
-    else:
-        print(f"TransformAxis rotation3 not found for CustomJoint: {joint_name}")
-
-    # Save the updated .osim file
-    tree.write(output_path)
-    print(f"Updated .osim file saved to: {output_path}")
-
-
 def add_markers_to_body(model, body_name, marker_names, mocap_file, center, custom_names=None):
     """
     Adds multiple markers to a specified body in an OpenSim model with optional custom names.
@@ -484,7 +227,7 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
         # Adjust left knee
         adjust_joint_orientation(
             model_path=model_path,
-            joint_name="tibfib_l_to_femur_l",
+            joint_name="knee_l",
             rotation_adjustment=osim.Vec3(left_knee_x, left_knee_y, 0.0),
             output_model_path=temp_model_path_1
         )
@@ -492,7 +235,7 @@ def optimize_knee_axis(model_path, trc_file, start_time, end_time, marker_weight
         # Adjust right knee
         adjust_joint_orientation(
             model_path=temp_model_path_1,
-            joint_name="tibfib_r_to_femur_r",
+            joint_name="knee_r",
             rotation_adjustment=osim.Vec3(right_knee_x, right_knee_y, 0.0),
             output_model_path=temp_model_path_2
         )
@@ -685,7 +428,7 @@ def run_knee_joint_optimisation(source_file_path1, knee_optimisation_trc_file, s
     print(f"Optimized Joint Orientations: {result.x}")
 
 
-def initialize_model_and_extract_landmarks(asm_directory):
+def initialize_model_and_extract_landmarks(asm_directory, model_directory):
     """
     Initializes the OpenSim model and extracts relevant landmarks and marker placements.
 
@@ -701,8 +444,16 @@ def initialize_model_and_extract_landmarks(asm_directory):
             - mocap_static_trc (dict): Dictionary containing marker placements from TRC file.
     """
     # Initialise the OpenSim model
-    empty_model = osim.Model(os.path.join(high_level_inputs, "Feet.osim"))  # Load the base model file
+    empty_model = osim.Model(os.path.join(model_directory, "Feet_scaled.osim"))  # Load the base model file
     state = empty_model.initSystem()  # Initialise the system
+    marker_set = empty_model.updMarkerSet()
+    marker_set.remove(marker_set.getIndex("RASI"))
+    marker_set.remove(marker_set.getIndex('LASI'))
+    marker_set.remove(marker_set.getIndex('RKNE'))
+    marker_set.remove(marker_set.getIndex('LKNE'))
+    marker_set.remove(marker_set.getIndex('RANK'))
+    marker_set.remove(marker_set.getIndex('LANK'))
+    print(f"Extra markers removed from foot model")
 
     # Load and extract landmarks for left and right limbs
     left_landmarks_file = search_files_by_keywords(asm_directory, "left lms predicted")[0]
@@ -715,7 +466,7 @@ def initialize_model_and_extract_landmarks(asm_directory):
     x_opt_right = load_x_opt(x_opt_right_file)
 
     # initialise units and gravity
-    empty_model.set_gravity(osim.Vec3(0, 0, -9.80665))
+    empty_model.set_gravity(osim.Vec3(0, -9.80665, 0))
     empty_model.set_length_units('meters')
     empty_model.set_force_units('N')
 
@@ -795,16 +546,56 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     # compute pelvis translation as an osim vector
     pelvis_translation = osim.Vec3(pelvis_origin - height_offset)
 
+    # Create the spatial transform for the custom pelvis to ground joint
+    spatial_transform_pelvis = osim.SpatialTransform()
+
+    # First rotation (pelvis rotation) along Y-axis
+    pelvis_rotation = spatial_transform_pelvis.updTransformAxis(0)
+    pelvis_rotation.setCoordinateNames(osim.ArrayStr("pelvis_rotation", 1))
+    pelvis_rotation.setAxis(osim.Vec3(0, 1, 0))  # Y-axis
+    pelvis_rotation.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Second rotation (pelvis list/obliquity) along X-axis
+    pelvis_list = spatial_transform_pelvis.updTransformAxis(1)
+    pelvis_list.setCoordinateNames(osim.ArrayStr("pelvis_list", 1))
+    pelvis_list.setAxis(osim.Vec3(1, 0, 0))  # Z-axis
+    pelvis_list.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Third rotation (pelvis tilt) along Z-axis
+    pelvis_tilt = spatial_transform_pelvis.updTransformAxis(2)
+    pelvis_tilt.setCoordinateNames(osim.ArrayStr("pelvis_tilt", 1))
+    pelvis_tilt.setAxis(osim.Vec3(0, 0, 1))  # X-axis
+    pelvis_tilt.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Fourth transform (pelvis tx) along X-axis
+    pelvis_tx = spatial_transform_pelvis.updTransformAxis(3)
+    pelvis_tx.setCoordinateNames(osim.ArrayStr("pelvis_tx", 1))
+    pelvis_tx.setAxis(osim.Vec3(1, 0, 0))  # X-axis
+    pelvis_tx.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Fifth transform (pelvis ty) along Y-axis
+    pelvis_ty = spatial_transform_pelvis.updTransformAxis(4)
+    pelvis_ty.setCoordinateNames(osim.ArrayStr("pelvis_ty", 1))
+    pelvis_ty.setAxis(osim.Vec3(0, 1, 0))  # Z-axis
+    pelvis_ty.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
+    # Fourth transform (pelvis tz) along Z-axis
+    pelvis_tz = spatial_transform_pelvis.updTransformAxis(5)
+    pelvis_tz.setCoordinateNames(osim.ArrayStr("pelvis_tz", 1))
+    pelvis_tz.setAxis(osim.Vec3(0, 0, 1))  # Y-axis
+    pelvis_tz.set_function(osim.LinearFunction(1, 0))  # Ensures movement
+
     # Attach the pelvis body to the ground using a FreeJoint, set the rotation and translation for the pelvis relative
     # to the global CS
-    pelvis_joint = osim.FreeJoint(
+    pelvis_joint = osim.CustomJoint(
         "pelvis_to_ground",
         model.getGround(),
         osim.Vec3(0, 0, 0),
         osim.Vec3(0, 0, 0),
         pelvis,
         osim.Vec3(-pelvis_origin),
-        pelvis_rotation_osim.convertRotationToBodyFixedXYZ()
+        pelvis_rotation_osim.convertRotationToBodyFixedXYZ(),
+        spatial_transform_pelvis
     )
     model.addJoint(pelvis_joint)
 
@@ -856,8 +647,8 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     femur_inertia = osim.Inertia(0.1, 0.1, 0.01)  # Moments of inertia
 
     # Create the left and right femur bodies
-    left_femur = osim.Body("femur_l_b", femur_mass, femur_mass_center, femur_inertia)
-    right_femur = osim.Body("femur_r_b", femur_mass, femur_mass_center, femur_inertia)
+    left_femur = osim.Body("femur_l", femur_mass, femur_mass_center, femur_inertia)
+    right_femur = osim.Body("femur_r", femur_mass, femur_mass_center, femur_inertia)
 
     # Add the femur bodies to the model
     empty_model.addBody(left_femur)
@@ -877,24 +668,24 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     mesh_path = os.path.join(meshes, "predicted_mesh_right_femur.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_r_center = r_hjc  # Extract center of the right femur
-    add_mesh_to_body(empty_model, "femur_r_b", relative_path, offset_orientation=(0, 0, 0),
+    add_mesh_to_body(empty_model, "femur_r", relative_path, offset_orientation=(0, 0, 0),
                      offset_translation=-femur_r_center)
 
     # Attach the mesh for the left femur
     mesh_path = os.path.join(meshes, "predicted_mesh_left_femur.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
     femur_l_center = l_hjc  # Extract center of the right femur
-    add_mesh_to_body(empty_model, "femur_l_b", relative_path, offset_orientation=(0, 0, 0),
+    add_mesh_to_body(empty_model, "femur_l", relative_path, offset_orientation=(0, 0, 0),
                      offset_translation=-femur_l_center)
 
     # Add mocap markers to the femur bodies, taken from static trial for tracking markers
-    add_markers_to_body(empty_model, "femur_l_b", ["LTHI", "LKNE", "LKNEM"], mocap_static_trc, femur_l_center)
-    add_markers_to_body(empty_model, "femur_r_b", ["RTHI", "RKNE", "RKNEM"], mocap_static_trc, femur_r_center)
+    add_markers_to_body(empty_model, "femur_l", ["LTHI", "LKNE", "LKNEM"], mocap_static_trc, femur_l_center)
+    add_markers_to_body(empty_model, "femur_r", ["RTHI", "RKNE", "RKNEM"], mocap_static_trc, femur_r_center)
 
     # Add anatomical landmarks to the femur bodies with custom marker names, taken from shape model prediction for anatomical markers
-    add_markers_to_body(empty_model, "femur_l_b", ["LEC", "MEC"], left_landmarks, femur_l_center,
+    add_markers_to_body(empty_model, "femur_l", ["LEC", "MEC"], left_landmarks, femur_l_center,
                         ["LKNE_ssm", "LKNEM_ssm"])
-    add_markers_to_body(empty_model, "femur_r_b", ["LEC", "MEC"], right_landmarks, femur_r_center,
+    add_markers_to_body(empty_model, "femur_r", ["LEC", "MEC"], right_landmarks, femur_r_center,
                         ["RKNE_ssm", "RKNEM_ssm"])
 
     # Create the spatial transform for the custom left hip joint ###need to modify with values from shape model
@@ -920,7 +711,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
     # Create the custom left hip joint with all restored parameters, femur orientation defined from x_opt
     left_hip_joint = osim.CustomJoint(
-        "femur_l_to_pelvis",  # Joint name
+        "hip_l",  # Joint name
         pelvis,  # Parent frame (Pelvis)
         osim.Vec3(l_hjc - pelvis_centre),  # Location in parent frame
         osim.Vec3(0, 0, 0),  # Orientation in parent frame
@@ -955,7 +746,7 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
 
     # Create the custom hip joint with all restored parameters, femur orientation defined from x_opt
     right_hip_joint = osim.CustomJoint(
-        "femur_r_to_pelvis",  # Joint name
+        "hip_r",  # Joint name
         pelvis,  # Parent frame (Pelvis)
         osim.Vec3(r_hjc - pelvis_centre),  # Location in parent frame
         osim.Vec3(0, 0, 0),  # Orientation in parent frame
@@ -1004,8 +795,8 @@ def create_tibfib_bodies_and_knee_joints(
     tibfib_inertia = osim.Inertia(0.08, 0.08, 0.005)  # Moments of inertia for the tibfib body
 
     # Create the left and right tibfib bodies
-    left_tibfib = osim.Body("tibfib_l_b", tibfib_mass, tibfib_mass_center, tibfib_inertia)  # Left tibfib
-    right_tibfib = osim.Body("tibfib_r_b", tibfib_mass, tibfib_mass_center, tibfib_inertia)  # Right tibfib
+    left_tibfib = osim.Body("tibfib_l", tibfib_mass, tibfib_mass_center, tibfib_inertia)  # Left tibfib
+    right_tibfib = osim.Body("tibfib_r", tibfib_mass, tibfib_mass_center, tibfib_inertia)  # Right tibfib
 
     # Add the tibfib bodies to the model
     empty_model.addBody(left_tibfib)  # Add the left tibfib body to the model
@@ -1021,7 +812,7 @@ def create_tibfib_bodies_and_knee_joints(
     tibia_r_center = r_mid_mal
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
+    add_mesh_to_body(empty_model, "tibfib_r", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=-tibia_r_center)
 
@@ -1031,7 +822,7 @@ def create_tibfib_bodies_and_knee_joints(
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     # Add the mesh to the right tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_r_b", relative_path,
+    add_mesh_to_body(empty_model, "tibfib_r", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=-tibia_r_center)
 
@@ -1045,7 +836,7 @@ def create_tibfib_bodies_and_knee_joints(
     tibia_l_center = l_mid_mal
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
+    add_mesh_to_body(empty_model, "tibfib_l", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=-tibia_l_center)
 
@@ -1055,25 +846,25 @@ def create_tibfib_bodies_and_knee_joints(
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
-    add_mesh_to_body(empty_model, "tibfib_l_b", relative_path,
+    add_mesh_to_body(empty_model, "tibfib_l", relative_path,
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=-tibia_l_center)
 
     # Add mocap markers to the tibfib bodies
     # Add mocap markers for the left tibfib body
-    add_markers_to_body(empty_model, "tibfib_l_b", ["LTIB", "LTOE", "LHEE", "LMED", "LANK"], mocap_static_trc,
+    add_markers_to_body(empty_model, "tibfib_l", ["LTIB", "LTOE", "LHEE", "LMED", "LANK"], mocap_static_trc,
                         tibia_l_center)
 
     # Add landmark markers for the left tibfib body
-    add_markers_to_body(empty_model, "tibfib_l_b", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,
+    add_markers_to_body(empty_model, "tibfib_l", ["malleolus_med", "malleolus_lat"], left_landmarks, tibia_l_center,
                         ["LMED_ssm", "LANK_ssm"])
 
     # Add mocap markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibfib_r_b", ["RTIB", "RTOE", "RHEE", "RMED", "RANK"], mocap_static_trc,
+    add_markers_to_body(empty_model, "tibfib_r", ["RTIB", "RTOE", "RHEE", "RMED", "RANK"], mocap_static_trc,
                         tibia_r_center)
 
     # Add landmark markers for the right tibfib body
-    add_markers_to_body(empty_model, "tibfib_r_b", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,
+    add_markers_to_body(empty_model, "tibfib_r", ["malleolus_med", "malleolus_lat"], right_landmarks, tibia_r_center,
                         ["RMED_ssm", "RANK_ssm"])
 
     # Extract the medial and lateral epicondyle landmarks
@@ -1142,7 +933,7 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Define the knee joint connecting the left tibfib to the left femur
     left_knee_joint = osim.CustomJoint(
-        "tibfib_l_to_femur_l",  # Name of the joint
+        "knee_l",  # Name of the joint
         left_femur,  # Parent body (femur)
         osim.Vec3(l_EC_midpoint - femur_l_center),  # Location of the joint in the femur frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
@@ -1220,7 +1011,7 @@ def create_tibfib_bodies_and_knee_joints(
 
     # Define the knee joint connecting the right tibfib to the right femur
     right_knee_joint = osim.CustomJoint(
-        "tibfib_r_to_femur_r",  # Name of the joint
+        "knee_r",  # Name of the joint
         right_femur,  # Parent body (femur)
         osim.Vec3(r_EC_midpoint - femur_r_center),  # Location of the joint in the femur frame
         osim.Vec3(0, 0, 0),  # Orientation of the joint in the femur frame
@@ -1243,8 +1034,7 @@ def create_tibfib_bodies_and_knee_joints(
     return tibia_l_center, tibia_r_center, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint
 
 
-def repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
-                                            tibfib_r_center, left_tibfib, right_tibfib):
+def repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibfib):
     """
       Repurposes the foot bodies (talus) in the OpenSim model and creates ankle joints
       (PinJoint) connecting the talus to the tibia/fibula (tibfib) segments.
@@ -1260,12 +1050,12 @@ def repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
           None: The function modifies the OpenSim model in place by adding new joints.
       """
     # Access the body named "talus_l_b"
-    left_talus = empty_model.getBodySet().get("talus_l_b")
+    left_talus = empty_model.getBodySet().get("talus_l")
     # Access the body named "talus_r_b"
-    right_talus = empty_model.getBodySet().get("talus_r_b")
+    right_talus = empty_model.getBodySet().get("talus_r")
 
     # Locate the joint by name in the model's JointSet
-    joint_name_to_remove = "talus_l_b_to_ground"  # Replace with the actual joint name
+    joint_name_to_remove = "talus_l_to_ground"  # Replace with the actual joint name
     if empty_model.getJointSet().contains(joint_name_to_remove):
         joint_to_remove = empty_model.getJointSet().get(joint_name_to_remove)
         empty_model.updJointSet().remove(joint_to_remove)
@@ -1273,40 +1063,36 @@ def repurpose_feet_bodies_and_create_joints(empty_model, tibfib_l_center,
     else:
         print(f"Joint '{joint_name_to_remove}' not found in the model.")
 
-    joint_name_to_remove = "talus_r_b_to_ground"  # Repeat for the right side if needed
+    joint_name_to_remove = "talus_r_to_ground"  # Repeat for the right side if needed
     if empty_model.getJointSet().contains(joint_name_to_remove):
         joint_to_remove = empty_model.getJointSet().get(joint_name_to_remove)
         empty_model.updJointSet().remove(joint_to_remove)
         print(f"Joint '{joint_name_to_remove}' has been removed.")
     else:
         print(f"Joint '{joint_name_to_remove}' not found in the model.")
-
-    # Define manual adjustments for the left and right talus positions in the child frame
-    manual__l_talus_positioning_child = (-0.001, 0.017, -0.0025)  # Manual adjustment for left talus
-    manual_r_talus_positioning_child = (-0.001, 0.017, 0.0025)  # Manual adjustment for right talus
 
     # Define the ankle joint connecting the left talus to the left tibfib
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
     left_ankle_joint = osim.PinJoint(
-        "talus_l_to_tibfib_l",  # Name of the joint
+        "ankle_l",  # Name of the joint
         left_tibfib,  # Parent body (tibfib)
-        osim.Vec3(0, 0, 0),  # Location of the joint in the tibfib frame
-        osim.Vec3(0, 0, 0),  # Orientation of the joint in the tibfib frame
+        osim.Vec3(-0.0, -0.01, 0),  # Location of the joint in the tibfib frame
+        osim.Vec3(-0.175895, 0.105208, 0.0186622),  # Orientation of the joint in the tibfib frame
         left_talus,  # Child body (talus)
-        osim.Vec3(manual__l_talus_positioning_child),  # Manually adjusted location of the joint in the talus frame
-        osim.Vec3(0, 0, 0)  # Orientation of the joint in the talus frame
+        osim.Vec3(0, 0, 0),  # Manually adjusted location of the joint in the talus frame
+        osim.Vec3(-0.175895, 0.105208, 0.0186622)  # Orientation of the joint in the talus frame
     )
 
     # Define the ankle joint connecting the right talus to the right tibfib
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
     right_ankle_joint = osim.PinJoint(
-        "talus_r_to_tibfib_r",  # Name of the joint
+        "ankle_r",  # Name of the joint
         right_tibfib,  # Parent body (tibfib)
-        osim.Vec3(0, 0, 0),  # Location of the joint in the tibfib frame
-        osim.Vec3(0, 0, 0),  # Orientation of the joint in the tibfib frame
+        osim.Vec3(-0.0, -0.01, 0),  # Location of the joint in the tibfib frame
+        osim.Vec3(0.175895, -0.105208, 0.0186622),  # Orientation of the joint in the tibfib frame
         right_talus,  # Child body (talus)
-        osim.Vec3(manual_r_talus_positioning_child),  # Manually adjusted location of the joint in the talus frame
-        osim.Vec3(0, 0, 0))
+        osim.Vec3(0, 0, 0),  # Manually adjusted location of the joint in the talus frame
+        osim.Vec3(0.175895, -0.105208, 0.0186622))
 
     # Add the left ankle joint to the OpenSim model
     empty_model.addJoint(left_ankle_joint)
@@ -1582,40 +1368,63 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     state = model.initSystem()
 
     # Locate hip joints
-    l_hip_joint = model.getJointSet().get('femur_l_to_pelvis')
-    r_hip_joint = model.getJointSet().get('femur_r_to_pelvis')
+    l_hip_joint = model.getJointSet().get('hip_l')
+    r_hip_joint = model.getJointSet().get('hip_r')
 
     # Locate knee joints
-    l_knee_joint = model.getJointSet().get('tibfib_l_to_femur_l')
-    r_knee_joint = model.getJointSet().get('tibfib_r_to_femur_r')
+    l_knee_joint = model.getJointSet().get('knee_l')
+    r_knee_joint = model.getJointSet().get('knee_r')
 
     # Locate Ankle joints
-    l_ankle_joint = model.getJointSet().get('talus_l_to_tibfib_l')
-    r_ankle_joint = model.getJointSet().get('talus_r_to_tibfib_r')
+    l_ankle_joint = model.getJointSet().get('ankle_l')
+    r_ankle_joint = model.getJointSet().get('ankle_r')
 
     # Locate pelvis joint
     pelvis_joint = model.getJointSet().get('pelvis_to_ground')
 
-    pelvis_obliquity = pelvis_joint.upd_coordinates(0)
-    pelvis_rotation = pelvis_joint.upd_coordinates(1)
+    pelvis_rotation = pelvis_joint.upd_coordinates(0)
+    pelvis_list = pelvis_joint.upd_coordinates(1)
     pelvis_tilt = pelvis_joint.upd_coordinates(2)
+    pelvis_tx = pelvis_joint.upd_coordinates(3)
+    pelvis_ty = pelvis_joint.upd_coordinates(4)
+    pelvis_tz = pelvis_joint.upd_coordinates(5)
 
     # rename pelvis rotations and set default values from x_opt as an average value from the left and right side
-    pelvis_obliquity.setName("pelvis_list")
-    pelvis_obliquity.setDefaultValue(((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3]) / 2))
-    pelvis_rotation.setName("pelvis_rotation")
+    pelvis_rotation.setRangeMin(-6.2831853071795862)
+    pelvis_rotation.setRangeMax(6.2831853071795862)
     pelvis_rotation.setDefaultValue(((x_opt_left['pelvis_rigid'][4] + x_opt_right['pelvis_rigid'][4]) / 2))
-    pelvis_tilt.setName("pelvis_tilt")
+    pelvis_rotation.setDefaultClamped(True)
+    pelvis_rotation.setDefaultLocked(False)
+
+    pelvis_list.setRangeMin(-1.5707963300000001)
+    pelvis_list.setRangeMax(1.5707963300000001)
+    pelvis_list.setDefaultValue(((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3]) / 2))
+    pelvis_list.setDefaultClamped(True)
+    pelvis_list.setDefaultLocked(False)
+
+    pelvis_tilt.setRangeMin(-1.5707963300000001)
+    pelvis_tilt.setRangeMax(1.5707963300000001)
     pelvis_tilt.setDefaultValue(((x_opt_left['pelvis_rigid'][5] + x_opt_right['pelvis_rigid'][5]) / 2))
+    pelvis_tilt.setDefaultClamped(True)
+    pelvis_tilt.setDefaultLocked(False)
 
-    # Access and rename the translational coordinates
-    pelvis_translation_x = pelvis_joint.upd_coordinates(3)  # Translation along x-axis
-    pelvis_translation_y = pelvis_joint.upd_coordinates(4)  # Translation along y-axis
-    pelvis_translation_z = pelvis_joint.upd_coordinates(5)  # Translation along z-axis
+    pelvis_tx.setRangeMin(-50)
+    pelvis_tx.setRangeMax(50)
+    pelvis_tx.setDefaultValue(0.0)
+    pelvis_tx.setDefaultClamped(True)
+    pelvis_tx.setDefaultLocked(False)
 
-    pelvis_translation_x.setName("pelvis_tx")
-    pelvis_translation_y.setName("pelvis_ty")
-    pelvis_translation_z.setName("pelvis_tz")
+    pelvis_ty.setRangeMin(-50)
+    pelvis_ty.setRangeMax(50)
+    pelvis_ty.setDefaultValue(0.0)
+    pelvis_ty.setDefaultClamped(True)
+    pelvis_ty.setDefaultLocked(False)
+
+    pelvis_tz.setRangeMin(-3)
+    pelvis_tz.setRangeMax(3)
+    pelvis_tz.setDefaultValue(0.0)
+    pelvis_tz.setDefaultClamped(True)
+    pelvis_tz.setDefaultLocked(False)
 
     # Set coordinates ranges and default values for left hip joint
     l_hip_flexion = l_hip_joint.upd_coordinates(0)
@@ -1625,14 +1434,20 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_hip_flexion.setRangeMin(-1.5)
     l_hip_flexion.setRangeMax(1.8)
     l_hip_flexion.setDefaultValue(x_opt_left['hip_rot'][0])
+    l_hip_flexion.setDefaultClamped(True)
+    l_hip_flexion.setDefaultLocked(False)
 
     l_hip_rotation.setRangeMin(-0.8)
     l_hip_rotation.setRangeMax(0.8)
     l_hip_rotation.setDefaultValue(x_opt_left['hip_rot'][1] * -0.1)
+    l_hip_rotation.setDefaultClamped(True)
+    l_hip_rotation.setDefaultLocked(False)
 
     l_hip_abduction.setRangeMin(-0.8)
     l_hip_abduction.setRangeMax(1.2)
     l_hip_abduction.setDefaultValue(x_opt_left['hip_rot'][2] * -0.1)
+    l_hip_abduction.setDefaultClamped(True)
+    l_hip_abduction.setDefaultLocked(False)
 
     # Set coordinates ranges and default values for right hip joint
     r_hip_flexion = r_hip_joint.upd_coordinates(0)
@@ -1642,14 +1457,20 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_hip_flexion.setRangeMin(-1.5)
     r_hip_flexion.setRangeMax(1.8)
     r_hip_flexion.setDefaultValue(x_opt_right['hip_rot'][0])
+    r_hip_flexion.setDefaultClamped(True)
+    r_hip_flexion.setDefaultLocked(False)
 
     r_hip_rotation.setRangeMin(-0.8)
     r_hip_rotation.setRangeMax(0.8)
     r_hip_rotation.setDefaultValue(x_opt_right['hip_rot'][1] * 0.1)
+    r_hip_rotation.setDefaultClamped(True)
+    r_hip_rotation.setDefaultLocked(False)
 
     r_hip_abduction.setRangeMin(-1.2)
     r_hip_abduction.setRangeMax(0.8)
     r_hip_abduction.setDefaultValue(x_opt_right['hip_rot'][2] * 0.1)
+    r_hip_abduction.setDefaultClamped(True)
+    r_hip_abduction.setDefaultLocked(False)
 
     # Set coordinates ranges, default values, and names for left knee joint
     l_knee_flexion = l_knee_joint.upd_coordinates(0)
@@ -1657,6 +1478,8 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_knee_flexion.setRangeMin(-0.2)
     l_knee_flexion.setRangeMax(2.2)
     l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0])
+    l_knee_flexion.setDefaultClamped(True)
+    l_knee_flexion.setDefaultLocked(False)
 
     l_knee_add = l_knee_joint.upd_coordinates(1)
     l_knee_add.setName("knee_adduction_l")
@@ -1664,6 +1487,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_knee_add.setRangeMax(x_opt_left['knee_rot'][1] * -0.1)
     l_knee_add.setDefaultValue(x_opt_left['knee_rot'][1] * -0.1)
     l_knee_add.setDefaultLocked(True)  # lock add/abduction in the knee joint
+    l_knee_add.setDefaultClamped(True)
 
     l_knee_rot = l_knee_joint.upd_coordinates(2)
     l_knee_rot.setName("knee_rotation_l")
@@ -1671,6 +1495,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_knee_rot.setRangeMax(0.0)
     l_knee_rot.setDefaultValue(0.0)
     l_knee_rot.setDefaultLocked(True)  # lock i/e rotation in the knee joint
+    l_knee_rot.setDefaultClamped(True)
 
     # Set coordinates ranges, default values, and names for right knee joint
     r_knee_flexion = r_knee_joint.upd_coordinates(0)
@@ -1678,7 +1503,8 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_knee_flexion.setRangeMin(-0.2)
     r_knee_flexion.setRangeMax(2.2)
     r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0])
-    model.finalizeConnections()
+    r_knee_flexion.setDefaultClamped(True)
+    r_knee_flexion.setDefaultLocked(False)
 
     r_knee_add = r_knee_joint.upd_coordinates(1)
     r_knee_add.setName("knee_adduction_r")
@@ -1686,6 +1512,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_knee_add.setRangeMax(x_opt_right['knee_rot'][1] * 0.1)
     r_knee_add.setDefaultValue(x_opt_right['knee_rot'][1] * 0.1)
     r_knee_add.setDefaultLocked(True)  # lock add/abduction in the knee joint
+    r_knee_add.setDefaultClamped(True)
 
     r_knee_rot = r_knee_joint.upd_coordinates(2)
     r_knee_rot.setName("knee_rotation_r")
@@ -1693,30 +1520,37 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_knee_rot.setRangeMax(0.0)
     r_knee_rot.setDefaultValue(0.0)
     r_knee_rot.setDefaultLocked(True)  # lock i/e rotation in the knee joint
+    r_knee_rot.setDefaultClamped(True)
 
     # Set coordinates range and names for right ankle joint
     r_ankle_flexion = r_ankle_joint.upd_coordinates(0)
     r_ankle_flexion.setName("ankle_angle_r")
-    r_ankle_flexion.setRangeMin(-1)
-    r_ankle_flexion.setRangeMax(0.8)
+    r_ankle_flexion.setRangeMin(-0.87266462599716477)
+    r_ankle_flexion.setRangeMax(0.87266462599716477)
+    r_ankle_flexion.setDefaultValue(0.0)
+    r_ankle_flexion.setDefaultClamped(True)
+    r_ankle_flexion.setDefaultLocked(False)
     # Set coordinates range and names for right ankle joint
     l_ankle_flexion = l_ankle_joint.upd_coordinates(0)
     l_ankle_flexion.setName("ankle_angle_l")
-    l_ankle_flexion.setRangeMin(-1)
-    l_ankle_flexion.setRangeMax(0.8)
+    l_ankle_flexion.setRangeMin(-0.87266462599716477)
+    l_ankle_flexion.setRangeMax(0.87266462599716477)
+    l_ankle_flexion.setDefaultValue(0.0)
+    r_ankle_flexion.setDefaultClamped(True)
+    l_ankle_flexion.setDefaultLocked(False)
 
     # Locate body segments based on printed names
     pelvis = model.getBodySet().get('pelvis_b')
-    femur_l = model.getBodySet().get('femur_l_b')
-    femur_r = model.getBodySet().get('femur_r_b')
-    tibfib_l = model.getBodySet().get('tibfib_l_b')
-    tibfib_r = model.getBodySet().get('tibfib_r_b')
-    calcn_l = model.getBodySet().get('calcn_l_b')
-    calcn_r = model.getBodySet().get('calcn_r_b')
-    talus_l = model.getBodySet().get('talus_l_b')
-    talus_r = model.getBodySet().get('talus_r_b')
-    toes_l = model.getBodySet().get('toes_l_b')
-    toes_r = model.getBodySet().get('toes_r_b')
+    femur_l = model.getBodySet().get('femur_l')
+    femur_r = model.getBodySet().get('femur_r')
+    tibfib_l = model.getBodySet().get('tibfib_l')
+    tibfib_r = model.getBodySet().get('tibfib_r')
+    calcn_l = model.getBodySet().get('calcn_l')
+    calcn_r = model.getBodySet().get('calcn_r')
+    talus_l = model.getBodySet().get('talus_l')
+    talus_r = model.getBodySet().get('talus_r')
+    toes_l = model.getBodySet().get('toes_l')
+    toes_r = model.getBodySet().get('toes_r')
 
     def set_mass_com_inertia(body, mass, com, inertia):
         """
@@ -1758,54 +1592,6 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     model.printToXML(output_file)
 
     input_file = output_file
-
-    ##########################################################
-    # Joint names and new rotation axes
-    joints_to_update = ["calcn_l_to_talus_l"]
-    new_rotation_axes = [(-0.78718, -0.604747, -0.120949), (0, 1, 0),
-                         (-0.120949, 0, 0.78718)]  # Example: standard X, Y, Z axes
-    # Update rotation axes
-    update_rotation_axes(input_file, output_file, joints_to_update, new_rotation_axes)
-
-    # Joint names and new rotation axes
-    joints_to_update = ["calcn_r_to_talus_r"]
-    new_rotation_axes = [(0.78718, 0.604747, -0.120949), (0, 1, 0),
-                         (-0.120949, 0, -0.78718)]  # Example: standard X, Y, Z axes
-    # Update rotation axes
-    update_rotation_axes(input_file, output_file, joints_to_update, new_rotation_axes)
-    ################################################################
-
-    # utilise second function (move_rx...) to move the coordinate system
-    input_file = output_file  # Replace with your input .osim file
-    output_file = output_file  # Replace with your desired output file name
-
-    # List of joints to modify
-    joints_to_modify = ["calcn_l_to_talus_l", "calcn_r_to_talus_r"]
-    # Call the function
-    move_rx_to_first_rotation(input_file, output_file, joints_to_modify)
-
-    # Use final function to update the subtalar joints
-    input_file = output_file  # Replace with the path to your current .osim file
-    output_file = output_file  # Replace with the desired output path
-    update_subtalar_joint(input_file, output_file, "calcn_l_to_talus_l")
-    update_subtalar_joint(input_file, output_file, "calcn_r_to_talus_r")
-
-    input_file = output_file  # Path to input .osim file
-    output_file = output_file  # Path to save the updated .osim file
-
-    # List of joint updates (joint_name, new_coordinate_name)
-    updates = [
-        ("calcn_l_to_talus_l", "subtalar_angle_l"),
-        ("calcn_r_to_talus_r", "subtalar_angle_r"),
-    ]
-
-    # Call the function
-    update_rx_coordinates(input_file, output_file, updates)
-
-    # Update the range for the left and right subtalar joints
-    update_subtalar_joint_range(input_file, output_file, "subtalar_angle_l", -1, 1)
-    update_subtalar_joint_range(input_file, output_file, "subtalar_angle_r", -1, 1)
-
     # updates the path to feet mesh files
     update_mesh_file_paths(input_file, output_file, mesh_directory,
                            ["l_bofoot.vtp", "r_bofoot.vtp", "l_foot.vtp", "r_foot.vtp", "l_talus.vtp", "r_talus.vtp"])
@@ -1813,7 +1599,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     return output_file
 
 
-def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=True):
+def feet_adjustments(empty_model, mocap_static_trc, realign_feet=True, align_foot_to_ground = False):
     """
       Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
@@ -1860,8 +1646,8 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=Tr
     heel_local_position = heel_marker.get_location()  # Marker position relative to calcn_l_b
 
     # Get the transform between toes_l_b and calcn_l_b
-    toes_body = empty_model.getBodySet().get("toes_l_b")
-    calcn_body = empty_model.getBodySet().get("calcn_l_b")
+    toes_body = empty_model.getBodySet().get("toes_l")
+    calcn_body = empty_model.getBodySet().get("calcn_l")
     toes_to_calcn_transform = toes_body.findTransformBetween(state, calcn_body)
 
     # Extract translation vector from the Transform
@@ -1894,15 +1680,13 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=Tr
         left_foot_vector_initial, left_foot_vector_actual
     )
 
-    # Set unnecessary rotations (x and z axes) to zero
-    l_foot_update_to_match_actual_rotation[0] = 0
-
     if not realign_feet:
+        l_foot_update_to_match_actual_rotation[0] = 0
         l_foot_update_to_match_actual_rotation[1] = 0
         l_foot_update_to_match_actual_rotation[2] = 0
 
     # Access the left ankle joint by name
-    left_ankle_joint = empty_model.getJointSet().get("talus_l_to_tibfib_l")
+    left_ankle_joint = empty_model.getJointSet().get("ankle_l")
 
     # Access the current orientation of the child frame (talus)
     current_orientation = left_ankle_joint.get_frames(1).get_orientation()
@@ -1923,45 +1707,46 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=Tr
     # Initialize the model's system
     state = empty_model.initSystem()
 
-    # Attempting to make the foot be flat with the ground
-    left_foot_transform_in_ground = toes_body.getTransformInGround(state)
-    # Extract the rotation matrix from the transform
-    rotation_matrix = left_foot_transform_in_ground.R().asMat33()
-    # Convert the rotation matrix to Euler angles
-    rotation = osim.Rotation(rotation_matrix)
-    euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
+    if align_foot_to_ground:
+        # Attempting to make the foot be flat with the ground
+        left_foot_transform_in_ground = toes_body.getTransformInGround(state)
+        # Extract the rotation matrix from the transform
+        rotation_matrix = left_foot_transform_in_ground.R().asMat33()
+        # Convert the rotation matrix to Euler angles
+        rotation = osim.Rotation(rotation_matrix)
+        euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
 
-    # Set unnecessary rotations (x and z axes) to zero
-    euler_angles[0] = 0
-    euler_angles[1] = 0
-    if not realign_feet:
-        euler_angles[2] = 0
+        # Set unnecessary rotations (x and z axes) to zero
+        euler_angles[0] = 0
+        euler_angles[1] = 0
+        if not realign_feet:
+            euler_angles[2] = 0
 
-    # Extract the components of the Vec3 and negate them
-    inverse_euler_angles = osim.Vec3(
-        -euler_angles.get(0),  # Negate X angle
-        -euler_angles.get(1),  # Negate Y angle
-        -euler_angles.get(2)  # Negate Z angle
-    )
-    # Convert osim.Vec3 to NumPy array
-    inverse_euler_angles_array = np.array([
-        inverse_euler_angles.get(0),
-        inverse_euler_angles.get(1),
-        inverse_euler_angles.get(2)
-    ])
-    # Access the joint connecting talus_l_b to its parent (e.g., tibfib_l_b)
-    left_ankle_joint = empty_model.getJointSet().get("talus_l_to_tibfib_l")
-    # Access the child frame's current orientation
-    current_orientation = left_ankle_joint.get_frames(1).get_orientation()
-    current_orientation_values = np.array([current_orientation.get(0),
-                                           current_orientation.get(1),
-                                           current_orientation.get(2)])
+        # Extract the components of the Vec3 and negate them
+        inverse_euler_angles = osim.Vec3(
+            -euler_angles.get(0),  # Negate X angle
+            -euler_angles.get(1),  # Negate Y angle
+            -euler_angles.get(2)  # Negate Z angle
+        )
+        # Convert osim.Vec3 to NumPy array
+        inverse_euler_angles_array = np.array([
+            inverse_euler_angles.get(0),
+            inverse_euler_angles.get(1),
+            inverse_euler_angles.get(2)
+        ])
+        # Access the joint connecting talus_l_b to its parent (e.g., tibfib_l_b)
+        left_ankle_joint = empty_model.getJointSet().get("ankle_l")
+        # Access the child frame's current orientation
+        current_orientation = left_ankle_joint.get_frames(1).get_orientation()
+        current_orientation_values = np.array([current_orientation.get(0),
+                                               current_orientation.get(1),
+                                               current_orientation.get(2)])
 
-    # Apply the inverse rotation to the current orientation
-    new_orientation_values = current_orientation_values - inverse_euler_angles_array
+        # Apply the inverse rotation to the current orientation
+        new_orientation_values = current_orientation_values - inverse_euler_angles_array
 
-    # Update the child frame's orientation
-    left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
+        # Update the child frame's orientation
+        left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
     # === Adjust Orientation of the Right Foot ===
 
@@ -1974,8 +1759,8 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=Tr
     heel_local_position = heel_marker.get_location()  # Marker position relative to calcn_r_b
 
     # Get the transform between toes_r_b and calcn_r_b
-    toes_body = empty_model.getBodySet().get("toes_r_b")
-    calcn_body = empty_model.getBodySet().get("calcn_r_b")
+    toes_body = empty_model.getBodySet().get("toes_r")
+    calcn_body = empty_model.getBodySet().get("calcn_r")
     toes_to_calcn_transform = toes_body.findTransformBetween(state, calcn_body)
 
     # Extract translation vector from the Transform
@@ -2012,14 +1797,14 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=Tr
     )
 
     # Set unnecessary rotations (x and z axes) to zero
-    r_foot_update_to_match_actual_rotation[0] = 0
 
     if not realign_feet:
+        r_foot_update_to_match_actual_rotation[0] = 0
         r_foot_update_to_match_actual_rotation[1] = 0
         r_foot_update_to_match_actual_rotation[2] = 0
 
     # Access the right ankle joint by name
-    right_ankle_joint = empty_model.getJointSet().get("talus_r_to_tibfib_r")
+    right_ankle_joint = empty_model.getJointSet().get("ankle_r")
 
     # Access the current orientation of the child frame (talus)
     current_orientation = right_ankle_joint.get_frames(1).get_orientation()
@@ -2040,47 +1825,47 @@ def feet_adjustments(output_file, empty_model, mocap_static_trc, realign_feet=Tr
     # Initialize the model's system
     state = empty_model.initSystem()
 
-    # Attempting to make the foot be flat with the ground
-    right_foot_transform_in_ground = toes_body.getTransformInGround(state)
-    # Extract the rotation matrix from the transform
-    rotation_matrix = right_foot_transform_in_ground.R().asMat33()
-    # Convert the rotation matrix to Euler angles
-    rotation = osim.Rotation(rotation_matrix)
-    euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
+    if align_foot_to_ground:
+        # Attempting to make the foot be flat with the ground
+        right_foot_transform_in_ground = toes_body.getTransformInGround(state)
+        # Extract the rotation matrix from the transform
+        rotation_matrix = right_foot_transform_in_ground.R().asMat33()
+        # Convert the rotation matrix to Euler angles
+        rotation = osim.Rotation(rotation_matrix)
+        euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
 
-    # Set unnecessary rotations (x and z axes) to zero
-    euler_angles[0] = 0
-    euler_angles[1] = 0
+        # Set unnecessary rotations (x and z axes) to zero
+        euler_angles[0] = 0
+        euler_angles[1] = 0
 
-    if not realign_feet:
-        euler_angles[2] = 0
+        if not realign_feet:
+            euler_angles[2] = 0
 
-    # Extract the components of the Vec3 and negate them
-    inverse_euler_angles = osim.Vec3(
-        -euler_angles.get(0),  # Negate X angle
-        -euler_angles.get(1),  # Negate Y angle
-        -euler_angles.get(2)  # Negate Z angle
-    )
-    # Convert osim.Vec3 to NumPy array
-    inverse_euler_angles_array = np.array([
-        inverse_euler_angles.get(0),
-        inverse_euler_angles.get(1),
-        inverse_euler_angles.get(2)
-    ])
-    # Access the joint connecting talus_l_b to its parent (e.g., tibfib_l_b)
-    right_ankle_joint = empty_model.getJointSet().get("talus_r_to_tibfib_r")
-    # Access the child frame's current orientation
-    current_orientation = right_ankle_joint.get_frames(1).get_orientation()
-    current_orientation_values = np.array([current_orientation.get(0),
-                                           current_orientation.get(1),
-                                           current_orientation.get(2)])
+        # Extract the components of the Vec3 and negate them
+        inverse_euler_angles = osim.Vec3(
+            -euler_angles.get(0),  # Negate X angle
+            -euler_angles.get(1),  # Negate Y angle
+            -euler_angles.get(2)  # Negate Z angle
+        )
+        # Convert osim.Vec3 to NumPy array
+        inverse_euler_angles_array = np.array([
+            inverse_euler_angles.get(0),
+            inverse_euler_angles.get(1),
+            inverse_euler_angles.get(2)
+        ])
+        # Access the joint connecting talus_l_b to its parent (e.g., tibfib_l_b)
+        right_ankle_joint = empty_model.getJointSet().get("ankle_r")
+        # Access the child frame's current orientation
+        current_orientation = right_ankle_joint.get_frames(1).get_orientation()
+        current_orientation_values = np.array([current_orientation.get(0),
+                                               current_orientation.get(1),
+                                               current_orientation.get(2)])
 
-    # Apply the inverse rotation to the current orientation
-    new_orientation_values = current_orientation_values - inverse_euler_angles_array
+        # Apply the inverse rotation to the current orientation
+        new_orientation_values = current_orientation_values - inverse_euler_angles_array
 
-    # Update the child frame's orientation
-    right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
-
+        # Update the child frame's orientation
+        right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
 def perform_scaling(output_directory, output_file, static_trc_file):
     """
@@ -2116,12 +1901,12 @@ def perform_scaling(output_directory, output_file, static_trc_file):
     # Do u want to move markers to match the static file? - causes the feet to be poor currently
     relative_path = os.path.relpath(static_trc_file, output_directory)
 
-    scale_tool.getMarkerPlacer().setApply(True)
-    scale_tool.getMarkerPlacer().setOutputModelFileName("Lower_Limb.osim")
-    scale_tool.getMarkerPlacer().setMarkerFileName(relative_path)
-    scale_tool.getMarkerPlacer().setTimeRange(time_range)
+    #scale_tool.getMarkerPlacer().setApply(True)
+    #scale_tool.getMarkerPlacer().setOutputModelFileName("Lower_Limb.osim")
+    #scale_tool.getMarkerPlacer().setMarkerFileName(relative_path)
+    #scale_tool.getMarkerPlacer().setTimeRange(time_range)
 
-    scale_tool.getModelScaler().setOutputModelFileName("Lower_Limb.osim")
+    scale_tool.getModelScaler().setOutputModelFileName("Feet_scaled.osim")
     scale_tool.getModelScaler().setMarkerFileName(relative_path)
     scale_tool.getModelScaler().setTimeRange(time_range)
 

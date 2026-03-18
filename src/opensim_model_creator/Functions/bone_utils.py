@@ -1536,7 +1536,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_ankle_flexion.setRangeMin(-0.87266462599716477)
     l_ankle_flexion.setRangeMax(0.87266462599716477)
     l_ankle_flexion.setDefaultValue(0.0)
-    r_ankle_flexion.setDefaultClamped(True)
+    l_ankle_flexion.setDefaultClamped(True)
     l_ankle_flexion.setDefaultLocked(False)
 
     # Locate body segments based on printed names
@@ -1599,7 +1599,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     return output_file
 
 
-def feet_adjustments(empty_model, mocap_static_trc, realign_feet=True, align_foot_to_ground = False):
+def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_foot_to_ground = False):
     """
       Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
@@ -1679,7 +1679,9 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=True, align_foo
     l_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
         left_foot_vector_initial, left_foot_vector_actual
     )
-
+    l_foot_update_to_match_actual_rotation[0] = 0
+    if align_foot_to_ground:
+        l_foot_update_to_match_actual_rotation[2] = 0
     if not realign_feet:
         l_foot_update_to_match_actual_rotation[0] = 0
         l_foot_update_to_match_actual_rotation[1] = 0
@@ -1797,7 +1799,9 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=True, align_foo
     )
 
     # Set unnecessary rotations (x and z axes) to zero
-
+    r_foot_update_to_match_actual_rotation[0] = 0
+    if align_foot_to_ground:
+        r_foot_update_to_match_actual_rotation[2] = 0
     if not realign_feet:
         r_foot_update_to_match_actual_rotation[0] = 0
         r_foot_update_to_match_actual_rotation[1] = 0
@@ -1866,6 +1870,63 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=True, align_foo
 
         # Update the child frame's orientation
         right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
+    def calc_ankle_angle_from_bodies(model, state, side):
+        """
+        Calculate ankle angle using body orientations in the model.
+
+        Parameters
+        ----------
+        model : opensim.Model
+        state : opensim.State
+        side : str ('left' or 'right')
+
+        Returns
+        -------
+        ankle_angle_deg : float
+            Ankle angle in degrees (dorsiflexion positive)
+        """
+
+        model.realizePosition(state)
+
+        # Select bodies
+        if side == 'right':
+            tibfib = model.getBodySet().get('tibfib_r')
+            calcn = model.getBodySet().get('calcn_r')
+        elif side == 'left':
+            tibfib = model.getBodySet().get('tibfib_l')
+            calcn = model.getBodySet().get('calcn_l')
+        else:
+            raise ValueError("side must be 'left' or 'right'")
+
+        # Get transforms in ground
+        tibfib_transform = tibfib.getTransformInGround(state)
+        calcn_transform = calcn.getTransformInGround(state)
+
+        # Convert OpenSim Mat33 → numpy
+        def mat33_to_numpy(mat):
+            return np.array([[mat.get(i,j) for j in range(3)] for i in range(3)])
+
+        R_tibia = mat33_to_numpy(tibfib_transform.R())
+        R_foot = mat33_to_numpy(calcn_transform.R())
+
+        # Relative rotation: foot relative to tibia
+        R_relative = R_tibia.T @ R_foot
+
+        # Extract ankle rotation about x-axis
+        # (assuming z = dorsiflexion axis in model)
+        ankle_angle = np.arctan2(R_relative[1,0], R_relative[0,0])
+
+        ankle_angle_deg = np.degrees(ankle_angle)
+
+        return ankle_angle
+
+    default_ankle_angle_r = calc_ankle_angle_from_bodies(empty_model, state, 'right')
+    r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
+    r_ankle_flexion.setDefaultValue(default_ankle_angle_r)
+
+    default_ankle_angle_l = calc_ankle_angle_from_bodies(empty_model, state, 'left')
+    l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
+    l_ankle_flexion.setDefaultValue(default_ankle_angle_l)
 
 def perform_scaling(output_directory, output_file, static_trc_file):
     """

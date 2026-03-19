@@ -77,8 +77,6 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
 
-
-
     landmark_files = ["original_lms_left.txt", "original_lms_right.txt",
                       "predicted_lms_left.txt", "predicted_lms_right.txt"]
     scale_landmark_files(mesh_directory, landmark_files)

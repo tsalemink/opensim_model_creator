@@ -1608,12 +1608,16 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
       model for inverse kinematics or other biomechanical analyses.
 
       Args:
-          output_file (str): Path to save the updated OpenSim model file.
           empty_model (osim.Model): The OpenSim model with foot components to be aligned.
           mocap_static_trc (dict): Dictionary containing motion capture marker data with marker names as keys
                                    and (x, y, z) coordinates as values.
-          realign_feet (bool, optional): Whether to fully realign the feet.
-                                         If False, only minimal adjustments are made. Default is True.
+          realign_feet (bool, optional): Whether to fully realign the feet, around y and z axes. If align_foot_to_ground
+                                        selected, this will override the z axes rotation. If False, no adjustments are
+                                        made and the ankle remains at the default 0.0 angle defined by the alignment of
+                                        the talus and tibfib coordinate frames. Default is False.
+          align_foot_to_ground (bool, optional): whether to force the foot to be parallel with the ground. Uses the foot
+                                                bone geometry to align. This only modifies rotation about the z axis and
+                                                sets a new default angle for the ankle.
 
       Returns:
           None. The function modifies the OpenSim model in place and saves the updated model to the specified file.
@@ -1635,298 +1639,209 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
       """
     # Initialize the model's system
     state = empty_model.initSystem()
-    # === Adjust Orientation of the Left Foot ===
+    if realign_feet:
+        # === Adjust Orientation of the Left Foot ===
 
-    # Access the markers again after reinitialization
-    toe_marker = empty_model.getMarkerSet().get("LTOE")  # Left toe marker
-    heel_marker = empty_model.getMarkerSet().get("LHEE")  # Left heel marker
+        # Access the markers again after reinitialization
+        toe_marker = empty_model.getMarkerSet().get("LTOE")  # Left toe marker
+        heel_marker = empty_model.getMarkerSet().get("LHEE")  # Left heel marker
 
-    # Get marker positions in their local body frames
-    toe_local_position = toe_marker.get_location()  # Marker position relative to toes_l_b
-    heel_local_position = heel_marker.get_location()  # Marker position relative to calcn_l_b
+        # Get marker positions in their local body frames
+        toe_local_position = toe_marker.get_location()  # Marker position relative to toes_l_b
+        heel_local_position = heel_marker.get_location()  # Marker position relative to calcn_l_b
 
-    # Get the transform between toes_l_b and calcn_l_b
-    toes_body = empty_model.getBodySet().get("toes_l")
-    calcn_body = empty_model.getBodySet().get("calcn_l")
-    toes_to_calcn_transform = toes_body.findTransformBetween(state, calcn_body)
+        # Get the transform between toes_l_b and calcn_l_b
+        toes_body = empty_model.getBodySet().get("toes_l")
+        calcn_body = empty_model.getBodySet().get("calcn_l")
+        toes_to_calcn_transform = toes_body.findTransformBetween(state, calcn_body)
 
-    # Extract translation vector from the Transform
-    translation = toes_to_calcn_transform.p()
+        # Extract translation vector from the Transform
+        translation = toes_to_calcn_transform.p()
 
-    # Convert translation to a NumPy array
-    translation_vector = np.array([translation[0], translation[1], translation[2]])
+        # Convert translation to a NumPy array
+        translation_vector = np.array([translation[0], translation[1], translation[2]])
 
-    # Convert toe_local_position (Vec3) to a NumPy array for matrix operations
-    toe_local_array = np.array([toe_local_position.get(0), toe_local_position.get(1), toe_local_position.get(2)])
+        # Convert toe_local_position (Vec3) to a NumPy array for matrix operations
+        toe_local_array = np.array([toe_local_position.get(0), toe_local_position.get(1), toe_local_position.get(2)])
 
-    # Calculate the toe marker's position in the calcn_l_b frame
-    toe_position_in_calcn = toe_local_array + translation_vector
+        # Calculate the toe marker's position in the calcn_l_b frame
+        toe_position_in_calcn = toe_local_array + translation_vector
 
-    # The heel marker is already in the calcn_l_b frame
-    heel_position_in_calcn = np.array(
-        [heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
+        # The heel marker is already in the calcn_l_b frame
+        heel_position_in_calcn = np.array(
+            [heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
 
-    # Compute the initial foot vector (heel to toe, normalized)
-    left_foot_vector_initial = vector_between_points(heel_position_in_calcn, toe_position_in_calcn, True)
+        # Compute the initial foot vector (heel to toe, normalized)
+        left_foot_vector_initial = vector_between_points(heel_position_in_calcn, toe_position_in_calcn, True)
 
-    # Compute the actual foot vector from mocap data (heel to toe, normalized)
-    # Mocap data is rotated and negated to align with the model's coordinate system
-    left_foot_vector_actual = vector_between_points(mocap_static_trc["LHEE"], mocap_static_trc["LTOE"],
-                                                    True
-                                                    )
+        # Compute the actual foot vector from mocap data (heel to toe, normalized)
+        left_foot_vector_actual = vector_between_points(mocap_static_trc["LHEE"], mocap_static_trc["LTOE"],
+                                                        True
+                                                        )
 
-    # Compute the Euler angles to align the initial vector with the actual vector
-    l_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
-        left_foot_vector_initial, left_foot_vector_actual
-    )
-    l_foot_update_to_match_actual_rotation[0] = 0
-    if align_foot_to_ground:
-        l_foot_update_to_match_actual_rotation[2] = 0
-    if not realign_feet:
+        # Compute the Euler angles to align the initial vector with the actual vector
+        l_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
+            left_foot_vector_initial, left_foot_vector_actual
+        )
         l_foot_update_to_match_actual_rotation[0] = 0
-        l_foot_update_to_match_actual_rotation[1] = 0
+        if align_foot_to_ground:
+            default_angle_l = 0.0
+        else:
+            default_angle_l = l_foot_update_to_match_actual_rotation[2]
+
         l_foot_update_to_match_actual_rotation[2] = 0
 
-    # Access the left ankle joint by name
-    left_ankle_joint = empty_model.getJointSet().get("ankle_l")
+        # Access the left ankle joint by name
+        left_ankle_joint = empty_model.getJointSet().get("ankle_l")
+        l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
+        l_ankle_flexion.setDefaultValue(default_angle_l)
+        # Access the current orientation of the child frame (talus)
+        current_orientation = left_ankle_joint.get_frames(1).get_orientation()
 
-    # Access the current orientation of the child frame (talus)
-    current_orientation = left_ankle_joint.get_frames(1).get_orientation()
+        # Extract the current orientation values as a NumPy array
+        current_orientation_values = np.array([
+            current_orientation.get(0),
+            current_orientation.get(1),
+            current_orientation.get(2)
+        ])
 
-    # Extract the current orientation values as a NumPy array
-    current_orientation_values = np.array([
-        current_orientation.get(0),
-        current_orientation.get(1),
-        current_orientation.get(2)
-    ])
+        # Subtract the calculated Euler angles to adjust the orientation
+        new_orientation_values = current_orientation_values - np.array(l_foot_update_to_match_actual_rotation)
 
-    # Subtract the calculated Euler angles to adjust the orientation
-    new_orientation_values = current_orientation_values - np.array(l_foot_update_to_match_actual_rotation)
+        # Update the child frame's orientation with the new values
+        left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
-    # Update the child frame's orientation with the new values
-    left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
+        # === Adjust Orientation of the Right Foot ===
 
-    # Initialize the model's system
-    state = empty_model.initSystem()
+        # Access the markers again after reinitialization
+        toe_marker = empty_model.getMarkerSet().get("RTOE")  # Right toe marker
+        heel_marker = empty_model.getMarkerSet().get("RHEE")  # Right heel marker
+
+        # Get marker positions in their local body frames
+        toe_local_position = toe_marker.get_location()  # Marker position relative to toes_r_b
+        heel_local_position = heel_marker.get_location()  # Marker position relative to calcn_r_b
+
+        # Get the transform between toes_r_b and calcn_r_b
+        toes_body = empty_model.getBodySet().get("toes_r")
+        calcn_body = empty_model.getBodySet().get("calcn_r")
+        toes_to_calcn_transform = toes_body.findTransformBetween(state, calcn_body)
+
+        # Extract translation vector from the Transform
+        translation = toes_to_calcn_transform.p()
+
+        # Convert translation to a NumPy array
+        translation_vector = np.array([translation[0], translation[1], translation[2]])
+
+        # Convert toe_local_position (Vec3) to a NumPy array for matrix operations
+        toe_local_array = np.array([toe_local_position.get(0), toe_local_position.get(1), toe_local_position.get(2)])
+
+        # Calculate the toe marker's position in the calcn_r_b frame
+        toe_position_in_calcn_r = toe_local_array + translation_vector
+
+        # The heel marker is already in the calcn_r_b frame
+        heel_position_in_calcn_r = np.array(
+            [heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
+
+        # Compute the initial foot vector (heel to toe, normalized)
+        right_foot_vector_initial = vector_between_points(heel_position_in_calcn_r, toe_position_in_calcn_r, True)
+
+        # Compute the actual foot vector from mocap data (heel to toe, normalized)
+        # Mocap data is rotated and negated to align with the model's coordinate system
+        right_foot_vector_actual = vector_between_points(mocap_static_trc["RHEE"], mocap_static_trc["RTOE"],
+                                                         True
+                                                         )
+
+        # Compute the Euler angles to align the initial vector with the actual vector
+        r_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
+            right_foot_vector_initial, right_foot_vector_actual
+        )
+
+        # Set unnecessary rotations (x axes) to zero, apply z rotation as a default angle
+        r_foot_update_to_match_actual_rotation[0] = 0
+        if align_foot_to_ground:
+            default_angle_r = 0.0
+        else:
+            default_angle_r = r_foot_update_to_match_actual_rotation[2]
+        r_foot_update_to_match_actual_rotation[2] = 0
+
+        # Access the right ankle joint by name
+        right_ankle_joint = empty_model.getJointSet().get("ankle_r")
+        # set rotation about z as a default value
+        r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
+        r_ankle_flexion.setDefaultValue(default_angle_r)
+
+        # Access the current orientation of the child frame (talus)
+        current_orientation = right_ankle_joint.get_frames(1).get_orientation()
+
+        # Extract the current orientation values as a NumPy array
+        current_orientation_values = np.array([
+            current_orientation.get(0),
+            current_orientation.get(1),
+            current_orientation.get(2)
+        ])
+
+        # Subtract the calculated Euler angles to adjust the orientation
+        new_orientation_values = current_orientation_values - np.array(r_foot_update_to_match_actual_rotation)
+
+        # Update the child frame's orientation with the new values
+        right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
     if align_foot_to_ground:
-        # Attempting to make the foot be flat with the ground
-        left_foot_transform_in_ground = toes_body.getTransformInGround(state)
+        ## left side ##
+        state = empty_model.initSystem()
+        toes_body_l = empty_model.getBodySet().get("toes_l")
+        left_foot_transform_in_ground = toes_body_l.getTransformInGround(state)
         # Extract the rotation matrix from the transform
         rotation_matrix = left_foot_transform_in_ground.R().asMat33()
         # Convert the rotation matrix to Euler angles
         rotation = osim.Rotation(rotation_matrix)
         euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
 
-        # Set unnecessary rotations (x and z axes) to zero
+        # Set unnecessary rotations (x and y axes) to zero
         euler_angles[0] = 0
         euler_angles[1] = 0
-        if not realign_feet:
-            euler_angles[2] = 0
 
-        # Extract the components of the Vec3 and negate them
-        inverse_euler_angles = osim.Vec3(
-            -euler_angles.get(0),  # Negate X angle
-            -euler_angles.get(1),  # Negate Y angle
-            -euler_angles.get(2)  # Negate Z angle
-        )
-        # Convert osim.Vec3 to NumPy array
-        inverse_euler_angles_array = np.array([
-            inverse_euler_angles.get(0),
-            inverse_euler_angles.get(1),
-            inverse_euler_angles.get(2)
-        ])
-        # Access the joint connecting talus_l_b to its parent (e.g., tibfib_l_b)
+        # assign rotation about z as a default angle
+        default_angle_l = -euler_angles[2]
         left_ankle_joint = empty_model.getJointSet().get("ankle_l")
-        # Access the child frame's current orientation
-        current_orientation = left_ankle_joint.get_frames(1).get_orientation()
-        current_orientation_values = np.array([current_orientation.get(0),
-                                               current_orientation.get(1),
-                                               current_orientation.get(2)])
+        l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
+        l_ankle_flexion.setDefaultValue(default_angle_l)
 
-        # Apply the inverse rotation to the current orientation
-        new_orientation_values = current_orientation_values - inverse_euler_angles_array
-
-        # Update the child frame's orientation
-        left_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
-
-    # === Adjust Orientation of the Right Foot ===
-
-    # Access the markers again after reinitialization
-    toe_marker = empty_model.getMarkerSet().get("RTOE")  # Right toe marker
-    heel_marker = empty_model.getMarkerSet().get("RHEE")  # Right heel marker
-
-    # Get marker positions in their local body frames
-    toe_local_position = toe_marker.get_location()  # Marker position relative to toes_r_b
-    heel_local_position = heel_marker.get_location()  # Marker position relative to calcn_r_b
-
-    # Get the transform between toes_r_b and calcn_r_b
-    toes_body = empty_model.getBodySet().get("toes_r")
-    calcn_body = empty_model.getBodySet().get("calcn_r")
-    toes_to_calcn_transform = toes_body.findTransformBetween(state, calcn_body)
-
-    # Extract translation vector from the Transform
-    translation = toes_to_calcn_transform.p()
-
-    # Convert translation to a NumPy array
-    translation_vector = np.array([translation[0], translation[1], translation[2]])
-
-    # Convert toe_local_position (Vec3) to a NumPy array for matrix operations
-    toe_local_array = np.array([toe_local_position.get(0), toe_local_position.get(1), toe_local_position.get(2)])
-
-    # Calculate the toe marker's position in the calcn_r_b frame
-    toe_position_in_calcn_r = toe_local_array + translation_vector
-
-    # The heel marker is already in the calcn_r_b frame
-    heel_position_in_calcn_r = np.array(
-        [heel_local_position.get(0), heel_local_position.get(1), heel_local_position.get(2)])
-
-    # Compute the initial foot vector (heel to toe, normalized)
-    right_foot_vector_initial = vector_between_points(heel_position_in_calcn_r, toe_position_in_calcn_r, True)
-
-    # Compute the actual foot vector from mocap data (heel to toe, normalized)
-    # Mocap data is rotated and negated to align with the model's coordinate system
-    right_foot_vector_actual = vector_between_points(mocap_static_trc["RHEE"], mocap_static_trc["RTOE"],
-                                                     True
-                                                     )
-
-    # Plot the two vectors for visualization
-    # plot_3d_vectors(right_foot_vector_initial, right_foot_vector_actual)
-
-    # Compute the Euler angles to align the initial vector with the actual vector
-    r_foot_update_to_match_actual_rotation = compute_euler_angles_from_vectors(
-        right_foot_vector_initial, right_foot_vector_actual
-    )
-
-    # Set unnecessary rotations (x and z axes) to zero
-    r_foot_update_to_match_actual_rotation[0] = 0
-    if align_foot_to_ground:
-        r_foot_update_to_match_actual_rotation[2] = 0
-    if not realign_feet:
-        r_foot_update_to_match_actual_rotation[0] = 0
-        r_foot_update_to_match_actual_rotation[1] = 0
-        r_foot_update_to_match_actual_rotation[2] = 0
-
-    # Access the right ankle joint by name
-    right_ankle_joint = empty_model.getJointSet().get("ankle_r")
-
-    # Access the current orientation of the child frame (talus)
-    current_orientation = right_ankle_joint.get_frames(1).get_orientation()
-
-    # Extract the current orientation values as a NumPy array
-    current_orientation_values = np.array([
-        current_orientation.get(0),
-        current_orientation.get(1),
-        current_orientation.get(2)
-    ])
-
-    # Subtract the calculated Euler angles to adjust the orientation
-    new_orientation_values = current_orientation_values - np.array(r_foot_update_to_match_actual_rotation)
-
-    # Update the child frame's orientation with the new values
-    right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
-
-    # Initialize the model's system
-    state = empty_model.initSystem()
-
-    if align_foot_to_ground:
-        # Attempting to make the foot be flat with the ground
-        right_foot_transform_in_ground = toes_body.getTransformInGround(state)
+        ## right side ##
+        toes_body_r = empty_model.getBodySet().get("toes_r")
+        right_foot_transform_in_ground = toes_body_r.getTransformInGround(state)
         # Extract the rotation matrix from the transform
         rotation_matrix = right_foot_transform_in_ground.R().asMat33()
         # Convert the rotation matrix to Euler angles
         rotation = osim.Rotation(rotation_matrix)
         euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
 
-        # Set unnecessary rotations (x and z axes) to zero
+        # Set unnecessary rotations (x and y axes) to zero
         euler_angles[0] = 0
         euler_angles[1] = 0
 
-        if not realign_feet:
-            euler_angles[2] = 0
-
-        # Extract the components of the Vec3 and negate them
-        inverse_euler_angles = osim.Vec3(
-            -euler_angles.get(0),  # Negate X angle
-            -euler_angles.get(1),  # Negate Y angle
-            -euler_angles.get(2)  # Negate Z angle
-        )
-        # Convert osim.Vec3 to NumPy array
-        inverse_euler_angles_array = np.array([
-            inverse_euler_angles.get(0),
-            inverse_euler_angles.get(1),
-            inverse_euler_angles.get(2)
-        ])
-        # Access the joint connecting talus_l_b to its parent (e.g., tibfib_l_b)
+        #assign rotation about z as default angle
+        default_angle_r = -euler_angles[2]
         right_ankle_joint = empty_model.getJointSet().get("ankle_r")
-        # Access the child frame's current orientation
-        current_orientation = right_ankle_joint.get_frames(1).get_orientation()
-        current_orientation_values = np.array([current_orientation.get(0),
-                                               current_orientation.get(1),
-                                               current_orientation.get(2)])
+        r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
+        r_ankle_flexion.setDefaultValue(default_angle_r)
 
-        # Apply the inverse rotation to the current orientation
-        new_orientation_values = current_orientation_values - inverse_euler_angles_array
+    move_marker_to_body(empty_model, state, "RTOE_0", "toes_r")
+    move_marker_to_body(empty_model, state, "RHEE_0", "calcn_r")
+    move_marker_to_body(empty_model, state, "LTOE_0", "toes_l")
+    move_marker_to_body(empty_model, state, "LHEE_0", "calcn_l")
 
-        # Update the child frame's orientation
-        right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
-    def calc_ankle_angle_from_bodies(model, state, side):
-        """
-        Calculate ankle angle using body orientations in the model.
+    # set model markers from static trial
+    marker_set = empty_model.getMarkerSet()
+    marker_set.get("RTOE").setName("RTOE_model")
+    marker_set.get("RHEE").setName("RHEE_model")
+    marker_set.get("LTOE").setName("LTOE_model")
+    marker_set.get("LHEE").setName("LHEE_model")
 
-        Parameters
-        ----------
-        model : opensim.Model
-        state : opensim.State
-        side : str ('left' or 'right')
-
-        Returns
-        -------
-        ankle_angle_deg : float
-            Ankle angle in degrees (dorsiflexion positive)
-        """
-
-        model.realizePosition(state)
-
-        # Select bodies
-        if side == 'right':
-            tibfib = model.getBodySet().get('tibfib_r')
-            calcn = model.getBodySet().get('calcn_r')
-        elif side == 'left':
-            tibfib = model.getBodySet().get('tibfib_l')
-            calcn = model.getBodySet().get('calcn_l')
-        else:
-            raise ValueError("side must be 'left' or 'right'")
-
-        # Get transforms in ground
-        tibfib_transform = tibfib.getTransformInGround(state)
-        calcn_transform = calcn.getTransformInGround(state)
-
-        # Convert OpenSim Mat33 → numpy
-        def mat33_to_numpy(mat):
-            return np.array([[mat.get(i,j) for j in range(3)] for i in range(3)])
-
-        R_tibia = mat33_to_numpy(tibfib_transform.R())
-        R_foot = mat33_to_numpy(calcn_transform.R())
-
-        # Relative rotation: foot relative to tibia
-        R_relative = R_tibia.T @ R_foot
-
-        # Extract ankle rotation about x-axis
-        # (assuming z = dorsiflexion axis in model)
-        ankle_angle = np.arctan2(R_relative[1,0], R_relative[0,0])
-
-        ankle_angle_deg = np.degrees(ankle_angle)
-
-        return ankle_angle
-
-    default_ankle_angle_r = calc_ankle_angle_from_bodies(empty_model, state, 'right')
-    r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
-    r_ankle_flexion.setDefaultValue(default_ankle_angle_r)
-
-    default_ankle_angle_l = calc_ankle_angle_from_bodies(empty_model, state, 'left')
-    l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
-    l_ankle_flexion.setDefaultValue(default_ankle_angle_l)
+    marker_set.get("RTOE_0").setName("RTOE")
+    marker_set.get("RHEE_0").setName("RHEE")
+    marker_set.get("LTOE_0").setName("LTOE")
+    marker_set.get("LHEE_0").setName("LHEE")
 
 def perform_scaling(output_directory, output_file, static_trc_file):
     """
@@ -1978,3 +1893,46 @@ def perform_scaling(output_directory, output_file, static_trc_file):
 
     # Run the scaling process
     scale_tool.run()
+
+def move_marker_to_body(model, state, marker_name, new_body_name):
+    def vec3_to_numpy(v):
+        return np.array([v.get(i) for i in range(3)])
+
+    def numpy_to_vec3(a):
+        return osim.Vec3(a[0], a[1], a[2])
+
+    def rot_to_numpy(R):
+        return np.array([[R.get(i, j) for j in range(3)] for i in range(3)])
+
+    state = model.initSystem()
+    model.realizePosition(state)
+
+    marker = model.getMarkerSet().get(marker_name)
+
+    old_body = marker.getParentFrame()
+    new_body = model.getBodySet().get(new_body_name)
+
+    # marker location in old body frame
+    p_old = vec3_to_numpy(marker.get_location())
+
+    # transforms
+    T_old = old_body.getTransformInGround(state)
+    T_new = new_body.getTransformInGround(state)
+
+    R_old = rot_to_numpy(T_old.R())
+    p_old_body = vec3_to_numpy(T_old.p())
+
+    R_new = rot_to_numpy(T_new.R())
+    p_new_body = vec3_to_numpy(T_new.p())
+
+    # old body → ground
+    p_ground = R_old @ p_old + p_old_body
+
+    # ground → new body
+    p_new = R_new.T @ (p_ground - p_new_body)
+
+    # update marker
+    marker.setParentFrame(new_body)
+    marker.set_location(numpy_to_vec3(p_new))
+
+    return p_new

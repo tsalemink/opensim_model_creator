@@ -64,6 +64,8 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     segment_lengths, segment_centres, joint_centres = create_model_bodies(
         mesh_directory, static_marker_data, empty_model, left_landmarks, right_landmarks,
         x_opt_left, x_opt_right, sex)
+    #output_file = model_directory + "/"f"Feet_scaled.osim"
+    #empty_model.printToXML(output_file)
 
     # Create initial OpenSim model.
     model_name = "Lower_limb"
@@ -97,16 +99,16 @@ def create_model_bodies(mesh_directory, static_marker_data, empty_model, left_lm
     pelvis, pelvis_centre, pelvis_length, lumbar_joint_centre = create_pelvis_body_and_joint(
         empty_model, left_lms, right_lms, mesh_directory, static_marker_data, sex)
 
-    left_femur, femur_l_centre, right_femur, femur_r_centre, l_femur_length, r_femur_length = create_femur_bodies_and_hip_joints(
+    left_femur, femur_l_centre, right_femur, femur_r_centre, l_femur_length, r_femur_length, femur_l_rot, femur_r_rot = create_femur_bodies_and_hip_joints(
         empty_model, left_lms, right_lms, mesh_directory, static_marker_data, pelvis, pelvis_centre,
         x_opt_left['hip_rot'], x_opt_right['hip_rot'])
 
-    tibfib_l_centre, tibfib_r_centre, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint = create_tibfib_bodies_and_knee_joints(
+    tibfib_l_centre, tibfib_r_centre, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint, tibfib_l_rot, tibfib_r_rot = create_tibfib_bodies_and_knee_joints(
         empty_model, left_lms, right_lms, mesh_directory, static_marker_data, left_femur, right_femur, femur_l_centre,
         femur_r_centre,
-        x_opt_left['knee_rot'], x_opt_right['knee_rot'])
+        x_opt_left['knee_rot'], x_opt_right['knee_rot'], femur_l_rot, femur_r_rot)
 
-    repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibfib)
+    repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibfib, tibfib_l_rot, tibfib_r_rot)
 
     empty_model.finalizeConnections()
 

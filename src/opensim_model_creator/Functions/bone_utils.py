@@ -109,6 +109,7 @@ def load_x_opt(file_path):
                 x_opt[name] = np.array(coordinates)
     return x_opt
 
+
 def add_markers_to_body(model, body_name, marker_names, mocap_file, center, custom_names=None):
     """
     Adds multiple markers to a specified body in an OpenSim model with optional custom names.
@@ -496,6 +497,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     # Create the pelvis body
     pelvis = osim.Body("pelvis_b", 1.0, osim.Vec3(0, 0, 0), osim.Inertia(0, 0, 0))
     model.addBody(pelvis)
+    body_axes = {}
 
     # Compute pelvis alignment, this is to align the bone meshes to the opensim global coordinate frame
     LASIS = left_landmarks["ASIS"]
@@ -519,6 +521,11 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     # Define the pelvis anatomical coordinate system from the articulated shape model (this needs to be aligned with
     # the opensim global coordinate system)
     pelvis_origin, x_axis, y_axis, z_axis = model_alignment.createPelvisACSISB_sacr(LASIS, RASIS, SACR)
+    body_axes['pelvis'] = {
+        "x": x_axis,
+        "y": y_axis,
+        "z": z_axis
+    }
 
     # Create an OpenSim Rotation from pelvis axes
     rot = create_osim_rot(x_axis, y_axis, z_axis)
@@ -592,7 +599,7 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     mesh_path = os.path.join(meshes, "combined_pelvis_mesh.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
 
-    add_mesh_to_body(model, "pelvis_b", relative_path, offset_orientation=(0,0,0),
+    add_mesh_to_body(model, "pelvis_b", relative_path, offset_orientation=(0, 0, 0),
                      offset_translation=-pelvis_origin)
 
     # Add mocap markers
@@ -604,12 +611,11 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     add_markers_to_body(model, "pelvis_b", ["ASIS", "PSIS"], right_landmarks, pelvis_origin,
                         ["RASI_ssm", "RPSI_ssm"])
 
-    return pelvis, pelvis_origin, pelvis_length, lumbar_joint_centre
+    return pelvis, pelvis_origin, pelvis_length, lumbar_joint_centre, body_axes, pelvis_rotation_osim
 
 
 def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc, pelvis,
-                                       pelvis_centre,
-                                       x_opt_left, x_opt_right):
+                                       pelvis_centre, body_axes, pelvis_rot):
     """
     Creates the left and right femur bodies and attaches custom hip joints to the OpenSim model.
 
@@ -620,8 +626,6 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
         meshes (str): Directory containing the mesh files for the left and right femurs.
         mocap_static_trc (dict): Motion capture static marker data used to position markers.
         pelvis (osim.Body): The pelvis body in the OpenSim model.
-        x_opt_right (dict): default joint orientations of the right side
-        x_opt_left (dict): default joint orientations of the left side
 
     Returns:
         tuple: A tuple containing:
@@ -699,10 +703,22 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     rotation_axis_left.set_function(osim.LinearFunction(1, 0))  # Ensures movement.
 
     # set opensim rotation object
-    femur_l_origin, x_axis, y_axis, z_axis = model_alignment.createFemurACSISB(femur_l_center, left_landmarks['MEC'], left_landmarks['LEC'], side = 'left')
-    rot_l = osim.Rotation(create_osim_rot(x_axis, y_axis, z_axis))
-    femur_r_origin, x_axis, y_axis, z_axis = model_alignment.createFemurACSISB(femur_r_center, right_landmarks['MEC'], right_landmarks['LEC'], side = 'right')
-    rot_r = osim.Rotation(create_osim_rot(x_axis, y_axis, z_axis))
+    femur_l_origin, x_axis, y_axis, z_axis = model_alignment.createFemurACSISB(femur_l_center, left_landmarks['MEC'],
+                                                                               left_landmarks['LEC'], side='left')
+    body_axes['femur_l'] = {
+        "x": x_axis,
+        "y": y_axis,
+        "z": z_axis
+    }
+    rot_l = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['pelvis']['x'], body_axes['pelvis']['y'], body_axes['pelvis']['z'], inverse=True))
+    femur_r_origin, x_axis, y_axis, z_axis = model_alignment.createFemurACSISB(femur_r_center, right_landmarks['MEC'],
+                                                                               right_landmarks['LEC'], side='right')
+    body_axes['femur_r'] = {
+        "x": x_axis,
+        "y": y_axis,
+        "z": z_axis
+    }
+    rot_r = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['pelvis']['x'], body_axes['pelvis']['y'], body_axes['pelvis']['z'], inverse=True))
 
     # Create the custom left hip joint with all restored parameters, femur orientation defined from x_opt
     left_hip_joint = osim.CustomJoint(
@@ -715,7 +731,6 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
         rot_l.convertRotationToBodyFixedXYZ(),
         spatial_transform_left  # The defined spatial transform
     )
-    # osim.Vec3(x_opt_left[2] * -0.1, x_opt_left[1] * -0.1, x_opt_left[0]),  # Adjusted orientation in child frame
     ################################################
     # Creation of the right hip joint coordinate system
     # Create the spatial transform for the custom joint ###Need to update
@@ -750,19 +765,18 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
         rot_r.convertRotationToBodyFixedXYZ(),
         spatial_transform  # The defined spatial transform
     )
-    #osim.Vec3(x_opt_right[2] * 0.1, x_opt_right[1] * 0.1, x_opt_right[0]),  # Adjusted orientation in child frame
     ########################################################################################
 
     # Add the hip joints to the model
     empty_model.addJoint(left_hip_joint)
     empty_model.addJoint(right_hip_joint)
 
-    return left_femur, femur_l_center, right_femur, femur_r_center, l_femur_length, r_femur_length, rot_l, rot_r
+    return left_femur, femur_l_center, right_femur, femur_r_center, l_femur_length, r_femur_length, body_axes
 
 
 def create_tibfib_bodies_and_knee_joints(
         empty_model, left_landmarks, right_landmarks, meshes, mocap_static_trc,
-        left_femur, right_femur, femur_l_center, femur_r_center, x_opt_left, x_opt_right, femur_l_rot, femur_r_rot):
+        left_femur, right_femur, femur_l_center, femur_r_center, body_axes):
     """
     Creates tibia and fibula (tibfib) bodies and defines the knee joints within an OpenSim model.
 
@@ -832,12 +846,27 @@ def create_tibfib_bodies_and_knee_joints(
 
     tibfib_l_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(l_LMAL, l_MMAL,
                                                                                         left_landmarks['condyle_med'],
-                                                                                        left_landmarks['condyle_lat'], side = 'left')
-    rot_l = osim.Rotation(create_osim_rot(x_axis, y_axis, z_axis))
+                                                                                        left_landmarks['condyle_lat'],
+                                                                                        side='left')
+    body_axes['tibfib_l'] = {
+        "x": x_axis,
+        "y": y_axis,
+        "z": z_axis
+    }
+    rot_fem_l = osim.Rotation(create_osim_rot(body_axes['femur_l']['x'], body_axes['femur_l']['y'], body_axes['femur_l']['z'], inverse=False))
+    rot_l = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_l']['x'], body_axes['femur_l']['y'], body_axes['femur_l']['z'], inverse=True))
     tibfib_r_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(r_LMAL, r_MMAL,
                                                                                         right_landmarks['condyle_med'],
-                                                                                        right_landmarks['condyle_lat'], side = 'right')
-    rot_r = osim.Rotation(create_osim_rot(x_axis, y_axis, z_axis))
+                                                                                        right_landmarks['condyle_lat'],
+                                                                                        side='right')
+    body_axes['tibfib_r'] = {
+        "x": x_axis,
+        "y": y_axis,
+        "z": z_axis
+    }
+    rot_fem_r = osim.Rotation(
+        create_osim_rot(body_axes['femur_r']['x'], body_axes['femur_r']['y'], body_axes['femur_r']['z'], inverse=False))
+    rot_r = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_r']['x'], body_axes['femur_r']['y'], body_axes['femur_r']['z'], inverse=True))
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l", relative_path,
@@ -940,13 +969,12 @@ def create_tibfib_bodies_and_knee_joints(
         "knee_l",  # Name of the joint
         left_femur,  # Parent body (femur)
         osim.Vec3(l_EC_midpoint - femur_l_center),  # Location of the joint in the femur frame
-        femur_l_rot.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the femur frame
+        rot_fem_l.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the femur frame
         left_tibfib,  # Child body (tibfib)
         osim.Vec3(l_EC_midpoint - tibia_l_center),  # Location of the joint in the tibfib frame
         rot_l.convertRotationToBodyFixedXYZ(),
         spatial_transform
     )
-    # osim.Vec3(x_opt_left[1] * -0.1, 0, x_opt_left[0] * -1),  # default orientation of tibia wrt femur
     # %% Positioning of the right knee joint
 
     # Extract the medial and lateral epicondyle landmarks
@@ -1018,13 +1046,12 @@ def create_tibfib_bodies_and_knee_joints(
         "knee_r",  # Name of the joint
         right_femur,  # Parent body (femur)
         osim.Vec3(r_EC_midpoint - femur_r_center),  # Location of the joint in the femur frame
-        femur_r_rot.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the femur frame
+        rot_fem_r.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the femur frame
         right_tibfib,  # Child body (tibfib)
         osim.Vec3(r_EC_midpoint - tibia_r_center),  # Location of the joint in the tibfib frame
         rot_r.convertRotationToBodyFixedXYZ(),
         spatial_transform
     )
-    #osim.Vec3(x_opt_right[1] * 0.1, 0, x_opt_right[0] * -1),  # orientation on tibia wrt femur
     # %% Adding the knee joints to the model
 
     # Add the left knee joint to the OpenSim model
@@ -1035,10 +1062,10 @@ def create_tibfib_bodies_and_knee_joints(
     # This connects the right tibfib to the right femur, allowing flexion/extension motion
     empty_model.addJoint(right_knee_joint)
 
-    return tibia_l_center, tibia_r_center, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint, rot_l, rot_r
+    return tibia_l_center, tibia_r_center, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint
 
 
-def repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibfib, tibfib_l_rot, tibfib_r_rot):
+def repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibfib, body_axes):
     """
       Repurposes the foot bodies (talus) in the OpenSim model and creates ankle joints
       (PinJoint) connecting the talus to the tibia/fibula (tibfib) segments.
@@ -1075,13 +1102,19 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibf
     else:
         print(f"Joint '{joint_name_to_remove}' not found in the model.")
 
+    rot_tib_l = osim.Rotation(
+        create_osim_rot([0,0,0], body_axes['tibfib_l']['y'],[0,0,0],  inverse=False))
+
+    rot_tib_r = osim.Rotation(
+        create_osim_rot([0,0,0], body_axes['tibfib_r']['y'],[0,0,0],  inverse=False))
+
     # Define the ankle joint connecting the left talus to the left tibfib
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
     left_ankle_joint = osim.PinJoint(
         "ankle_l",  # Name of the joint
         left_tibfib,  # Parent body (tibfib)
         osim.Vec3(-0.0, -0.01, 0),  # Location of the joint in the tibfib frame
-        tibfib_l_rot.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the tibfib frame
+        rot_tib_l.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the tibfib frame
         left_talus,  # Child body (talus)
         osim.Vec3(0, 0, 0),  # Manually adjusted location of the joint in the talus frame
         osim.Vec3(-0.175895, 0.105208, 0.0186622)  # Orientation of the joint in the talus frame
@@ -1093,7 +1126,7 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibf
         "ankle_r",  # Name of the joint
         right_tibfib,  # Parent body (tibfib)
         osim.Vec3(-0.0, -0.01, 0),  # Location of the joint in the tibfib frame
-        tibfib_r_rot.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the tibfib frame
+        rot_tib_r.convertRotationToBodyFixedXYZ(),  # Orientation of the joint in the tibfib frame
         right_talus,  # Child body (talus)
         osim.Vec3(0, 0, 0),  # Manually adjusted location of the joint in the talus frame
         osim.Vec3(0.175895, -0.105208, 0.0186622))
@@ -1190,7 +1223,8 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": (0.0875 + 0.0036 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "l_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "r_tibfib": (0.0375 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
-                "l_talus": 0.064 * 0.0133 * weight,  # foot is 1.33% of body mass, need to distribute across talus, calcaneus, and toes
+                "l_talus": 0.064 * 0.0133 * weight,
+                # foot is 1.33% of body mass, need to distribute across talus, calcaneus, and toes
                 "r_talus": 0.064 * 0.0133 * weight,
                 "l_calcn": 0.796 * 0.0133 * weight,
                 "r_calcn": 0.796 * 0.0133 * weight,
@@ -1224,7 +1258,8 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": (0.0779 + 0.0041 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "l_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
                 "r_tibfib": (0.0376 + 0.0011 * age) * weight,  # age dependent, where percentage = a0 + a1 * age
-                "l_talus": 0.064 * 0.0144 * weight, # foot is 1.44% of body mass, need to distribute across talus, calcaneus, and toes
+                "l_talus": 0.064 * 0.0144 * weight,
+                # foot is 1.44% of body mass, need to distribute across talus, calcaneus, and toes
                 "r_talus": 0.064 * 0.0144 * weight,
                 "l_calcn": 0.796 * 0.0144 * weight,
                 "r_calcn": 0.796 * 0.0144 * weight,
@@ -1240,7 +1275,7 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "l_tibfib": (l_knee_c + np.array([-0.0267 * l_tib_l, (-0.4397 + 0.0023 * age) * l_tib_l,
                                                   -(0.0462 + -0.0011 * age) * l_tib_l])) - l_ankle_c,
                 "r_tibfib": (r_knee_c + np.array([-0.0267 * r_tib_l, (-0.4397 + 0.0023 * age) * r_tib_l,
-                                      (0.0462 + -0.0011 * age) * r_tib_l])) - r_ankle_c
+                                                  (0.0462 + -0.0011 * age) * r_tib_l])) - r_ankle_c
             }
 
             segment_radii_percentages = {
@@ -1260,7 +1295,8 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": 0.146 * weight,
                 "l_tibfib": 0.045 * weight,
                 "r_tibfib": 0.045 * weight,
-                "l_talus": 0.064 * 0.01 * weight, # foot is 1% of body mass, need to distribute across talus, calcaneus, and toes
+                "l_talus": 0.064 * 0.01 * weight,
+                # foot is 1% of body mass, need to distribute across talus, calcaneus, and toes
                 "r_talus": 0.064 * 0.01 * weight,
                 "l_calcn": 0.796 * 0.01 * weight,
                 "r_calcn": 0.796 * 0.01 * weight,
@@ -1292,7 +1328,8 @@ def estimate_body_segment_parameters(weight, age, sex, segment_lengths, segment_
                 "r_femur": 0.123 * weight,
                 "l_tibfib": 0.048 * weight,
                 "r_tibfib": 0.048 * weight,
-                "l_talus": 0.064 * 0.012 * weight, # foot is 1% of body mass, need to distribute across talus, calcaneus, and toes
+                "l_talus": 0.064 * 0.012 * weight,
+                # foot is 1% of body mass, need to distribute across talus, calcaneus, and toes
                 "r_talus": 0.064 * 0.012 * weight,
                 "l_calcn": 0.796 * 0.012 * weight,
                 "r_calcn": 0.796 * 0.012 * weight,
@@ -1603,7 +1640,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     return output_file
 
 
-def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_foot_to_ground = False):
+def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_foot_to_ground=False):
     """
       Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
@@ -1695,7 +1732,7 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
             default_angle_l = l_foot_update_to_match_actual_rotation[2]
             # Access the left ankle joint by name
             l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
-            l_ankle_flexion.setDefaultValue(default_angle_l)
+            l_ankle_flexion.setDefaultValue(-default_angle_l)
             l_foot_update_to_match_actual_rotation[2] = 0
 
         # Access the current orientation of the child frame (talus)
@@ -1768,7 +1805,8 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
             default_angle_r = r_foot_update_to_match_actual_rotation[2]
             # set rotation about z as a default value
             r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
-            r_ankle_flexion.setDefaultValue(default_angle_r)
+            r_ankle_flexion.setDefaultValue(-default_angle_r)
+            r_foot_update_to_match_actual_rotation[2] = 0
 
         # Access the current orientation of the child frame (talus)
         current_orientation = right_ankle_joint.get_frames(1).get_orientation()
@@ -1820,7 +1858,7 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
         euler_angles[0] = 0
         euler_angles[1] = 0
 
-        #assign rotation about z as default angle
+        # assign rotation about z as default angle
         default_angle_r = -euler_angles[2]
         right_ankle_joint = empty_model.getJointSet().get("ankle_r")
         r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
@@ -1842,6 +1880,7 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
     marker_set.get("RHEE_0").setName("RHEE")
     marker_set.get("LTOE_0").setName("LTOE")
     marker_set.get("LHEE_0").setName("LHEE")
+
 
 def perform_scaling(output_directory, output_file, static_trc_file):
     """
@@ -1877,10 +1916,10 @@ def perform_scaling(output_directory, output_file, static_trc_file):
     # Do u want to move markers to match the static file? - causes the feet to be poor currently
     relative_path = os.path.relpath(static_trc_file, output_directory)
 
-    #scale_tool.getMarkerPlacer().setApply(True)
-    #scale_tool.getMarkerPlacer().setOutputModelFileName("Lower_Limb.osim")
-    #scale_tool.getMarkerPlacer().setMarkerFileName(relative_path)
-    #scale_tool.getMarkerPlacer().setTimeRange(time_range)
+    # scale_tool.getMarkerPlacer().setApply(True)
+    # scale_tool.getMarkerPlacer().setOutputModelFileName("Lower_Limb.osim")
+    # scale_tool.getMarkerPlacer().setMarkerFileName(relative_path)
+    # scale_tool.getMarkerPlacer().setTimeRange(time_range)
 
     scale_tool.getModelScaler().setOutputModelFileName("Feet_scaled.osim")
     scale_tool.getModelScaler().setMarkerFileName(relative_path)
@@ -1908,8 +1947,6 @@ def rot_to_numpy(R):
 
 
 def move_marker_to_body(model, state, marker_name, new_body_name):
-
-
     state = model.initSystem()
     model.realizePosition(state)
 
@@ -1943,17 +1980,38 @@ def move_marker_to_body(model, state, marker_name, new_body_name):
 
     return p_new
 
-def create_osim_rot(x_axis, y_axis, z_axis):
+
+def create_osim_rot(x_axis, y_axis, z_axis, inverse=False):
+    # Stack axes as columns
+    R = np.column_stack((x_axis, y_axis, z_axis))  # shape (3,3)
+
+    if inverse:
+        R = R.T  # transpose = inverse for rotation matrices
+
+    # Convert to osim.Mat33
     rot = osim.Mat33()
-    rot.set(0, 0, x_axis[0])
-    rot.set(1, 0, x_axis[1])
-    rot.set(2, 0, x_axis[2])
+    for i in range(3):
+        for j in range(3):
+            rot.set(i, j, float(R[i, j]))
 
-    rot.set(0, 1, y_axis[0])
-    rot.set(1, 1, y_axis[1])
-    rot.set(2, 1, y_axis[2])
+    return rot
 
-    rot.set(0, 2, z_axis[0])
-    rot.set(1, 2, z_axis[1])
-    rot.set(2, 2, z_axis[2])
+
+def create_osim_rot_bodies(x1, y1, z1, x2, y2, z2, inverse=False):
+    # Build coordinate system matrices
+    R1 = np.column_stack((x1, y1, z1))
+    R2 = np.column_stack((x2, y2, z2))
+
+    # Rotation from frame1 → frame2
+    R = R2 @ R1.T
+
+    if inverse:
+        R = R.T  # transpose = inverse for rotation matrices
+
+    # Convert to OpenSim Mat33
+    rot = osim.Mat33()
+    for i in range(3):
+        for j in range(3):
+            rot.set(i, j, float(R[i, j]))
+
     return rot

@@ -13,7 +13,7 @@ high_level_inputs = os.path.join(root_directory, "High_Level_Inputs")
 
 
 def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, subject_info, marker_radius,
-                 optimise_knee_axis=True, progress_tracker=None):
+                 foot_flat, optimise_knee_axis=True, progress_tracker=None):
     """
     Creates an OpenSim model for the specified TRC inputs.
 
@@ -24,6 +24,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
         static_marker_data (dict): Static marker data coordinates.
         subject_info (DataFrame): Subject measurements and demographic information.
         marker_radius (float): Radius of motion capture markers.
+        foot_flat (bool): Whether the foot is flat on the ground in the static trial.
         optimise_knee_axis (bool): Set as False to disable knee-axis optimisation.
         progress_tracker (ProgressTracker, optional): Progress-tracker for emitting progress signals.
 
@@ -76,7 +77,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
 
     # Adjust foot bone orientation and scaling.
     empty_model = osim.Model(output_file)
-    feet_adjustments(empty_model, static_marker_data, realign_feet=True, align_foot_to_ground=True)
+    feet_adjustments(empty_model, static_marker_data, realign_feet=True, align_foot_to_ground=foot_flat)
     empty_model.finalizeConnections()
     empty_model.printToXML(output_file)
 

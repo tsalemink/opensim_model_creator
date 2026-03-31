@@ -1640,44 +1640,44 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     return output_file
 
 
-def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_foot_to_ground=False):
+def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, left_foot_flat=False, right_foot_flat=False):
     """
-      Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
+    Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
-      The function computes the appropriate rotations for both feet to ensure they are aligned with the ground
-      and match the positions indicated by the mocap static trial. This is particularly useful for preparing the
-      model for inverse kinematics or other biomechanical analyses.
+    The function computes the appropriate rotations for both feet to ensure they are aligned with the ground
+    and match the positions indicated by the mocap static trial. This is particularly useful for preparing the
+    model for inverse kinematics or other biomechanical analyses.
 
-      Args:
-          empty_model (osim.Model): The OpenSim model with foot components to be aligned.
-          mocap_static_trc (dict): Dictionary containing motion capture marker data with marker names as keys
-                                   and (x, y, z) coordinates as values.
-          realign_feet (bool, optional): Whether to fully realign the feet, around y and z axes. If align_foot_to_ground
-                                        selected, this will override the z axes rotation. If False, no adjustments are
-                                        made and the ankle remains at the default 0.0 angle defined by the alignment of
-                                        the talus and tibfib coordinate frames. Default is False.
-          align_foot_to_ground (bool, optional): whether to force the foot to be parallel with the ground. Uses the foot
-                                                bone geometry to align. This only modifies rotation about the z axis and
-                                                sets a new default angle for the ankle.
+    Args:
+        empty_model (osim.Model): The OpenSim model with foot components to be aligned.
+        mocap_static_trc (dict): Dictionary containing motion capture marker data with marker names as keys and
+            (x, y, z) coordinates as values.
+        realign_feet (bool, optional): Whether to fully realign the feet, around y and z axes. If align_foot_to_ground
+            selected, this will override the z axes rotation. If False, no adjustments are made and the ankle remains at
+            the default 0.0 angle defined by the alignment of the talus and tibfib coordinate frames. Default is False.
+        left_foot_flat (bool, optional): Whether to align the left foot to be parallel with the ground. Uses the foot
+            bone geometry to align. This only modifies rotation about the z axis and sets a default angle for the ankle.
+        right_foot_flat (bool, optional): Whether to align the right foot to be parallel with the ground. Uses the foot
+            bone geometry to align. This only modifies rotation about the z axis and sets a default angle for the ankle.
 
-      Returns:
-          None. The function modifies the OpenSim model in place and saves the updated model to the specified file.
+    Returns:
+        None. The function modifies the OpenSim model in place and saves the updated model to the specified file.
 
-      Key Steps:
-      1. Initialize the model's system.
-      2. Calculate the foot vectors (heel to toe) for both feet in the model's coordinate system.
-      3. Compute the target foot vectors from the mocap data.
-      4. Calculate the Euler angles required to align the model foot vectors with the mocap vectors.
-      5. Apply these rotations to the ankle joints of both feet.
-      6. Further adjust the foot orientation to ensure they are flat with the ground.
+    Key Steps:
+    1. Initialize the model's system.
+    2. Calculate the foot vectors (heel to toe) for both feet in the model's coordinate system.
+    3. Compute the target foot vectors from the mocap data.
+    4. Calculate the Euler angles required to align the model foot vectors with the mocap vectors.
+    5. Apply these rotations to the ankle joints of both feet.
+    6. Further adjust the foot orientation to ensure they are flat with the ground.
 
-      Example Usage:
-          feet_adjustments("updated_model.osim", model, mocap_data, realign_feet=True)
+    Example Usage:
+        feet_adjustments("updated_model.osim", model, mocap_data, realign_feet=True)
 
-      Note:
-          This function primarily handles the left and right feet independently and uses Euler angles for
-          rotation adjustments. It focuses on aligning the feet both forward-facing and flat to the ground.
-      """
+    Note:
+        This function primarily handles the left and right feet independently and uses Euler angles for rotation
+        adjustments. It focuses on aligning the feet both forward-facing and flat to the ground.
+    """
     # Initialize the model's system
     state = empty_model.initSystem()
     if realign_feet:
@@ -1726,7 +1726,7 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
         )
         l_foot_update_to_match_actual_rotation[0] = 0
         left_ankle_joint = empty_model.getJointSet().get("ankle_l")
-        if align_foot_to_ground:
+        if left_foot_flat:
             l_foot_update_to_match_actual_rotation[2] = 0
         else:
             default_angle_l = l_foot_update_to_match_actual_rotation[2]
@@ -1799,7 +1799,7 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
         # Set unnecessary rotations (x axes) to zero, apply z rotation as a default angle
         r_foot_update_to_match_actual_rotation[0] = 0
         right_ankle_joint = empty_model.getJointSet().get("ankle_r")
-        if align_foot_to_ground:
+        if right_foot_flat:
             r_foot_update_to_match_actual_rotation[2] = 0
         else:
             default_angle_r = r_foot_update_to_match_actual_rotation[2]
@@ -1824,9 +1824,9 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
         # Update the child frame's orientation with the new values
         right_ankle_joint.upd_frames(1).set_orientation(osim.Vec3(*new_orientation_values))
 
-    if align_foot_to_ground:
+    state = empty_model.initSystem()
+    if left_foot_flat:
         ## left side ##
-        state = empty_model.initSystem()
         toes_body_l = empty_model.getBodySet().get("toes_l")
         left_foot_transform_in_ground = toes_body_l.getTransformInGround(state)
         # Extract the rotation matrix from the transform
@@ -1845,6 +1845,7 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, align_fo
         l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
         l_ankle_flexion.setDefaultValue(default_angle_l)
 
+    if right_foot_flat:
         ## right side ##
         toes_body_r = empty_model.getBodySet().get("toes_r")
         right_foot_transform_in_ground = toes_body_r.getTransformInGround(state)

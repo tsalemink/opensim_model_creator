@@ -31,7 +31,7 @@ def test(input_directory, subject_info):
     for lm in static_marker_data:
         static_marker_data[lm] = np.dot(rotation_matrix, static_marker_data[lm])
 
-    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, subject_info, 9, optimise_knee_axis = False)
+    create_model(static_trc, dynamic_trc, output_directory, static_marker_data, subject_info, 9, left_foot_flat=False, right_foot_flat=False, optimise_knee_axis = False)
 
 
 if __name__ == "__main__":

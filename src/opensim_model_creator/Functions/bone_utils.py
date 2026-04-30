@@ -1566,7 +1566,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     # Set coordinates range and names for right ankle joint
     r_ankle_flexion = r_ankle_joint.upd_coordinates(0)
     r_ankle_flexion.setName("ankle_angle_r")
-    r_ankle_flexion.setRangeMin(-0.87266462599716477)
+    r_ankle_flexion.setRangeMin(-1.5707963267948966)
     r_ankle_flexion.setRangeMax(0.87266462599716477)
     r_ankle_flexion.setDefaultValue(0.0)
     r_ankle_flexion.setDefaultClamped(True)
@@ -1574,7 +1574,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     # Set coordinates range and names for right ankle joint
     l_ankle_flexion = l_ankle_joint.upd_coordinates(0)
     l_ankle_flexion.setName("ankle_angle_l")
-    l_ankle_flexion.setRangeMin(-0.87266462599716477)
+    l_ankle_flexion.setRangeMin(-1.5707963267948966)
     l_ankle_flexion.setRangeMax(0.87266462599716477)
     l_ankle_flexion.setDefaultValue(0.0)
     l_ankle_flexion.setDefaultClamped(True)

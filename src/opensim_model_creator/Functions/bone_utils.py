@@ -666,7 +666,9 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
         "y": y_axis,
         "z": z_axis
     }
-    rot_l = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['pelvis']['x'], body_axes['pelvis']['y'], body_axes['pelvis']['z'], inverse=True))
+    rot_l = osim.Rotation(
+        create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['pelvis']['x'], body_axes['pelvis']['y'],
+                               body_axes['pelvis']['z'], inverse=True))
     femur_r_origin, x_axis, y_axis, z_axis = model_alignment.createFemurACSISB(femur_r_center, right_landmarks['MEC'],
                                                                                right_landmarks['LEC'], side='right')
     body_axes['femur_r'] = {
@@ -674,7 +676,9 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
         "y": y_axis,
         "z": z_axis
     }
-    rot_r = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['pelvis']['x'], body_axes['pelvis']['y'], body_axes['pelvis']['z'], inverse=True))
+    rot_r = osim.Rotation(
+        create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['pelvis']['x'], body_axes['pelvis']['y'],
+                               body_axes['pelvis']['z'], inverse=True))
 
     # Create the custom left hip joint with all restored parameters, femur orientation defined from x_opt
     left_hip_joint = osim.CustomJoint(
@@ -809,8 +813,11 @@ def create_tibfib_bodies_and_knee_joints(
         "y": y_axis,
         "z": z_axis
     }
-    rot_fem_l = osim.Rotation(create_osim_rot(body_axes['femur_l']['x'], body_axes['femur_l']['y'], body_axes['femur_l']['z'], inverse=False))
-    rot_l = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_l']['x'], body_axes['femur_l']['y'], body_axes['femur_l']['z'], inverse=True))
+    rot_fem_l = osim.Rotation(
+        create_osim_rot(body_axes['femur_l']['x'], body_axes['femur_l']['y'], body_axes['femur_l']['z'], inverse=False))
+    rot_l = osim.Rotation(
+        create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_l']['x'], body_axes['femur_l']['y'],
+                               body_axes['femur_l']['z'], inverse=True))
     tibfib_r_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(r_LMAL, r_MMAL,
                                                                                         right_landmarks['condyle_med'],
                                                                                         right_landmarks['condyle_lat'],
@@ -822,7 +829,9 @@ def create_tibfib_bodies_and_knee_joints(
     }
     rot_fem_r = osim.Rotation(
         create_osim_rot(body_axes['femur_r']['x'], body_axes['femur_r']['y'], body_axes['femur_r']['z'], inverse=False))
-    rot_r = osim.Rotation(create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_r']['x'], body_axes['femur_r']['y'], body_axes['femur_r']['z'], inverse=True))
+    rot_r = osim.Rotation(
+        create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_r']['x'], body_axes['femur_r']['y'],
+                               body_axes['femur_r']['z'], inverse=True))
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l", relative_path,
@@ -1059,10 +1068,10 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibf
         print(f"Joint '{joint_name_to_remove}' not found in the model.")
 
     rot_tib_l = osim.Rotation(
-        create_osim_rot([0,0,0], body_axes['tibfib_l']['y'],[0,0,0],  inverse=False))
+        create_osim_rot([0, 0, 0], body_axes['tibfib_l']['y'], [0, 0, 0], inverse=False))
 
     rot_tib_r = osim.Rotation(
-        create_osim_rot([0,0,0], body_axes['tibfib_r']['y'],[0,0,0],  inverse=False))
+        create_osim_rot([0, 0, 0], body_axes['tibfib_r']['y'], [0, 0, 0], inverse=False))
 
     # Define the ankle joint connecting the left talus to the left tibfib
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)
@@ -1596,7 +1605,7 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     return output_file
 
 
-def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, left_foot_flat=False, right_foot_flat=False):
+def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_foot_flat=False):
     """
     Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
@@ -1634,130 +1643,135 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, left_foo
         This function primarily handles the left and right feet independently and uses Euler angles for rotation
         adjustments. It focuses on aligning the feet both forward-facing and flat to the ground.
     """
+
     # Initialize the model's system
     state = empty_model.initSystem()
-    if realign_feet:
-        # === Adjust Orientation of the Left Foot ===
+    # === Adjust Orientation of the Left Foot ===
 
-        # --- Get marker positions in GROUND ---
-        toe_marker = empty_model.getMarkerSet().get("LTOE")
-        heel_marker = empty_model.getMarkerSet().get("LHEE")
+    # --- Get marker positions in GROUND ---
+    toe_marker = empty_model.getMarkerSet().get("LTOE")
+    heel_marker = empty_model.getMarkerSet().get("LHEE")
 
-        toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
-        heel_ground = vec3_to_numpy(heel_marker.getLocationInGround(state))
+    toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
+    heel_ground = vec3_to_numpy(heel_marker.getLocationInGround(state))
 
-        # Model foot vector (ground)
-        model_vec = toe_ground - heel_ground
-        model_vec /= np.linalg.norm(model_vec)
+    # Model foot vector (ground)
+    model_vec = toe_ground - heel_ground
+    model_vec /= np.linalg.norm(model_vec)
 
-        # Mocap foot vector (already in ground)
-        mocap_vec = mocap_static_trc["LTOE"] - mocap_static_trc["LHEE"]
-        mocap_vec /= np.linalg.norm(mocap_vec)
+    # Mocap foot vector (already in ground)
+    mocap_vec = mocap_static_trc["LTOE"] - mocap_static_trc["LHEE"]
+    mocap_vec /= np.linalg.norm(mocap_vec)
 
-        # Z rotation (transverse plane / yaw)
-        theta_z = np.arctan2(
-            model_vec[0] * mocap_vec[1] - model_vec[1] * mocap_vec[0],
-            model_vec[0] * mocap_vec[0] + model_vec[1] * mocap_vec[1]
-        )
+    # Z rotation (transverse plane / yaw)
+    theta_z_l = np.arctan2(
+        model_vec[0] * mocap_vec[1] - model_vec[1] * mocap_vec[0],
+        model_vec[0] * mocap_vec[0] + model_vec[1] * mocap_vec[1]
+    )
 
-        # Apply Z rotation to model vector
-        Rz = np.array([
-            [np.cos(theta_z), -np.sin(theta_z), 0],
-            [np.sin(theta_z), np.cos(theta_z), 0],
-            [0, 0, 1]
-        ])
+    # Apply Z rotation to model vector
+    Rz = np.array([
+        [np.cos(theta_z_l), -np.sin(theta_z_l), 0],
+        [np.sin(theta_z_l), np.cos(theta_z_l), 0],
+        [0, 0, 1]
+    ])
 
-        model_vec_rot = Rz @ model_vec
+    model_vec_rot = Rz @ model_vec
 
-        # Y rotation (internal/external)
-        theta_y = np.arctan2(model_vec_rot[2], model_vec_rot[0]) - \
-                  np.arctan2(mocap_vec[2], mocap_vec[0])
+    # Y rotation (internal/external)
+    theta_y = np.arctan2(model_vec_rot[2], model_vec_rot[0]) - \
+              np.arctan2(mocap_vec[2], mocap_vec[0])
 
-        #APPLY TO OPENSIM
-        left_ankle_joint = empty_model.getJointSet().get("ankle_l")
+    # APPLY TO OPENSIM
+    left_ankle_joint = empty_model.getJointSet().get("ankle_l")
 
-        # --- Z → ankle flexion default ---
-        if not left_foot_flat:
-            l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
-            l_ankle_flexion.setDefaultValue(theta_z)
+    # --- Z → ankle flexion default ---
+    #if not left_foot_flat:
+    l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
+    l_ankle_flexion.setDefaultValue(theta_z_l)
 
-        # --- Update child frame orientation (Y only) ---
-        child_frame = left_ankle_joint.upd_frames(1)
-        current_orient = child_frame.get_orientation()
+    # --- Update child frame orientation (Y only) ---
+    child_frame = left_ankle_joint.upd_frames(1)
+    current_orient = child_frame.get_orientation()
 
-        current = np.array([
-            current_orient.get(0),
-            current_orient.get(1),
-            current_orient.get(2)
-        ])
+    current = np.array([
+        current_orient.get(0),
+        current_orient.get(1),
+        current_orient.get(2)
+    ])
 
-        # Only adjust Y
-        new_orient = current.copy()
-        new_orient[1] -= theta_y
+    # Only adjust Y
+    new_orient = current.copy()
+    new_orient[1] -= theta_y
 
-        child_frame.set_orientation(osim.Vec3(*new_orient))
+    child_frame.set_orientation(osim.Vec3(*new_orient))
 
-        # === Adjust Orientation of the Right Foot ===
+    # === Adjust Orientation of the Right Foot ===
 
-        # --- Get marker positions in GROUND ---
-        toe_marker = empty_model.getMarkerSet().get("RTOE")
-        heel_marker = empty_model.getMarkerSet().get("RHEE")
+    # --- Get marker positions in GROUND ---
+    toe_marker = empty_model.getMarkerSet().get("RTOE")
+    heel_marker = empty_model.getMarkerSet().get("RHEE")
 
-        toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
-        heel_ground = vec3_to_numpy(heel_marker.getLocationInGround(state))
+    toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
+    heel_ground = vec3_to_numpy(heel_marker.getLocationInGround(state))
 
-        # Model foot vector (ground)
-        model_vec = toe_ground - heel_ground
-        model_vec /= np.linalg.norm(model_vec)
+    # Model foot vector (ground)
+    model_vec = toe_ground - heel_ground
+    model_vec /= np.linalg.norm(model_vec)
 
-        # Mocap foot vector (already in ground)
-        mocap_vec = mocap_static_trc["RTOE"] - mocap_static_trc["RHEE"]
-        mocap_vec /= np.linalg.norm(mocap_vec)
+    # Mocap foot vector (already in ground)
+    mocap_vec = mocap_static_trc["RTOE"] - mocap_static_trc["RHEE"]
+    mocap_vec /= np.linalg.norm(mocap_vec)
 
-        # Z rotation (transverse plane / yaw)
-        theta_z = np.arctan2(
-            model_vec[0] * mocap_vec[1] - model_vec[1] * mocap_vec[0],
-            model_vec[0] * mocap_vec[0] + model_vec[1] * mocap_vec[1]
-        )
+    # Z rotation (transverse plane / yaw)
+    theta_z_r = np.arctan2(
+        model_vec[0] * mocap_vec[1] - model_vec[1] * mocap_vec[0],
+        model_vec[0] * mocap_vec[0] + model_vec[1] * mocap_vec[1]
+    )
 
-        # Apply Z rotation to model vector
-        Rz = np.array([
-            [np.cos(theta_z), -np.sin(theta_z), 0],
-            [np.sin(theta_z), np.cos(theta_z), 0],
-            [0, 0, 1]
-        ])
+    # Apply Z rotation to model vector
+    Rz = np.array([
+        [np.cos(theta_z_r), -np.sin(theta_z_r), 0],
+        [np.sin(theta_z_r), np.cos(theta_z_r), 0],
+        [0, 0, 1]
+    ])
 
-        model_vec_rot = Rz @ model_vec
+    model_vec_rot = Rz @ model_vec
 
-        # Y rotation (internal/external)
-        theta_y = np.arctan2(model_vec_rot[2], model_vec_rot[0]) - \
-                  np.arctan2(mocap_vec[2], mocap_vec[0])
+    # Y rotation (internal/external)
+    theta_y = np.arctan2(model_vec_rot[2], model_vec_rot[0]) - \
+              np.arctan2(mocap_vec[2], mocap_vec[0])
 
-        # APPLY TO OPENSIM
-        right_ankle_joint = empty_model.getJointSet().get("ankle_r")
+    # APPLY TO OPENSIM
+    right_ankle_joint = empty_model.getJointSet().get("ankle_r")
 
-        # --- Z → ankle flexion default ---
-        if not right_foot_flat:
-            r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
-            r_ankle_flexion.setDefaultValue(theta_z)
+    # --- Z → ankle flexion default ---
+    #if not right_foot_flat:
+    r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
+    r_ankle_flexion.setDefaultValue(theta_z_r)
 
-        # --- Update child frame orientation (Y only) ---
-        child_frame = right_ankle_joint.upd_frames(1)
-        current_orient = child_frame.get_orientation()
+    # --- Update child frame orientation (Y only) ---
+    child_frame = right_ankle_joint.upd_frames(1)
+    current_orient = child_frame.get_orientation()
 
-        current = np.array([
-            current_orient.get(0),
-            current_orient.get(1),
-            current_orient.get(2)
-        ])
+    current = np.array([
+        current_orient.get(0),
+        current_orient.get(1),
+        current_orient.get(2)
+    ])
 
-        # Only adjust Y
-        new_orient = current.copy()
-        new_orient[1] -= theta_y
+    # Only adjust Y
+    new_orient = current.copy()
+    new_orient[1] -= theta_y
 
-        child_frame.set_orientation(osim.Vec3(*new_orient))
+    child_frame.set_orientation(osim.Vec3(*new_orient))
 
     state = empty_model.initSystem()
+    move_marker_to_body(empty_model, state, "RTOE_0", "toes_r")
+    move_marker_to_body(empty_model, state, "RHEE_0", "calcn_r")
+    move_marker_to_body(empty_model, state, "LTOE_0", "toes_l")
+    move_marker_to_body(empty_model, state, "LHEE_0", "calcn_l")
+
     if left_foot_flat:
         ## left side ##
         toes_body_l = empty_model.getBodySet().get("toes_l")
@@ -1773,7 +1787,7 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, left_foo
         euler_angles[1] = 0
 
         # assign rotation about z as a default angle
-        default_angle_l = -euler_angles[2]
+        default_angle_l = theta_z_l + -euler_angles[2]
         left_ankle_joint = empty_model.getJointSet().get("ankle_l")
         l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
         l_ankle_flexion.setDefaultValue(default_angle_l)
@@ -1793,15 +1807,10 @@ def feet_adjustments(empty_model, mocap_static_trc, realign_feet=False, left_foo
         euler_angles[1] = 0
 
         # assign rotation about z as default angle
-        default_angle_r = -euler_angles[2]
+        default_angle_r = theta_z_r + -euler_angles[2]
         right_ankle_joint = empty_model.getJointSet().get("ankle_r")
         r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
         r_ankle_flexion.setDefaultValue(default_angle_r)
-
-    move_marker_to_body(empty_model, state, "RTOE_0", "toes_r")
-    move_marker_to_body(empty_model, state, "RHEE_0", "calcn_r")
-    move_marker_to_body(empty_model, state, "LTOE_0", "toes_l")
-    move_marker_to_body(empty_model, state, "LHEE_0", "calcn_l")
 
     # set model markers from static trial
     marker_set = empty_model.getMarkerSet()

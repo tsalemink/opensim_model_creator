@@ -1767,10 +1767,7 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     child_frame.set_orientation(osim.Vec3(*new_orient))
 
     state = empty_model.initSystem()
-    move_marker_to_body(empty_model, state, "RTOE_0", "toes_r")
-    move_marker_to_body(empty_model, state, "RHEE_0", "calcn_r")
-    move_marker_to_body(empty_model, state, "LTOE_0", "toes_l")
-    move_marker_to_body(empty_model, state, "LHEE_0", "calcn_l")
+
 
     if left_foot_flat:
         ## left side ##
@@ -1818,6 +1815,11 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     marker_set.get("RHEE").setName("RHEE_model")
     marker_set.get("LTOE").setName("LTOE_model")
     marker_set.get("LHEE").setName("LHEE_model")
+
+    move_marker_to_body(empty_model, state, "RTOE_0", "toes_r")
+    move_marker_to_body(empty_model, state, "RHEE_0", "calcn_r")
+    move_marker_to_body(empty_model, state, "LTOE_0", "toes_l")
+    move_marker_to_body(empty_model, state, "LHEE_0", "calcn_l")
 
     marker_set.get("RTOE_0").setName("RTOE")
     marker_set.get("RHEE_0").setName("RHEE")

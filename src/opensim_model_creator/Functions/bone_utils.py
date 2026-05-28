@@ -1663,48 +1663,83 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     mocap_vec = mocap_static_trc["LTOE"] - mocap_static_trc["LHEE"]
     mocap_vec /= np.linalg.norm(mocap_vec)
 
-    # Z rotation (transverse plane / yaw)
+    # Z rotation (transverse plane / yaw) in XY plane
+    model_xy = model_vec[[0, 1]]
+    mocap_xy = mocap_vec[[0, 1]]
+
+    model_xy /= np.linalg.norm(model_xy)
+    mocap_xy /= np.linalg.norm(mocap_xy)
+
     theta_z_l = np.arctan2(
-        model_vec[0] * mocap_vec[1] - model_vec[1] * mocap_vec[0],
-        model_vec[0] * mocap_vec[0] + model_vec[1] * mocap_vec[1]
+        model_xy[0] * mocap_xy[1] - model_xy[1] * mocap_xy[0],
+        np.dot(model_xy, mocap_xy)
     )
-
-    # Apply Z rotation to model vector
-    Rz = np.array([
-        [np.cos(theta_z_l), -np.sin(theta_z_l), 0],
-        [np.sin(theta_z_l), np.cos(theta_z_l), 0],
-        [0, 0, 1]
-    ])
-
-    model_vec_rot = Rz @ model_vec
-
-    # Y rotation (internal/external)
-    theta_y = np.arctan2(model_vec_rot[2], model_vec_rot[0]) - \
-              np.arctan2(mocap_vec[2], mocap_vec[0])
 
     # APPLY TO OPENSIM
     left_ankle_joint = empty_model.getJointSet().get("ankle_l")
 
     # --- Z → ankle flexion default ---
-    #if not left_foot_flat:
     l_ankle_flexion = left_ankle_joint.upd_coordinates(0)
     l_ankle_flexion.setDefaultValue(theta_z_l)
 
-    # --- Update child frame orientation (Y only) ---
+    # Reinitialize so marker locations update
+    state = empty_model.initSystem()
+
+    # RECOMPUTE FOOT VECTOR AFTER FLEXION
+
+    toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
+    heel_ground = vec3_to_numpy(heel_marker.getLocationInGround(state))
+
+    model_vec = toe_ground - heel_ground
+    model_vec /= np.linalg.norm(model_vec)
+
+    # Rotation aligning updated model vector to mocap vector
+    cross = np.cross(model_vec, mocap_vec)
+    dot = np.dot(model_vec, mocap_vec)
+
+    cross_norm = np.linalg.norm(cross)
+
+    if cross_norm < 1e-8:
+
+        # vectors already aligned
+        R_residual = R.identity()
+
+    else:
+
+        # Right-hand-rule axis
+        axis = cross / cross_norm
+
+        # Signed angle between vectors
+        angle = np.arctan2(cross_norm, dot)
+
+        # Rotation taking:
+        # model_vec -> mocap_vec
+        R_residual = R.from_rotvec(axis * angle)
+
+    # Use intrinsic XYZ convention
+    theta_x, theta_y, theta_z_res = (
+        R_residual.as_euler('xyz', degrees=False)
+    )
+
+    # APPLY TO CHILD FRAME
+
     child_frame = left_ankle_joint.upd_frames(1)
-    current_orient = child_frame.get_orientation()
 
-    current = np.array([
-        current_orient.get(0),
-        current_orient.get(1),
-        current_orient.get(2)
-    ])
+    orient = child_frame.get_orientation()
 
-    # Only adjust Y
-    new_orient = current.copy()
-    new_orient[1] -= theta_y
+    rx = orient.get(0)
+    ry = orient.get(1)
+    rz = orient.get(2)
 
-    child_frame.set_orientation(osim.Vec3(*new_orient))
+    new_orient = osim.Vec3(
+        rx + theta_x,
+        ry - theta_y,
+        rz
+    )
+
+    child_frame.set_orientation(new_orient)
+    # FINALIZE
+    state = empty_model.initSystem()
 
     # === Adjust Orientation of the Right Foot ===
 
@@ -1723,49 +1758,82 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     mocap_vec = mocap_static_trc["RTOE"] - mocap_static_trc["RHEE"]
     mocap_vec /= np.linalg.norm(mocap_vec)
 
-    # Z rotation (transverse plane / yaw)
+    # Z rotation (transverse plane / yaw) in XY plane
+    model_xy = model_vec[[0, 1]]
+    mocap_xy = mocap_vec[[0, 1]]
+
+    model_xy /= np.linalg.norm(model_xy)
+    mocap_xy /= np.linalg.norm(mocap_xy)
+
     theta_z_r = np.arctan2(
-        model_vec[0] * mocap_vec[1] - model_vec[1] * mocap_vec[0],
-        model_vec[0] * mocap_vec[0] + model_vec[1] * mocap_vec[1]
+        model_xy[0] * mocap_xy[1] - model_xy[1] * mocap_xy[0],
+        np.dot(model_xy, mocap_xy)
     )
-
-    # Apply Z rotation to model vector
-    Rz = np.array([
-        [np.cos(theta_z_r), -np.sin(theta_z_r), 0],
-        [np.sin(theta_z_r), np.cos(theta_z_r), 0],
-        [0, 0, 1]
-    ])
-
-    model_vec_rot = Rz @ model_vec
-
-    # Y rotation (internal/external)
-    theta_y = np.arctan2(model_vec_rot[2], model_vec_rot[0]) - \
-              np.arctan2(mocap_vec[2], mocap_vec[0])
 
     # APPLY TO OPENSIM
     right_ankle_joint = empty_model.getJointSet().get("ankle_r")
 
     # --- Z → ankle flexion default ---
-    #if not right_foot_flat:
     r_ankle_flexion = right_ankle_joint.upd_coordinates(0)
     r_ankle_flexion.setDefaultValue(theta_z_r)
 
-    # --- Update child frame orientation (Y only) ---
+    # Reinitialize so marker locations update
+    state = empty_model.initSystem()
+
+    # RECOMPUTE FOOT VECTOR AFTER FLEXION
+
+    toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
+    heel_ground = vec3_to_numpy(heel_marker.getLocationInGround(state))
+
+    model_vec = toe_ground - heel_ground
+    model_vec /= np.linalg.norm(model_vec)
+
+    # Rotation aligning updated model vector to mocap vector
+    cross = np.cross(model_vec, mocap_vec)
+    dot = np.dot(model_vec, mocap_vec)
+
+    cross_norm = np.linalg.norm(cross)
+
+    if cross_norm < 1e-8:
+
+        # vectors already aligned
+        R_residual = R.identity()
+
+    else:
+
+        # Right-hand-rule axis
+        axis = cross / cross_norm
+
+        # Signed angle between vectors
+        angle = np.arctan2(cross_norm, dot)
+
+        # Rotation taking:
+        # model_vec -> mocap_vec
+        R_residual = R.from_rotvec(axis * angle)
+
+    # Use intrinsic XYZ convention
+    theta_x, theta_y, theta_z_res = (
+        R_residual.as_euler('xyz', degrees=False)
+    )
+
+    # APPLY TO CHILD FRAME
+
     child_frame = right_ankle_joint.upd_frames(1)
-    current_orient = child_frame.get_orientation()
 
-    current = np.array([
-        current_orient.get(0),
-        current_orient.get(1),
-        current_orient.get(2)
-    ])
+    orient = child_frame.get_orientation()
 
-    # Only adjust Y
-    new_orient = current.copy()
-    new_orient[1] -= theta_y
+    rx = orient.get(0)
+    ry = orient.get(1)
+    rz = orient.get(2)
 
-    child_frame.set_orientation(osim.Vec3(*new_orient))
+    new_orient = osim.Vec3(
+        rx + theta_x,
+        ry - theta_y,
+        rz
+    )
 
+    child_frame.set_orientation(new_orient)
+    # FINALIZE
     state = empty_model.initSystem()
 
 

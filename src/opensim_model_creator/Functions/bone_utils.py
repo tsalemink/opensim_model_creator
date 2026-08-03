@@ -804,7 +804,7 @@ def create_tibfib_bodies_and_knee_joints(
     l_mid_mal = midpoint_3d(l_LMAL, l_MMAL)
     tibia_l_center = l_mid_mal
 
-    tibfib_l_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(l_LMAL, l_MMAL,
+    tibfib_l_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(l_MMAL, l_LMAL,
                                                                                         left_landmarks['condyle_med'],
                                                                                         left_landmarks['condyle_lat'],
                                                                                         side='left')
@@ -818,7 +818,7 @@ def create_tibfib_bodies_and_knee_joints(
     rot_l = osim.Rotation(
         create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_l']['x'], body_axes['femur_l']['y'],
                                body_axes['femur_l']['z'], inverse=True))
-    tibfib_r_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(r_LMAL, r_MMAL,
+    tibfib_r_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(r_MMAL, r_LMAL,
                                                                                         right_landmarks['condyle_med'],
                                                                                         right_landmarks['condyle_lat'],
                                                                                         side='right')

@@ -1847,10 +1847,6 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
         rotation = osim.Rotation(rotation_matrix)
         euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
 
-        # Set unnecessary rotations (x and y axes) to zero
-        euler_angles[0] = 0
-        euler_angles[1] = 0
-
         # assign rotation about z as a default angle
         default_angle_l = theta_z_l + -euler_angles[2]
         left_ankle_joint = empty_model.getJointSet().get("ankle_l")
@@ -1866,10 +1862,6 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
         # Convert the rotation matrix to Euler angles
         rotation = osim.Rotation(rotation_matrix)
         euler_angles = rotation.convertRotationToBodyFixedXYZ()  # Angles in radians
-
-        # Set unnecessary rotations (x and y axes) to zero
-        euler_angles[0] = 0
-        euler_angles[1] = 0
 
         # assign rotation about z as default angle
         default_angle_r = theta_z_r + -euler_angles[2]

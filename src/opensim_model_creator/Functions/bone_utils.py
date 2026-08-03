@@ -848,6 +848,11 @@ def create_tibfib_bodies_and_knee_joints(
                      offset_orientation=(0, 0, 0),  # Align the mesh orientation with OpenSim axes
                      offset_translation=-tibia_l_center)
 
+    # TODO: We add the experimental foot markers to the tibfib body initially.
+    #   All of this seems to be done BEFORE we align the joints.
+    #   So all of the experimental markers are being moved.
+    #   Actually, this appears to be the case for the entire model, except for the pelvis.
+    #   The final model pose does not even remotely match the static input in some cases.
     # Add mocap markers to the tibfib bodies
     # Add mocap markers for the left tibfib body
     add_markers_to_body(empty_model, "tibfib_l", ["LTIB", "LTOE", "LHEE", "LMED", "LANK"], mocap_static_trc,
@@ -1655,14 +1660,20 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
     heel_ground = vec3_to_numpy(heel_marker.getLocationInGround(state))
 
+    # TODO: Model foot vector is calulated directly from the foot model markers.
     # Model foot vector (ground)
     model_vec = toe_ground - heel_ground
     model_vec /= np.linalg.norm(model_vec)
 
+    # TODO: Experimental foot-vector is calculated from the raw TRC data.
+    #   This may not be in the same CS/reference-frame as the model...?
     # Mocap foot vector (already in ground)
     mocap_vec = mocap_static_trc["LTOE"] - mocap_static_trc["LHEE"]
     mocap_vec /= np.linalg.norm(mocap_vec)
 
+    # TODO: Pass 1 uses markers only, to adjust the ankle flexion angle.
+    #   The vectors above are flattened onto the X-Y plane and the angle is calculated.
+    #   The angle is then applied to the ankle joint.
     # Z rotation (transverse plane / yaw) in XY plane
     model_xy = model_vec[[0, 1]]
     mocap_xy = mocap_vec[[0, 1]]
@@ -1685,6 +1696,9 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     # Reinitialize so marker locations update
     state = empty_model.initSystem()
 
+    # TODO: Pass 2 adjusts the internal-external rotation and inversion/eversion.
+    #   It re-calculates the model vector and the full 3D rotation required.
+    #   This is applied by tilting how the joint is mounted, not by rotating the ankle.
     # RECOMPUTE FOOT VECTOR AFTER FLEXION
 
     toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
@@ -1837,6 +1851,9 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     state = empty_model.initSystem()
 
 
+    # TODO: Rotates the ankle until the toes body sits level with the ground.
+    #   Uses the bone geometry rather than the markers.
+    #   Overwrites the earlier ankle_angle_r default.
     if left_foot_flat:
         ## left side ##
         toes_body_l = empty_model.getBodySet().get("toes_l")

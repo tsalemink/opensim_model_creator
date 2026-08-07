@@ -1610,6 +1610,24 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     return output_file
 
 
+# TODO: Remove. Debugging.
+def check_body_rotations(model):
+    """
+    Prints how far each body is rotated away from the ground frame axes.
+    """
+    state = model.initSystem()
+    model.realizePosition(state)
+
+    def angle_of(rot_matrix):
+        return np.degrees(np.arccos(np.clip((np.trace(rot_matrix) - 1.0) / 2.0, -1.0, 1.0)))
+
+    for name in ("pelvis_b", "femur_l", "femur_r", "tibfib_l", "tibfib_r"):
+        R_body = rot_to_numpy(model.getBodySet().get(name).getTransformInGround(state).R())
+        ex, ey, ez = np.degrees(R.from_matrix(R_body).as_euler('XYZ'))
+        print(f"BODY {name:<9} off ground-aligned by {angle_of(R_body):6.2f} deg  "
+              f"(x={ex:7.2f}  y={ey:7.2f}  z={ez:7.2f})")
+
+
 def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_foot_flat=False):
     """
     Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.

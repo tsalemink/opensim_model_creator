@@ -731,6 +731,13 @@ def create_femur_bodies_and_hip_joints(empty_model, left_landmarks, right_landma
     empty_model.addJoint(left_hip_joint)
     empty_model.addJoint(right_hip_joint)
 
+    # Set hip defaults from joint offset frame.
+    for joint, rot, side_sign in ((left_hip_joint, rot_l, -1.0), (right_hip_joint, rot_r, 1.0)):
+        fz, fx, fy = R.from_matrix(rot_to_numpy(rot)).as_euler('ZXY')
+        joint.upd_coordinates(0).setDefaultValue(float(fz))
+        joint.upd_coordinates(1).setDefaultValue(float(side_sign * fx))
+        joint.upd_coordinates(2).setDefaultValue(float(side_sign * fy))
+
     return left_femur, femur_l_center, right_femur, femur_r_center, l_femur_length, r_femur_length, body_axes
 
 
@@ -1440,19 +1447,16 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     l_hip_flexion.setRangeMin(-1.5)
     l_hip_flexion.setRangeMax(1.8)
-    l_hip_flexion.setDefaultValue(x_opt_left['hip_rot'][0])
     l_hip_flexion.setDefaultClamped(True)
     l_hip_flexion.setDefaultLocked(False)
 
     l_hip_rotation.setRangeMin(-0.8)
     l_hip_rotation.setRangeMax(0.8)
-    l_hip_rotation.setDefaultValue(x_opt_left['hip_rot'][1] * -0.1)
     l_hip_rotation.setDefaultClamped(True)
     l_hip_rotation.setDefaultLocked(False)
 
     l_hip_abduction.setRangeMin(-0.8)
     l_hip_abduction.setRangeMax(1.2)
-    l_hip_abduction.setDefaultValue(x_opt_left['hip_rot'][2] * -0.1)
     l_hip_abduction.setDefaultClamped(True)
     l_hip_abduction.setDefaultLocked(False)
 
@@ -1463,19 +1467,16 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
 
     r_hip_flexion.setRangeMin(-1.5)
     r_hip_flexion.setRangeMax(1.8)
-    r_hip_flexion.setDefaultValue(x_opt_right['hip_rot'][0])
     r_hip_flexion.setDefaultClamped(True)
     r_hip_flexion.setDefaultLocked(False)
 
     r_hip_rotation.setRangeMin(-0.8)
     r_hip_rotation.setRangeMax(0.8)
-    r_hip_rotation.setDefaultValue(x_opt_right['hip_rot'][1] * 0.1)
     r_hip_rotation.setDefaultClamped(True)
     r_hip_rotation.setDefaultLocked(False)
 
     r_hip_abduction.setRangeMin(-1.2)
     r_hip_abduction.setRangeMax(0.8)
-    r_hip_abduction.setDefaultValue(x_opt_right['hip_rot'][2] * 0.1)
     r_hip_abduction.setDefaultClamped(True)
     r_hip_abduction.setDefaultLocked(False)
 

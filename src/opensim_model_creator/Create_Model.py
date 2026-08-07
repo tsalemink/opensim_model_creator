@@ -80,7 +80,7 @@ def create_model(static_trc, dynamic_trc, output_directory, static_marker_data, 
     empty_model = osim.Model(output_file)
 
     # TODO: Remove. Debugging.
-    check_body_rotations(empty_model)
+    check_marker_alignment(empty_model, static_marker_data)
 
     feet_adjustments(empty_model, static_marker_data, left_foot_flat=left_foot_flat,
                      right_foot_flat=right_foot_flat)

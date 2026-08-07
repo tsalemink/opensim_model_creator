@@ -1730,11 +1730,6 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
         # model_vec -> mocap_vec
         R_residual = R.from_rotvec(axis * angle)
 
-    # Use intrinsic XYZ convention
-    theta_x, theta_y, theta_z_res = (
-        R_residual.as_euler('xyz', degrees=False)
-    )
-
     # APPLY TO CHILD FRAME
 
     child_frame = left_ankle_joint.upd_frames(1)
@@ -1821,11 +1816,6 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
         # Rotation taking:
         # model_vec -> mocap_vec
         R_residual = R.from_rotvec(axis * angle)
-
-    # Use intrinsic XYZ convention
-    theta_x, theta_y, theta_z_res = (
-        R_residual.as_euler('xyz', degrees=False)
-    )
 
     # APPLY TO CHILD FRAME
 

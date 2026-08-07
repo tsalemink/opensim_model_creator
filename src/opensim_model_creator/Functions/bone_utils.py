@@ -1707,8 +1707,9 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     #   The vectors above are flattened onto the X-Y plane and the angle is calculated.
     #   The angle is then applied to the ankle joint.
     # Z rotation (transverse plane / yaw) in XY plane
-    model_xy = model_vec[[0, 1]]
-    mocap_xy = mocap_vec[[0, 1]]
+    shank_rotation = rot_to_numpy(empty_model.getBodySet().get("tibfib_l").getTransformInGround(state).R())
+    model_xy = (shank_rotation.T @ model_vec)[[0, 1]]
+    mocap_xy = (shank_rotation.T @ mocap_vec)[[0, 1]]
 
     model_xy /= np.linalg.norm(model_xy)
     mocap_xy /= np.linalg.norm(mocap_xy)
@@ -1797,8 +1798,9 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     mocap_vec /= np.linalg.norm(mocap_vec)
 
     # Z rotation (transverse plane / yaw) in XY plane
-    model_xy = model_vec[[0, 1]]
-    mocap_xy = mocap_vec[[0, 1]]
+    shank_rotation = rot_to_numpy(empty_model.getBodySet().get("tibfib_r").getTransformInGround(state).R())
+    model_xy = (shank_rotation.T @ model_vec)[[0, 1]]
+    mocap_xy = (shank_rotation.T @ mocap_vec)[[0, 1]]
 
     model_xy /= np.linalg.norm(model_xy)
     mocap_xy /= np.linalg.norm(mocap_xy)

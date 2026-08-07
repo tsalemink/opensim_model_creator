@@ -1035,6 +1035,25 @@ def create_tibfib_bodies_and_knee_joints(
     # This connects the right tibfib to the right femur, allowing flexion/extension motion
     empty_model.addJoint(right_knee_joint)
 
+    # Set knee defaults from joint offset frames.
+    for joint, rot_parent, rot_child, side_sign in (
+            (left_knee_joint, rot_fem_l, rot_l, -1.0),
+            (right_knee_joint, rot_fem_r, rot_r, 1.0)):
+        net = rot_to_numpy(rot_parent).T @ rot_to_numpy(rot_child)
+        fz, fx, fy = R.from_matrix(net).as_euler('ZXY')
+
+        flexion = joint.upd_coordinates(0)
+        adduction = joint.upd_coordinates(1)
+        rotation = joint.upd_coordinates(2)
+
+        flexion.setDefaultValue(float(-fz))
+
+        # Adduction and rotation are locked to the ASM pose.
+        for coord, value in ((adduction, side_sign * fx), (rotation, side_sign * fy)):
+            coord.setRangeMin(float(value))
+            coord.setRangeMax(float(value))
+            coord.setDefaultValue(float(value))
+
     return tibia_l_center, tibia_r_center, left_tibfib, right_tibfib, l_tibfib_length, r_tibfib_length, l_EC_midpoint, r_EC_midpoint
 
 
@@ -1485,23 +1504,16 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     l_knee_flexion.setName("knee_flexion_l")
     l_knee_flexion.setRangeMin(-0.2)
     l_knee_flexion.setRangeMax(2.2)
-    l_knee_flexion.setDefaultValue(x_opt_left['knee_rot'][0])
     l_knee_flexion.setDefaultClamped(True)
     l_knee_flexion.setDefaultLocked(False)
 
     l_knee_add = l_knee_joint.upd_coordinates(1)
     l_knee_add.setName("knee_adduction_l")
-    l_knee_add.setRangeMin(x_opt_left['knee_rot'][1] * -0.1)
-    l_knee_add.setRangeMax(x_opt_left['knee_rot'][1] * -0.1)
-    l_knee_add.setDefaultValue(x_opt_left['knee_rot'][1] * -0.1)
     l_knee_add.setDefaultLocked(True)  # lock add/abduction in the knee joint
     l_knee_add.setDefaultClamped(True)
 
     l_knee_rot = l_knee_joint.upd_coordinates(2)
     l_knee_rot.setName("knee_rotation_l")
-    l_knee_rot.setRangeMin(0.0)
-    l_knee_rot.setRangeMax(0.0)
-    l_knee_rot.setDefaultValue(0.0)
     l_knee_rot.setDefaultLocked(True)  # lock i/e rotation in the knee joint
     l_knee_rot.setDefaultClamped(True)
 
@@ -1510,23 +1522,16 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     r_knee_flexion.setName("knee_flexion_r")
     r_knee_flexion.setRangeMin(-0.2)
     r_knee_flexion.setRangeMax(2.2)
-    r_knee_flexion.setDefaultValue(x_opt_right['knee_rot'][0])
     r_knee_flexion.setDefaultClamped(True)
     r_knee_flexion.setDefaultLocked(False)
 
     r_knee_add = r_knee_joint.upd_coordinates(1)
     r_knee_add.setName("knee_adduction_r")
-    r_knee_add.setRangeMin(x_opt_right['knee_rot'][1] * 0.1)
-    r_knee_add.setRangeMax(x_opt_right['knee_rot'][1] * 0.1)
-    r_knee_add.setDefaultValue(x_opt_right['knee_rot'][1] * 0.1)
     r_knee_add.setDefaultLocked(True)  # lock add/abduction in the knee joint
     r_knee_add.setDefaultClamped(True)
 
     r_knee_rot = r_knee_joint.upd_coordinates(2)
     r_knee_rot.setName("knee_rotation_r")
-    r_knee_rot.setRangeMin(0.0)
-    r_knee_rot.setRangeMax(0.0)
-    r_knee_rot.setDefaultValue(0.0)
     r_knee_rot.setDefaultLocked(True)  # lock i/e rotation in the knee joint
     r_knee_rot.setDefaultClamped(True)
 

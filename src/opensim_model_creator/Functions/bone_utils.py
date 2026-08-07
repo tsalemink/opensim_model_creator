@@ -1741,15 +1741,12 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
 
     orient = child_frame.get_orientation()
 
-    rx = orient.get(0)
-    ry = orient.get(1)
-    rz = orient.get(2)
-
-    new_orient = osim.Vec3(
-        rx + theta_x,
-        ry - theta_y,
-        rz
-    )
+    # Compose residual rotation in talus coordinates.
+    talus_body_l = empty_model.getBodySet().get("talus_l")
+    talus_rotation = rot_to_numpy(talus_body_l.getTransformInGround(state).R())
+    child_frame_rotation = R.from_euler('XYZ', [orient.get(0), orient.get(1), orient.get(2)]).as_matrix()
+    child_frame_rotation_new = (talus_rotation.T @ R_residual.as_matrix().T @ talus_rotation @ child_frame_rotation)
+    new_orient = osim.Vec3(*R.from_matrix(child_frame_rotation_new).as_euler('XYZ'))
 
     child_frame.set_orientation(new_orient)
     # FINALIZE
@@ -1836,15 +1833,12 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
 
     orient = child_frame.get_orientation()
 
-    rx = orient.get(0)
-    ry = orient.get(1)
-    rz = orient.get(2)
-
-    new_orient = osim.Vec3(
-        rx + theta_x,
-        ry - theta_y,
-        rz
-    )
+    # Compose residual rotation in talus coordinates.
+    talus_body_r = empty_model.getBodySet().get("talus_r")
+    talus_rotation = rot_to_numpy(talus_body_r.getTransformInGround(state).R())
+    child_frame_rotation = R.from_euler('XYZ', [orient.get(0), orient.get(1), orient.get(2)]).as_matrix()
+    child_frame_rotation_new = (talus_rotation.T @ R_residual.as_matrix().T @ talus_rotation @ child_frame_rotation)
+    new_orient = osim.Vec3(*R.from_matrix(child_frame_rotation_new).as_euler('XYZ'))
 
     child_frame.set_orientation(new_orient)
     # FINALIZE

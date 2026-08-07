@@ -815,9 +815,7 @@ def create_tibfib_bodies_and_knee_joints(
     }
     rot_fem_l = osim.Rotation(
         create_osim_rot(body_axes['femur_l']['x'], body_axes['femur_l']['y'], body_axes['femur_l']['z'], inverse=False))
-    rot_l = osim.Rotation(
-        create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_l']['x'], body_axes['femur_l']['y'],
-                               body_axes['femur_l']['z'], inverse=True))
+    rot_l = osim.Rotation(create_osim_rot(x_axis, y_axis, z_axis, inverse=False))
     tibfib_r_origin, x_axis, y_axis, z_axis = model_alignment.createTibiaFibulaACSISB_2(r_MMAL, r_LMAL,
                                                                                         right_landmarks['condyle_med'],
                                                                                         right_landmarks['condyle_lat'],
@@ -829,9 +827,7 @@ def create_tibfib_bodies_and_knee_joints(
     }
     rot_fem_r = osim.Rotation(
         create_osim_rot(body_axes['femur_r']['x'], body_axes['femur_r']['y'], body_axes['femur_r']['z'], inverse=False))
-    rot_r = osim.Rotation(
-        create_osim_rot_bodies(x_axis, y_axis, z_axis, body_axes['femur_r']['x'], body_axes['femur_r']['y'],
-                               body_axes['femur_r']['z'], inverse=True))
+    rot_r = osim.Rotation(create_osim_rot(x_axis, y_axis, z_axis, inverse=False))
 
     # Add the mesh to the left tibfib body with an orientation offset to align axes
     add_mesh_to_body(empty_model, "tibfib_l", relative_path,

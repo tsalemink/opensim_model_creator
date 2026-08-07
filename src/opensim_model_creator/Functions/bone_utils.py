@@ -1665,10 +1665,8 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     model_vec = toe_ground - heel_ground
     model_vec /= np.linalg.norm(model_vec)
 
-    # TODO: Experimental foot-vector is calculated from the raw TRC data.
-    #   This may not be in the same CS/reference-frame as the model...?
-    # Mocap foot vector (already in ground)
-    mocap_vec = mocap_static_trc["LTOE"] - mocap_static_trc["LHEE"]
+    mocap_vec = (vec3_to_numpy(empty_model.getMarkerSet().get("LTOE_0").getLocationInGround(state))
+                 - vec3_to_numpy(empty_model.getMarkerSet().get("LHEE_0").getLocationInGround(state)))
     mocap_vec /= np.linalg.norm(mocap_vec)
 
     # TODO: Pass 1 uses markers only, to adjust the ankle flexion angle.
@@ -1760,8 +1758,8 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     model_vec = toe_ground - heel_ground
     model_vec /= np.linalg.norm(model_vec)
 
-    # Mocap foot vector (already in ground)
-    mocap_vec = mocap_static_trc["RTOE"] - mocap_static_trc["RHEE"]
+    mocap_vec = (vec3_to_numpy(empty_model.getMarkerSet().get("RTOE_0").getLocationInGround(state))
+                 - vec3_to_numpy(empty_model.getMarkerSet().get("RHEE_0").getLocationInGround(state)))
     mocap_vec /= np.linalg.norm(mocap_vec)
 
     # Z rotation (transverse plane / yaw) in XY plane

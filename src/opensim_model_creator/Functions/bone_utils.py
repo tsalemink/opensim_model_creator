@@ -551,6 +551,12 @@ def create_pelvis_body_and_joint(model, left_landmarks, right_landmarks, meshes,
     )
     model.addJoint(pelvis_joint)
 
+    # Set pelvis defaults from joint offset frame.
+    fy, fx, fz = R.from_matrix(rot_to_numpy(pelvis_rotation_osim)).as_euler('YXZ')
+    pelvis_joint.upd_coordinates(0).setDefaultValue(float(fy))
+    pelvis_joint.upd_coordinates(1).setDefaultValue(float(fx))
+    pelvis_joint.upd_coordinates(2).setDefaultValue(float(fz))
+
     # Attach the mesh for the pelvis
     mesh_path = os.path.join(meshes, "combined_pelvis_mesh.stl")
     relative_path = os.path.relpath(mesh_path, os.path.dirname(meshes))
@@ -1425,19 +1431,16 @@ def perform_updates(empty_model, output_folder, mesh_directory, model_name, weig
     # rename pelvis rotations and set default values from x_opt as an average value from the left and right side
     pelvis_rotation.setRangeMin(-6.2831853071795862)
     pelvis_rotation.setRangeMax(6.2831853071795862)
-    pelvis_rotation.setDefaultValue(((x_opt_left['pelvis_rigid'][4] + x_opt_right['pelvis_rigid'][4]) / 2))
     pelvis_rotation.setDefaultClamped(True)
     pelvis_rotation.setDefaultLocked(False)
 
     pelvis_list.setRangeMin(-1.5707963300000001)
     pelvis_list.setRangeMax(1.5707963300000001)
-    pelvis_list.setDefaultValue(((x_opt_left['pelvis_rigid'][3] + x_opt_right['pelvis_rigid'][3]) / 2))
     pelvis_list.setDefaultClamped(True)
     pelvis_list.setDefaultLocked(False)
 
     pelvis_tilt.setRangeMin(-1.5707963300000001)
     pelvis_tilt.setRangeMax(1.5707963300000001)
-    pelvis_tilt.setDefaultValue(((x_opt_left['pelvis_rigid'][5] + x_opt_right['pelvis_rigid'][5]) / 2))
     pelvis_tilt.setDefaultClamped(True)
     pelvis_tilt.setDefaultLocked(False)
 

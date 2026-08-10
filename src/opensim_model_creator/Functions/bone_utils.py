@@ -1101,10 +1101,12 @@ def repurpose_feet_bodies_and_create_joints(empty_model, left_tibfib, right_tibf
         print(f"Joint '{joint_name_to_remove}' not found in the model.")
 
     rot_tib_l = osim.Rotation(
-        create_osim_rot([0, 0, 0], body_axes['tibfib_l']['y'], [0, 0, 0], inverse=False))
+        create_osim_rot(body_axes['tibfib_l']['x'], body_axes['tibfib_l']['y'], body_axes['tibfib_l']['z'],
+                        inverse=False))
 
     rot_tib_r = osim.Rotation(
-        create_osim_rot([0, 0, 0], body_axes['tibfib_r']['y'], [0, 0, 0], inverse=False))
+        create_osim_rot(body_axes['tibfib_r']['x'], body_axes['tibfib_r']['y'], body_axes['tibfib_r']['z'],
+                        inverse=False))
 
     # Define the ankle joint connecting the left talus to the left tibfib
     # A PinJoint allows rotation about a single axis (flexion/extension in this case)

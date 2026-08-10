@@ -1644,7 +1644,8 @@ def check_marker_alignment(model, mocap_static_trc):
     print(f"MARKER {'RMS':<6} {np.sqrt(np.mean(errors ** 2)):7.1f} mm")
 
 
-def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_foot_flat=False):
+def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_foot_flat=False,
+                     toe_marker_proximal=False):
     """
     Adjusts the orientation of the left and right feet in an OpenSim model to align with mocap (motion capture) data.
 
@@ -1663,6 +1664,8 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
             bone geometry to align. This only modifies rotation about the z axis and sets a default angle for the ankle.
         right_foot_flat (bool, optional): Whether to align the right foot to be parallel with the ground. Uses the foot
             bone geometry to align. This only modifies rotation about the z axis and sets a default angle for the ankle.
+        toe_marker_proximal (bool, optional): Whether the lab places their toe marker proximally, between the second and
+            third metatarsal heads. Set as False to align against the more distal model marker instead.
 
     Returns:
         None. The function modifies the OpenSim model in place and saves the updated model to the specified file.
@@ -1685,10 +1688,14 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
 
     # Initialize the model's system
     state = empty_model.initSystem()
+
+    # Defines whether we should use the proximal or distal model marker.
+    toe_suffix = "_osim" if toe_marker_proximal else ""
+
     # === Adjust Orientation of the Left Foot ===
 
     # --- Get marker positions in GROUND ---
-    toe_marker = empty_model.getMarkerSet().get("LTOE")
+    toe_marker = empty_model.getMarkerSet().get(f"LTOE{toe_suffix}")
     heel_marker = empty_model.getMarkerSet().get("LHEE")
 
     toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
@@ -1783,7 +1790,7 @@ def feet_adjustments(empty_model, mocap_static_trc, left_foot_flat=False, right_
     # === Adjust Orientation of the Right Foot ===
 
     # --- Get marker positions in GROUND ---
-    toe_marker = empty_model.getMarkerSet().get("RTOE")
+    toe_marker = empty_model.getMarkerSet().get(f"RTOE{toe_suffix}")
     heel_marker = empty_model.getMarkerSet().get("RHEE")
 
     toe_ground = vec3_to_numpy(toe_marker.getLocationInGround(state))
